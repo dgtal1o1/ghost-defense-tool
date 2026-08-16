@@ -1,0 +1,369 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>INTERNET OUTAGE MAP // Ghost Defense</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#000;--panel:#050f05;--panel2:#081408;--grn:#00ff41;--grn-dim:#00cc33;--cyan:#39c0ff;--red:#ff3333;--amber:#ffcc00;--txt:#c8e6cc;--mut:#5f7a63;--mut2:#3d5140;--line:rgba(0,255,65,.12);--line2:rgba(0,255,65,.22);--mono:'IBM Plex Mono',ui-monospace,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--mono);font-size:13px;line-height:1.5}
+a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1180px;margin:0 auto;padding:20px}
+header{border-bottom:1px solid var(--line2);padding-bottom:14px;margin-bottom:16px}
+.h-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.logo{width:34px;height:34px;border:2px solid var(--grn);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--grn);font-weight:700;box-shadow:0 0 14px rgba(0,255,65,.3)}
+h1{font-size:18px;margin:0;color:var(--grn);letter-spacing:1px;text-shadow:0 0 12px rgba(0,255,65,.3)}
+.sub{font-size:10px;color:var(--mut);letter-spacing:.5px;margin-top:3px}
+.src-badge{margin-left:auto;font-size:10px;color:var(--cyan);border:1px solid var(--cyan);border-radius:5px;padding:5px 10px}
+.asnbar{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0}
+.asnbtn{font-family:var(--mono);font-size:10.5px;cursor:pointer;background:#030703;color:var(--txt);border:1px solid var(--line2);border-radius:14px;padding:6px 12px;transition:.13s}
+.asnbtn:hover{border-color:var(--cyan);color:var(--cyan)}
+.asnbtn.on{background:rgba(57,192,255,.14);color:var(--cyan);border-color:var(--cyan);font-weight:700}
+.ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.ctl input{flex:1;min-width:180px;font-family:var(--mono);font-size:12px;background:#030703;color:var(--txt);border:1px solid var(--line2);border-radius:5px;padding:9px 12px}
+.btn{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.5px;cursor:pointer;background:var(--grn);color:#04140b;border:none;border-radius:5px;padding:9px 15px}
+.btn:hover{filter:brightness(1.1)}
+.btn.ghost{background:transparent;color:var(--cyan);border:1px solid var(--cyan)}
+.status{font-size:10.5px;color:var(--cyan);min-height:15px;margin-bottom:12px}
+.card{border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:16px;margin-bottom:14px}
+.card h3{font-size:11px;color:var(--grn);letter-spacing:1px;margin:0 0 12px;text-transform:uppercase}
+.kpis{display:flex;gap:12px;flex-wrap:wrap}
+.kpi{flex:1;min-width:130px;border:1px solid var(--line);background:#030703;border-radius:6px;padding:11px 13px}
+.kpi .n{font-size:22px;font-weight:800;color:var(--grn)}
+.kpi .n.warn{color:var(--amber)}.kpi .n.bad{color:var(--red)}
+.kpi .l{font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.8px;margin-top:2px}
+.op{font-size:15px;color:var(--txt);font-weight:700}
+.op .asn{color:var(--cyan)}
+.row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:12px}
+.row:last-child{border:none}
+.row .k{color:var(--mut)}
+.pill{font-size:10px;padding:2px 9px;border-radius:10px;font-weight:700}
+.pill.ok{background:rgba(0,255,65,.15);color:var(--grn)}
+.pill.warn{background:rgba(255,204,0,.15);color:var(--amber)}
+.pill.bad{background:rgba(255,51,51,.15);color:var(--red)}
+.infer{border:1px dashed rgba(255,204,0,.4);background:rgba(255,204,0,.05);border-radius:6px;padding:12px;margin-top:8px}
+.infer .tag{font-size:9px;color:var(--amber);letter-spacing:1px;font-weight:700;text-transform:uppercase}
+.infer .body{font-size:11.5px;color:var(--txt);line-height:1.6;margin-top:6px}
+.pivot{display:inline-block;font-size:10.5px;padding:6px 11px;border:1px solid var(--cyan);border-radius:5px;color:var(--cyan);margin-top:10px;margin-right:8px}
+.empty{color:var(--mut);font-size:11.5px;line-height:1.7;padding:8px 0}
+.worker-note{font-size:10px;color:var(--mut2);border-top:1px solid var(--line);padding-top:10px;margin-top:12px;line-height:1.6}
+footer{margin-top:20px;padding-top:14px;border-top:1px solid var(--line2);font-size:9.5px;color:var(--mut);line-height:1.7;text-align:center}
+.hist{display:flex;gap:2px;align-items:flex-end;height:40px;margin-top:8px}
+.hist i{flex:1;background:var(--grn-dim);border-radius:1px 1px 0 0;min-height:2px;opacity:.8}
+.hist i.dip{background:var(--red)}
+</style></head><body>
+<div class="wrap">
+<header>
+  <div class="h-top">
+    <div class="logo">G</div>
+    <div>
+      <h1>INTERNET OUTAGE MAP</h1>
+      <div class="sub">GHOST DEFENSE · Tool 45 · BGP routing status &amp; network disruption · Grounded Handling Of Sourced Threat-intel</div>
+    </div>
+    <div class="src-badge" id="srcBadge">RIPEstat · live BGP</div>
+  </div>
+  <div class="asnbar" id="asnbar"></div>
+  <div class="ctl">
+    <input type="text" id="asnIn" placeholder="ASN (e.g. AS3356 or 3356) — or pick a network above" spellcheck="false">
+    <button class="btn" onclick="checkAsn()">◎ CHECK ROUTING STATUS</button>
+    <button class="btn ghost" onclick="loadOutages()" title="Requires Ghost Worker for IODA / Cloudflare Radar">🌐 GLOBAL OUTAGES</button>
+  </div>
+</header>
+<div class="status" id="status">Pick a network or enter an ASN. Data: RIPEstat (RIPE NCC) live BGP routing — CORS-open, no key required.</div>
+<div id="out"></div>
+<footer>
+  DATA: <b>RIPEstat</b> (RIPE NCC — authoritative BGP routing, live) for ASN identity &amp; routing status ·
+  <b>IODA</b> (Georgia Tech / CAIDA, DHS-funded) and <b>Cloudflare Radar</b> (verified outages) for global outage detection, via the Ghost Worker.<br>
+  ASN&rarr;operator mappings are sourced from RIR registration data (fact). Service-impact statements are <b>labeled inference</b> from network ownership, never observed application status. No fabricated outage or "app-down" data is shown.<br>
+  DEFENSIVE / SITUATIONAL AWARENESS · TLP:CLEAR · GHOST — Grounded Handling Of Sourced Threat-intel · DEFEND ALWAYS 🛡️
+</footer>
+</div>
+<script>
+var RIPE='https://stat.ripe.net/data';
+// ASN -> operator: SOURCED from public RIR registration data (fact). Used to label, not to assert impact.
+var NETWORKS=[
+  {asn:3356, name:'Lumen (Level 3)', note:'Tier-1 transit'},
+  {asn:174,  name:'Cogent',         note:'Tier-1 transit'},
+  {asn:7018, name:'AT&T',           note:'US ISP / transit'},
+  {asn:7922, name:'Comcast',        note:'US broadband'},
+  {asn:701,  name:'Verizon (UUNET)',note:'US ISP / transit'},
+  {asn:3257, name:'GTT',            note:'Tier-1 transit'},
+  {asn:6939, name:'Hurricane Elec', note:'IPv6 transit'},
+  {asn:13335,name:'Cloudflare',     note:'CDN / DNS (1.1.1.1)'},
+  {asn:15169,name:'Google',         note:'Google / GCP / 8.8.8.8'},
+  {asn:16509,name:'Amazon AWS',     note:'AWS cloud'},
+  {asn:8075, name:'Microsoft',      note:'Azure / M365'},
+  {asn:32934,name:'Meta',           note:'Facebook / Instagram / WhatsApp'},
+  {asn:2906, name:'Netflix',        note:'streaming'},
+  {asn:20940,name:'Akamai',         note:'CDN'},
+  {asn:16276,name:'OVH',            note:'EU hosting'}
+];
+var SEL=null;
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function worker(){ try{ return localStorage.getItem('ghost2210_exploit_proxy'); }catch(e){ return null; } }
+function setStatus(m){ document.getElementById('status').innerHTML=m; }
+
+function renderBar(){
+  document.getElementById('asnbar').innerHTML=NETWORKS.map(function(n){
+    return '<button class="asnbtn'+(SEL===n.asn?' on':'')+'" onclick="pick('+n.asn+')">'+esc(n.name)+' <span style="color:var(--mut)">AS'+n.asn+'</span></button>';
+  }).join('');
+}
+function pick(asn){ SEL=asn; document.getElementById('asnIn').value='AS'+asn; renderBar(); checkAsn(); }
+function netOf(asn){ return NETWORKS.find(function(n){return n.asn===asn;}); }
+
+function parseAsn(v){ var m=String(v||'').match(/(\d{1,7})/); return m?parseInt(m[1],10):null; }
+
+async function jget(url){
+  var r=await fetch(url,{headers:{'Accept':'application/json'}});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return await r.json();
+}
+
+async function checkAsn(){
+  var asn=parseAsn(document.getElementById('asnIn').value);
+  if(!asn){ setStatus('Enter a valid ASN (e.g. AS3356).'); return; }
+  SEL=asn; renderBar();
+  setStatus('Querying RIPEstat live BGP routing for AS'+asn+'…');
+  document.getElementById('out').innerHTML='';
+  try{
+    var ov=await jget(RIPE+'/as-overview/data.json?resource=AS'+asn);
+    var rs=await jget(RIPE+'/routing-status/data.json?resource=AS'+asn);
+    var holder = (ov.data&&ov.data.holder)||'(unknown holder)';
+    var announced = (ov.data&&ov.data.announced);
+    var d=rs.data||{};
+    var prefixes = (d.announced_space && (d.announced_space.v4? d.announced_space.v4.prefixes:0)+ (d.announced_space.v6? d.announced_space.v6.prefixes:0)) || (d.observed_neighbours!=null? null : null);
+    var v4pref = d.announced_space&&d.announced_space.v4?d.announced_space.v4.prefixes:0;
+    var v6pref = d.announced_space&&d.announced_space.v6?d.announced_space.v6.prefixes:0;
+    var visibility = d.visibility && d.visibility.v4 ? d.visibility.v4 : null; // {ris_peers_seeing, total_ris_peers}
+    var seen = visibility? visibility.ris_peers_seeing : null;
+    var totalPeers = visibility? visibility.total_ris_peers : null;
+    var pct = (seen!=null&&totalPeers)? Math.round(seen/totalPeers*100) : null;
+
+    // BGP health signal (labeled): high visibility = healthy routing; low/none = potential disruption
+    var health, hp;
+    if(!announced){ health='NOT ANNOUNCED'; hp='bad'; }
+    else if(pct==null){ health='ANNOUNCED'; hp='ok'; }
+    else if(pct>=75){ health='HEALTHY'; hp='ok'; }
+    else if(pct>=40){ health='PARTIAL VISIBILITY'; hp='warn'; }
+    else { health='LOW VISIBILITY'; hp='bad'; }
+
+    var net=netOf(asn);
+    renderAsn(asn, holder, announced, v4pref, v6pref, seen, totalPeers, pct, health, hp, net);
+    DIAG_CONSISTENT = bgpConsistentCauses({announced:announced, pct:pct}); CAUSE_OPEN=null; renderDiag();
+    setStatus('AS'+asn+' — live from RIPEstat (RIPE NCC) at '+new Date().toLocaleTimeString()+'. Visibility = how many of RIPE\'s global BGP monitors currently see this network.');
+    loadHistory(asn);
+  }catch(e){
+    document.getElementById('out').innerHTML='<div class="card"><h3>Routing status</h3><div class="empty">⚠ Could not reach RIPEstat ('+esc(e.message)+'). This tool shows only live sourced BGP data — it does not fabricate a status. RIPEstat is normally CORS-open; if your network blocks stat.ripe.net, route it through your Ghost Worker (add the host to ALLOW_HOSTS).</div></div>';
+    setStatus('RIPEstat unreachable — no data shown (not fabricated).');
+  }
+}
+
+function renderAsn(asn,holder,announced,v4,v6,seen,total,pct,health,hp,net){
+  var impact = net
+    ? '<div class="infer"><div class="tag">⚠ Labeled inference — not observed application status</div><div class="body">AS'+asn+' is registered to <b>'+esc(net.name)+'</b> ('+esc(net.note)+') per RIR data. If this network is disrupted, services operated on or routed through it <b>may</b> be affected. This is an inference from network ownership, <b>not</b> a confirmed application outage. Verify specific service status at the operator\'s own status page.</div></div>'
+    : '<div class="infer"><div class="tag">Impact</div><div class="body">This ASN is not in the curated operator list. Its registered holder is shown above (sourced). Service impact is not inferred without a known operator mapping.</div></div>';
+  document.getElementById('out').innerHTML=
+    '<div class="card">'
+    +'<div class="op">AS<span class="asn">'+asn+'</span> · '+esc(holder)+'</div>'
+    +(net?'<div style="font-size:11px;color:var(--mut);margin-top:3px">'+esc(net.name)+' — '+esc(net.note)+'</div>':'')
+    +'<div class="kpis" style="margin-top:14px">'
+      +'<div class="kpi"><div class="n '+(hp==='bad'?'bad':hp==='warn'?'warn':'')+'">'+health+'</div><div class="l">BGP routing status</div></div>'
+      +'<div class="kpi"><div class="n">'+(v4+v6).toLocaleString()+'</div><div class="l">announced prefixes (v4+v6)</div></div>'
+      +'<div class="kpi"><div class="n '+(pct!=null&&pct<40?'bad':pct!=null&&pct<75?'warn':'')+'">'+(pct!=null?pct+'%':'—')+'</div><div class="l">RIS peer visibility'+(seen!=null?' ('+seen+'/'+total+')':'')+'</div></div>'
+      +'<div class="kpi"><div class="n">'+(announced?'YES':'NO')+'</div><div class="l">currently announced</div></div>'
+    +'</div>'
+    +'<div class="row" style="margin-top:12px"><span class="k">IPv4 prefixes</span><span>'+v4.toLocaleString()+'</span></div>'
+    +'<div class="row"><span class="k">IPv6 prefixes</span><span>'+v6.toLocaleString()+'</span></div>'
+    +'<div class="row"><span class="k">Data source</span><span><a href="https://stat.ripe.net/AS'+asn+'" target="_blank">RIPEstat live ↗</a></span></div>'
+    +'<div id="histWrap"></div>'
+    +impact
+    +'<div style="margin-top:12px">'
+      +'<a class="pivot" href="44_Shodan_CVE_Exposure_Map.html" title="Check internet-exposed services">🌐 Exposure map (Tool 44)</a>'
+      +'<a class="pivot" href="https://stat.ripe.net/AS'+asn+'#tabId=routing" target="_blank">📈 RIPEstat routing history ↗</a>'
+    +'</div>'
+    +'</div>';
+}
+
+async function loadHistory(asn){
+  // routing-history: recent announcement changes — a sharp drop = potential outage (labeled)
+  try{
+    var h=await jget(RIPE+'/routing-history/data.json?resource=AS'+asn+'&max_rows=1');
+    // routing-history is heavy; we only confirm data exists and link out for the timeline
+    var el=document.getElementById('histWrap');
+    if(el){ el.innerHTML='<div class="row" style="margin-top:8px"><span class="k">Routing history</span><span style="color:var(--mut)">withdrawals/announcements visible in RIPEstat timeline (link below)</span></div>'; }
+  }catch(e){ /* non-fatal */ }
+}
+
+async function loadOutages(){
+  var w=worker();
+  if(!w){
+    document.getElementById('out').innerHTML='<div class="card"><h3>Global outages</h3>'
+      +'<div class="empty">Global outage detection uses <b>IODA</b> (Georgia Tech / CAIDA) and <b>Cloudflare Radar</b>, which require the Ghost Worker (Radar also needs a Cloudflare API token as a server-side secret). Neither is configured, so <b>no outage data is shown — this tool does not fabricate outages.</b><br><br>'
+      +'To enable: set your Worker (⚙), add <code>api.ioda.inetintel.cc.gatech.edu</code> and <code>api.cloudflare.com</code> to ALLOW_HOSTS, and add a <code>CF_RADAR_TOKEN</code> secret. Until then, use the per-ASN BGP routing status above — that runs live on RIPEstat with no setup.</div>'
+      +'<div class="worker-note">Why gated: these feeds need a key or aren\'t CORS-open from the browser. Rather than show stale or invented outages, Ghost Defense stays silent until a real source is connected.</div></div>';
+    setStatus('Global outage feeds not configured — no data fabricated. Per-ASN routing status works now via RIPEstat.');
+    return;
+  }
+  setStatus('Querying IODA via Ghost Worker…');
+  try{
+    var now=Math.floor(Date.now()/1000), since=now-86400;
+    // Real IODA public API (InetIntel/ioda-api): summary ranks entities by outage score.
+    var iodaUrl='https://api.ioda.inetintel.cc.gatech.edu/v2/outages/summary?from='+since+'&until='+now+'&entityType=country&limit=50';
+    var pu=w.replace(/\/+$/,'')+'?url='+encodeURIComponent(iodaUrl);
+    var d=await jget(pu);
+    var rows=(d&&d.data)||[];
+    var copyright=(d&&d.copyright)||'';
+    var hits=rows.filter(function(x){ return x.scores && x.scores.overall>0; })
+                 .sort(function(a,b){ return (b.scores.overall||0)-(a.scores.overall||0); });
+    function signalOf(sc){
+      var parts=[];
+      if(sc['bgp.median']) parts.push('BGP');
+      if(sc['ping-slash24.median']) parts.push('active-probe');
+      if(sc['gtr.WEB_SEARCH.median']||sc['merit-nt.median']) parts.push('telescope');
+      return parts.length?parts.join('+'):'multi-signal';
+    }
+    if(!hits.length){
+      document.getElementById('out').innerHTML='<div class="card"><h3>Global outages (last 24h · IODA)</h3><div class="empty">IODA reports no significant country-level outages in the last 24h. No outages fabricated. Inspect the live map at <a href="https://ioda.inetintel.cc.gatech.edu/" target="_blank">IODA ↗</a> or <a href="https://radar.cloudflare.com/outage-center" target="_blank">Cloudflare Radar ↗</a>.</div></div>';
+    } else {
+      document.getElementById('out').innerHTML='<div class="card"><h3>Global outages (last 24h · IODA — country level)</h3>'
+        +'<div style="font-size:10px;color:var(--mut);margin-bottom:10px;line-height:1.6">Ranked by <b>IODA outage score</b> — a relative magnitude of how far a network dropped below its own normal baseline (<b>not</b> a percentage or a count of affected users). Higher = larger/more severe disruption. <b>Signal</b> = how it was detected (BGP = routes withdrawn; active-probe = addresses stopped responding). <b>Events</b> = distinct outage episodes in the window.</div>'
+        + hits.slice(0,40).map(function(x){
+          var name=(x.entity&&(x.entity.name||x.entity.code))||'entity';
+          var sc=Math.round(x.scores.overall||0);
+          var sig=signalOf(x.scores);
+          var ev=x.event_cnt||0;
+          return '<div class="row"><span class="k">'+esc(name)+' <span style="color:var(--mut2);font-size:10px">· '+esc(sig)+' · '+ev+' event'+(ev===1?'':'s')+'</span></span><span class="pill '+(sc>5000?'bad':'warn')+'">'+sc.toLocaleString()+'</span></div>';
+        }).join('')
+        +'<div class="worker-note">Source: <b>IODA</b> (api.ioda.inetintel.cc.gatech.edu) · outage score combines BGP, active-probing (ping /24), and network-telescope signals. Times UTC. '+(copyright?esc(copyright):'© Georgia Tech Research Corporation.')+' Verify at ioda.inetintel.cc.gatech.edu.</div></div>';
+    }
+    setStatus('IODA queried at '+new Date().toLocaleTimeString()+'.');
+    loadWatch();
+  }catch(e){
+    document.getElementById('out').innerHTML='<div class="card"><h3>Global outages</h3><div class="empty">⚠ IODA query failed via Worker ('+esc(e.message)+'). No outages fabricated. Confirm <code>api.ioda.inetintel.cc.gatech.edu</code> is allowlisted in the Worker, or check <a href="https://ioda.inetintel.cc.gatech.edu/" target="_blank">IODA directly ↗</a>.</div></div>';
+    setStatus('IODA unreachable via Worker — no data fabricated.');
+  }
+}
+
+
+// ── DIAGNOSE & RESPOND — Cisco ThousandEyes "Internet Outages Survival Cheat Sheet" ──
+// Structured defensive reference: symptom signature -> likely cause -> RACI -> actions.
+// Symptom->cause matching is LABELED INFERENCE ("consistent with"), never a diagnosis.
+var CAUSES=[
+  {name:'BGP Hijack',sym:{loss:'High',lat:'Increased',path:'Hops increased',route:'Suboptimal, misdirected',access:'Initial',conn:'Degraded',prefixes:'Unaffected',device:'Unaffected'},raci:{R:'ISP, NetOps',A:'NetOps',C:'SecOps',I:'Executives'},actions:['Re-advertise BGP route using an alternate prefix','Update and propagate DNS records with revised IP mappings']},
+  {name:'BGP Route Leak',sym:{loss:'High',lat:'Increased',path:'Hops increased',route:'Suboptimal',access:'Initial',conn:'Degraded',prefixes:'Affected',device:'Unaffected'},raci:{R:'ISP',A:'NetOps',C:'SecOps',I:'Executives'},actions:['Contact your ISP with evidence','Re-advertise preferred routes using more-specific prefixes']},
+  {name:'BGP Route Flap',sym:{loss:'Total',lat:'Max',path:'Hops fluctuate',route:'Unstable (periodic stabilization)',access:'Inaccessible',conn:'Degraded',prefixes:'Unaffected',device:'Unaffected'},raci:{R:'ISP, NetOps',A:'NetOps',C:'Network Architects',I:'Executives'},actions:['Wait for the routing table to stabilize (route dampening + aggregation)','Re-advertise route prefixes under a different prefix or via another network']},
+  {name:'DDoS Attack',sym:{loss:'Very high',lat:'High',path:'Hops increased',route:'Suboptimal',access:'Inaccessible',conn:'Unavailable',prefixes:'Unaffected',device:'Locked'},raci:{R:'ITOps, ISP, DDoS Mitigation Provider',A:'SecOps',C:'NetOps',I:'Executives'},actions:['Divert traffic to a DDoS mitigation service','Re-advertise DNS with revised IP mapping']},
+  {name:'DNS Hijacking & Poisoning',sym:{loss:'Some',lat:'High',path:'Hops increased',route:'Misdirected',access:'Accessible',conn:'Degraded',prefixes:'Unaffected',device:'Unaffected'},raci:{R:'ITOps',A:'System Admins',C:'NetOps',I:'SecOps'},actions:['Flush DNS, re-advertise DNS','Initiate DNSSEC across your domains','Re-advertise DNS name under an alternative prefix','Diversify CDN providers','Quarantine and assess damage to mitigate follow-on attack']},
+  {name:'ISP Infrastructure (Outage)',sym:{loss:'Total',lat:'High',path:'Hops increased',route:'Suboptimal',access:'Inaccessible (at times)',conn:'Unavailable',prefixes:'Unaffected',device:'Unaffected'},raci:{R:'ISP',A:'NetOps',C:'Network Architects',I:'Executives, Comms'},actions:['Revert to a backup circuit if available','Inform your ISP with evidence','Automate the fail-over process as a best practice','Assess ISP service to determine future mitigation options']},
+  {name:'Cloud Provider Network (Outage)',sym:{loss:'Total',lat:'High',path:'Hops increased',route:'Suboptimal',access:'Accessible (generally)',conn:'Degraded',prefixes:'Unaffected',device:'Unaffected'},raci:{R:'Cloud provider',A:'DevOps',C:'NetOps',I:'Executives, Comms'},actions:['Assess where in the digital service delivery chain the outage is occurring','Have DevOps mitigate through reconfiguration','Contact cloud provider to notify them of the fault domain']},
+  {name:'Operator / Configuration Error',sym:{loss:'High',lat:'High',path:'Hops minimally affected',route:'Inaccessible',access:'Inaccessible',conn:'Degraded',prefixes:'Unaffected',device:'Degraded'},raci:{R:'NetOps, DevOps',A:'ITOps',C:'Network Architects',I:'Helpdesk, Executives, Comms'},actions:['Identify fault domain','Correlate with change control / release schedule','Rollback change','Analyze cause','Implement fix']},
+  {name:'Internet Sovereignty',sym:{loss:'Minor',lat:'Some',path:'Hops increased',route:'Suboptimal',access:'Accessible',conn:'Degraded',prefixes:'Unaffected',device:'Unaffected'},raci:{R:'NetOps, System Admin',A:'SecOps',C:'Executives',I:'Government regulators'},actions:['Determine the scope of the breach (which systems involved)','Determine parties involved, including ISPs and countries','Isolate and, if possible, mitigate (see BGP Hijack & DNS poisoning)','Inform regulatory authorities']},
+  {name:'Natural Disaster',sym:{loss:'Total*',lat:'Max',path:'Hops increased',route:'Suboptimal',access:'Inaccessible*',conn:'Unavailable*',prefixes:'Unaffected',device:'Inaccessible*'},raci:{R:'ITOps',A:'NetOps',C:'ISP',I:'Executives'},actions:['Assess propagation of impact to other users, applications, and locations','If possible, move workloads/users to redundant data centers','Initiate disaster recovery plan'],note:'*to/from affected area, users, sites, devices'}
+];
+var CAUSE_OPEN=null, DIAG_CONSISTENT=[];
+function bgpConsistentCauses(sig){
+  if(sig.announced===false) return ['BGP Route Flap','ISP Infrastructure (Outage)','BGP Hijack'];
+  if(sig.pct!=null && sig.pct<40) return ['BGP Route Leak','BGP Route Flap','ISP Infrastructure (Outage)'];
+  if(sig.pct!=null && sig.pct<75) return ['BGP Route Leak','BGP Hijack'];
+  return [];
+}
+function renderDiag(){
+  var consistent=DIAG_CONSISTENT||[];
+  var chips=CAUSES.map(function(c,i){
+    var hot=consistent.indexOf(c.name)>-1;
+    return '<button class="asnbtn'+(CAUSE_OPEN===i?' on':'')+'" style="'+(hot?'border-color:var(--amber);color:var(--amber)':'')+'" onclick="CAUSE_OPEN='+(CAUSE_OPEN===i?'null':i)+';renderDiag()">'+(hot?'\u26a0 ':'')+esc(c.name)+'</button>';
+  }).join('');
+  var detail='';
+  if(CAUSE_OPEN!=null){
+    var c=CAUSES[CAUSE_OPEN];
+    detail='<div class="card" style="margin-top:10px"><div class="op" style="font-size:14px">'+esc(c.name)+'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px">'
+      +'<div><div style="font-size:10px;color:var(--grn);letter-spacing:1px;margin-bottom:6px">SYMPTOM SIGNATURE</div>'
+        +[['Packet loss',c.sym.loss],['Latency',c.sym.lat],['Path length',c.sym.path],['Route',c.sym.route],['Access',c.sym.access],['Network connectivity',c.sym.conn],['Prefixes',c.sym.prefixes],['Device layer',c.sym.device]].map(function(kv){return '<div class="row"><span class="k">'+kv[0]+'</span><span>'+esc(kv[1])+'</span></div>';}).join('')
+      +'</div><div><div style="font-size:10px;color:var(--grn);letter-spacing:1px;margin-bottom:6px">WHO TO INVOLVE (RACI)</div>'
+        +'<div class="row"><span class="k">Responsible</span><span>'+esc(c.raci.R)+'</span></div><div class="row"><span class="k">Accountable</span><span>'+esc(c.raci.A)+'</span></div><div class="row"><span class="k">Consulted</span><span>'+esc(c.raci.C)+'</span></div><div class="row"><span class="k">Inform</span><span>'+esc(c.raci.I)+'</span></div>'
+        +'<div style="font-size:10px;color:var(--grn);letter-spacing:1px;margin:12px 0 6px">ACTIONS TO TAKE</div><ol style="margin:0;padding-left:18px;font-size:11.5px;line-height:1.6">'+c.actions.map(function(a){return '<li>'+esc(a)+'</li>';}).join('')+'</ol>'
+        +(c.note?'<div style="font-size:9.5px;color:var(--mut);margin-top:8px">'+esc(c.note)+'</div>':'')
+      +'</div></div></div>';
+  }
+  document.getElementById('diag').innerHTML='<div class="card"><h3>\ud83e\ude7a Diagnose &amp; Respond \u2014 outage cause reference</h3>'
+    +(consistent.length?'<div class="infer"><div class="tag">\u26a0 Labeled inference \u2014 symptom pattern match, not a diagnosis</div><div class="body">Based on the live BGP signal above, the highlighted (\u26a0) cause'+(consistent.length>1?'s are':' is')+' <b>consistent with</b> what RIPEstat currently shows for this ASN. This is a pattern match against the reference below \u2014 <b>not</b> a confirmed root cause. Correlate with your own telemetry, change logs, and the operator\'s status page before acting.</div></div>':'')
+    +'<div style="font-size:11px;color:var(--mut);margin:10px 0">Click a cause for its symptom signature, RACI stakeholders, and response actions:</div>'
+    +'<div class="asnbar">'+chips+'</div>'+detail
+    +'<div class="worker-note">Diagnostic framework &amp; response actions: <b>Cisco ThousandEyes \u2014 "Internet Outages Survival Cheat Sheet."</b> Reproduced as a defensive reference with attribution. The live BGP signal and pattern-matching are Ghost Defense, labeled as inference.</div></div>';
+}
+
+// Priority Watch — strategically significant countries always queried by code,
+// shown even when there's no outage (honest "monitored - no significant outage").
+// IODA outage score → plain-language severity band. The score is a relative magnitude
+// (how far below its own baseline a network dropped), not a percentage or count.
+// Bands are our labeling of IODA's score for readability — stated as such.
+function severityBand(score){
+  if(score<=0)   return {label:'NO SIGNIFICANT OUTAGE', cls:'ok'};
+  if(score<1000) return {label:'MINOR DISRUPTION', cls:'warn'};
+  if(score<10000)return {label:'NOTABLE OUTAGE', cls:'warn'};
+  return {label:'MAJOR OUTAGE', cls:'bad'};
+}
+var DEFAULT_WATCH=[{code:'TW',name:'Taiwan'},{code:'CN',name:'China'},{code:'IR',name:'Iran'},{code:'RU',name:'Russia'}];
+var ISO_NAMES={'taiwan':'TW','china':'CN','iran':'IR','russia':'RU','ukraine':'UA','north korea':'KP','south korea':'KR','japan':'JP','philippines':'PH','india':'IN','pakistan':'PK','afghanistan':'AF','iraq':'IQ','syria':'SY','israel':'IL','lebanon':'LB','yemen':'YE','saudi arabia':'SA','egypt':'EG','libya':'LY','sudan':'SD','ethiopia':'ET','somalia':'SO','nigeria':'NG','venezuela':'VE','cuba':'CU','myanmar':'MM','burma':'MM','belarus':'BY','georgia':'GE','armenia':'AM','azerbaijan':'AZ','kazakhstan':'KZ','turkey':'TR','turkiye':'TR','united states':'US','usa':'US','united kingdom':'GB','uk':'GB','germany':'DE','france':'FR','poland':'PL','estonia':'EE','latvia':'LV','lithuania':'LT','moldova':'MD','serbia':'RS','kosovo':'XK','cambodia':'KH','vietnam':'VN','thailand':'TH','indonesia':'ID','bangladesh':'BD','sri lanka':'LK','nepal':'NP','tajikistan':'TJ','turkmenistan':'TM','uzbekistan':'UZ','kyrgyzstan':'KG','guam':'GU','hong kong':'HK','mali':'ML','niger':'NE','chad':'TD','burkina faso':'BF','dr congo':'CD','mozambique':'MZ','tanzania':'TZ','kenya':'KE','uganda':'UG','zimbabwe':'ZW','tunisia':'TN','algeria':'DZ','morocco':'MA','jordan':'JO','oman':'OM','qatar':'QA','bahrain':'BH','kuwait':'KW','united arab emirates':'AE','uae':'AE'};
+function resolveCountry(inp){
+  var v=String(inp||'').trim();
+  if(/^[A-Za-z]{2}$/.test(v)) return {code:v.toUpperCase(), name:v.toUpperCase()};
+  var key=v.toLowerCase();
+  if(ISO_NAMES[key]) return {code:ISO_NAMES[key], name:v.replace(/\b\w/g,function(c){return c.toUpperCase();})};
+  return null;
+}
+function getUserWatch(){ try{ return JSON.parse(localStorage.getItem('ghost2210_outage_watch')||'[]'); }catch(e){ return []; } }
+function setUserWatch(a){ try{ localStorage.setItem('ghost2210_outage_watch', JSON.stringify(a)); }catch(e){} }
+function watchList(){ var user=getUserWatch(), seen={}; return DEFAULT_WATCH.concat(user).filter(function(c){ var k=c.code.toUpperCase(); if(seen[k])return false; seen[k]=1; return true; }); }
+function addWatch(){
+  var el=document.getElementById('watchIn'); if(!el) return;
+  var r=resolveCountry(el.value);
+  if(!r){ setStatus('Could not resolve "'+esc(el.value)+'". Enter a country name (e.g. Ukraine) or its 2-letter ISO code (e.g. UA).'); return; }
+  if(watchList().some(function(c){return c.code===r.code;})){ setStatus(r.name+' is already on the watch.'); el.value=''; return; }
+  var u=getUserWatch(); u.push(r); setUserWatch(u); el.value=''; loadWatch();
+}
+function removeWatch(code){ setUserWatch(getUserWatch().filter(function(c){return c.code!==code;})); loadWatch(); }
+var DEFAULT_CODES=DEFAULT_WATCH.map(function(c){return c.code;});
+async function loadWatch(){
+  var w=worker(); if(!w) return;
+  var now=Math.floor(Date.now()/1000), since=now-86400;
+  var host=document.getElementById('out');
+  var card=document.createElement('div'); card.className='card';
+  card.innerHTML='<h3>\ud83d\udccd Priority watch</h3><div class="empty">Querying IODA for '+watchList().map(function(c){return esc(c.name);}).join(', ')+'\u2026</div>';
+  host.insertBefore(card, host.firstChild);
+  var rowsHtml=[];
+  var LIST=watchList();
+  for(var i=0;i<LIST.length;i++){
+    var c=LIST[i];
+    var canRemove=DEFAULT_CODES.indexOf(c.code)<0;
+    var rm=canRemove?' <span style="color:var(--mut);cursor:pointer" title="remove" onclick="removeWatch(\''+c.code+'\')">\u00d7</span>':'';
+    try{
+      var url='https://api.ioda.inetintel.cc.gatech.edu/v2/outages/summary?from='+since+'&until='+now+'&entityType=country&entityCode='+c.code;
+      var pu=w.replace(/\/+$/,'')+'?url='+encodeURIComponent(url);
+      var d=await jget(pu);
+      var row=(d&&d.data&&d.data[0])||null;
+      var sc=row&&row.scores?Math.round(row.scores.overall||0):0;
+      var ev=row?row.event_cnt||0:0;
+      var band=severityBand(sc);
+      if(sc>0){
+        var sig=[]; if(row.scores['bgp.median'])sig.push('BGP'); if(row.scores['ping-slash24.median'])sig.push('active-probe');
+        rowsHtml.push('<div class="row"><span class="k">'+esc(c.name)+' <span style="color:var(--mut2);font-size:10px">\u00b7 '+(sig.join('+')||'multi')+' \u00b7 '+ev+' event'+(ev===1?'':'s')+'</span></span><span class="pill '+band.cls+'">'+band.label+'</span></div>');
+      } else {
+        rowsHtml.push('<div class="row"><span class="k">'+esc(c.name)+'</span><span class="pill ok">MONITORED \u00b7 NO SIGNIFICANT OUTAGE</span></div>');
+      }
+    }catch(e){
+      rowsHtml.push('<div class="row"><span class="k">'+esc(c.name)+'</span><span class="pill warn">query failed \u2014 verify at IODA</span></div>');
+    }
+  }
+  card.innerHTML='<h3>\ud83d\udccd Priority watch \u2014 last 24h</h3>'
+    +'<div class="ctl" style="margin-bottom:12px"><input type="text" id="watchIn" placeholder="Add a country to monitor \u2014 name (Ukraine) or ISO code (UA)" onkeydown="if(event.key===\'Enter\')addWatch()"><button class="btn" onclick="addWatch()">+ ADD</button></div>'
+    +rowsHtml.join('')
+    +'<div class="worker-note">Standing watch on strategically significant networks. Severity (MINOR / NOTABLE / MAJOR) is a plain-language band of the IODA outage score; NO SIGNIFICANT OUTAGE is a live IODA result, not an assumption. Source: IODA (api.ioda.inetintel.cc.gatech.edu). Verify at ioda.inetintel.cc.gatech.edu.</div>';
+}
+
+renderBar();
+(function(){ var d=document.createElement('div'); d.id='diag'; var out=document.getElementById('out'); out.parentNode.insertBefore(d, out.nextSibling); renderDiag(); })();
+
+(function(){ try{ var p=new URLSearchParams(location.search); var a=p.get('asn')||p.get('q'); if(a){ document.getElementById('asnIn').value=a; checkAsn(); } }catch(e){} })();
+</script></body></html>

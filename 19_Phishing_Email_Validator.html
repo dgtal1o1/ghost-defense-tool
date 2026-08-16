@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Phishing Email Validator — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070e;--s1:#0e0e1a;--s2:#141728;--s3:#1c2035;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
+  --text:#eeedf8;--muted:#6b6a84;--muted2:#9998b8;
+  --accent:#5b54ff;--accent-s:rgba(91,84,255,0.12);--accent-b:rgba(91,84,255,0.25);
+  --green:#2fd98a;--green-s:rgba(47,217,138,0.1);--green-b:rgba(47,217,138,0.25);
+  --red:#ff4d4d;--red-s:rgba(255,77,77,0.1);--red-b:rgba(255,77,77,0.3);
+  --orange:#ff8c42;--orange-s:rgba(255,140,66,0.1);--orange-b:rgba(255,140,66,0.25);
+  --yellow:#ffd166;--yellow-s:rgba(255,209,102,0.1);--yellow-b:rgba(255,209,102,0.25);
+  --blue:#4cc9f0;--blue-s:rgba(76,201,240,0.1);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html{background:var(--bg);scroll-behavior:smooth}
+body{font-family:var(--sans);color:var(--text);min-height:100vh}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:14px 24px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:30px;height:30px;background:var(--red-s);border:1px solid var(--red-b);
+  border-radius:8px;display:flex;align-items:center;justify-content:center}
+.brand-icon svg{width:16px;height:16px;stroke:var(--red)}
+.brand-name{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.brand-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.api-row{display:flex;align-items:center;gap:8px}
+.api-input{background:var(--s2);border:1px solid var(--border2);border-radius:8px;
+  color:var(--text);font-family:var(--mono);font-size:12px;padding:7px 12px;width:260px;outline:none}
+.api-input::placeholder{color:var(--muted)}
+.api-input:focus{border-color:var(--accent-b)}
+.test-btn{background:var(--s2);border:1px solid var(--border2);border-radius:8px;
+  color:var(--muted2);font-family:var(--sans);font-size:12px;padding:7px 14px;
+  cursor:pointer;transition:all .15s;white-space:nowrap}
+.test-btn:hover{color:var(--text);border-color:var(--border2)}
+.test-btn.ok{color:var(--green);border-color:var(--green-b)}
+.test-btn.fail{color:var(--red);border-color:var(--red-b)}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:420px 1fr;height:calc(100vh - 57px)}
+
+/* INPUT PANEL */
+.input-panel{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.panel-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--s1)}
+.ptab{flex:1;padding:11px 8px;font-size:12px;font-family:var(--mono);color:var(--muted);
+  cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;
+  margin-bottom:-1px;transition:all .15s;text-align:center}
+.ptab.active{color:var(--red);border-bottom-color:var(--red)}
+.ptab:hover:not(.active){color:var(--text)}
+.panel-body{flex:1;display:flex;flex-direction:column;padding:16px;gap:12px;overflow-y:auto}
+
+/* TEXTAREA */
+.email-area{flex:1;min-height:320px;background:var(--s2);border:1px solid var(--border2);
+  border-radius:10px;color:var(--text);font-family:var(--mono);font-size:12px;
+  line-height:1.7;padding:14px;resize:none;outline:none;transition:border-color .15s}
+.email-area::placeholder{color:var(--muted)}
+.email-area:focus{border-color:var(--accent-b)}
+
+/* DROP ZONE */
+.drop-zone{flex:1;min-height:200px;border:2px dashed var(--border2);border-radius:12px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  cursor:pointer;transition:all .2s;color:var(--muted);text-align:center;padding:24px}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--accent-b);background:var(--accent-s);color:var(--text)}
+.drop-zone svg{width:36px;height:36px;opacity:.4}
+.drop-zone-text{font-size:13px}
+.drop-zone-sub{font-size:11px;font-family:var(--mono);color:var(--muted)}
+#fileInput{display:none}
+
+/* HINTS */
+.hint-box{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;
+  font-size:11px;color:var(--muted2);line-height:1.7;font-family:var(--mono)}
+
+/* ANALYZE BTN */
+.analyze-btn{background:var(--red);border:none;border-radius:10px;color:#fff;
+  font-family:var(--sans);font-size:14px;font-weight:600;padding:13px;cursor:pointer;
+  transition:all .15s;letter-spacing:.02em;width:100%}
+.analyze-btn:hover{background:#ff6666}
+.analyze-btn:active{transform:scale(.98)}
+.analyze-btn:disabled{opacity:.4;cursor:default;transform:none}
+
+/* RESULTS PANEL */
+.results-panel{overflow-y:auto;background:var(--bg)}
+.empty-results{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;color:var(--muted);text-align:center;gap:12px;padding:40px}
+.empty-results svg{width:56px;height:56px;opacity:.12;stroke:var(--red)}
+.empty-results h3{font-size:15px;font-weight:400;color:var(--muted2)}
+.empty-results p{font-size:12px;line-height:1.7;max-width:300px}
+
+/* VERDICT BANNER */
+.verdict{padding:20px 24px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--border)}
+.verdict-icon{width:52px;height:52px;border-radius:12px;display:flex;align-items:center;
+  justify-content:center;font-size:26px;flex-shrink:0}
+.verdict-label{font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1}
+.verdict-sub{font-size:12px;color:var(--muted2);margin-top:4px;font-family:var(--mono)}
+.risk-meter{display:flex;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--border)}
+.risk-track{flex:1;height:8px;background:var(--s3);border-radius:4px;overflow:hidden}
+.risk-fill{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.risk-pct{font-family:var(--mono);font-size:13px;font-weight:600;min-width:80px;text-align:right}
+
+/* SECTION */
+.sec{border-bottom:1px solid var(--border)}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:12px 24px;cursor:pointer;user-select:none;background:var(--s1)}
+.sec-hdr:hover{background:var(--s2)}
+.sec-hdr-left{display:flex;align-items:center;gap:10px}
+.sec-title-text{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted2)}
+.sec-badge{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:4px}
+.sec-arrow{color:var(--muted);transition:transform .2s;font-size:12px}
+.sec-body{display:none;padding:16px 24px}
+.sec-body.open{display:block}
+
+/* CHECK ROWS */
+.check-list{display:flex;flex-direction:column;gap:8px}
+.check-item{display:flex;align-items:flex-start;gap:12px;background:var(--s2);
+  border:1px solid var(--border);border-radius:8px;padding:11px 14px}
+.check-item.pass{border-color:var(--green-b)}
+.check-item.warn{border-color:var(--orange-b)}
+.check-item.fail{border-color:var(--red-b)}
+.check-item.info{border-color:var(--border2)}
+.check-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.pass .check-dot{background:var(--green)}
+.warn .check-dot{background:var(--orange)}
+.fail .check-dot{background:var(--red)}
+.info .check-dot{background:var(--muted)}
+.check-label{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px}
+.check-detail{font-size:11px;color:var(--muted2);font-family:var(--mono);line-height:1.6;word-break:break-all}
+
+/* LINK TABLE */
+.link-table{width:100%;border-collapse:collapse;font-size:11px}
+.link-table th{padding:7px 10px;text-align:left;color:var(--muted);font-weight:500;
+  border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.08em;font-size:10px}
+.link-table td{padding:8px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);
+  vertical-align:top;word-break:break-all;line-height:1.5}
+.link-table tr:last-child td{border-bottom:none}
+.link-rep{font-size:10px;padding:2px 7px;border-radius:3px;font-weight:700;font-family:var(--sans);white-space:nowrap}
+.rep-clean{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.rep-suspicious{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.rep-malicious{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.rep-unknown{background:var(--s3);color:var(--muted2);border:1px solid var(--border2)}
+
+/* AI VERDICT */
+.ai-block{background:var(--s2);border:1px solid var(--accent-b);border-radius:10px;padding:16px}
+.ai-block-title{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);
+  font-family:var(--mono);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.ai-verdict-text{font-size:13px;color:var(--text);line-height:1.8}
+.ai-iocs{margin-top:12px;display:flex;flex-wrap:wrap;gap:6px}
+.ioc-tag{font-size:10px;font-family:var(--mono);padding:3px 9px;border-radius:4px;
+  background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+
+/* SPINNER */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.1);
+  border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite}
+.spin-lg{width:28px;height:28px;border-width:3px;border-top-color:var(--red)}
+
+/* PULSE DOT */
+.pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .3s ease both}
+
+/* RESPONSIVE */
+@media(max-width:860px){
+  .layout{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto}
+  .input-panel{height:auto;min-height:400px;border-right:none;border-bottom:1px solid var(--border)}
+  .results-panel{min-height:60vh}
+  .api-row{display:none}
+  .topbar{padding:12px 16px}
+  .panel-body,.results-panel>*{padding-left:16px;padding-right:16px}
+}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+
+/* ATTACHMENT SANDBOX */
+.attach-drop{border:2px dashed var(--border2);border-radius:10px;padding:40px 20px;text-align:center;
+  cursor:pointer;transition:all .15s;color:var(--muted);margin-bottom:14px}
+.attach-drop:hover,.attach-drop.drag{border-color:var(--red-b);color:var(--red)}
+.attach-stat{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px}
+.attach-stat-box{background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center}
+.attach-stat-num{font-family:var(--mono);font-size:18px;font-weight:600;margin-bottom:3px}
+.attach-stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.ioc-pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;
+  padding:3px 9px;border-radius:4px;margin:2px;font-weight:700}
+.ioc-critical{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.ioc-high{background:rgba(255,140,66,.12);color:var(--orange);border:1px solid var(--orange-b)}
+.ioc-medium{background:rgba(255,209,102,.12);color:var(--yellow);border:1px solid var(--yellow-b)}
+.ioc-info{background:var(--s3);color:var(--muted2);border:1px solid var(--border2)}
+.hex-view{font-family:var(--mono);font-size:10px;color:var(--muted2);background:var(--s2);
+  border:1px solid var(--border);border-radius:6px;padding:10px 12px;
+  max-height:180px;overflow-y:auto;word-break:break-all;line-height:1.8}
+.string-view{font-family:var(--mono);font-size:11px;color:var(--text);background:var(--s2);
+  border:1px solid var(--border);border-radius:6px;padding:10px 12px;
+  max-height:200px;overflow-y:auto;line-height:1.7;white-space:pre-wrap;word-break:break-all}
+.risk-meter{height:8px;border-radius:4px;background:var(--s3);overflow:hidden;margin:6px 0}
+.risk-fill{height:100%;border-radius:4px;transition:width .5s ease}
+
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+        <polyline points="22,6 12,13 2,6"/>
+      </svg>
+    </div>
+    <div>
+      <div class="brand-name">Phishing Email Validator</div>
+      <div class="brand-sub">Ghost Defense · Tool 19</div>
+    </div>
+  </div>
+  <div class="api-row">
+    <input class="api-input" id="apiKeyInput" type="password" placeholder="sk-ant-... API key for AI verdict">
+    <button class="test-btn" id="testKeyBtn" onclick="testAPIKey()">TEST KEY</button>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- INPUT PANEL -->
+  <div class="input-panel">
+    <div class="panel-tabs">
+      <button class="ptab active" id="tab-raw"    onclick="switchTab('raw')">RAW HEADERS</button>
+      <button class="ptab"        id="tab-body"   onclick="switchTab('body')">EMAIL BODY</button>
+      <button class="ptab"        id="tab-eml"    onclick="switchTab('eml')">.EML FILE</button>
+      <button class="ptab"        id="tab-attach" onclick="switchTab('attach')">📎 ATTACHMENT</button>
+    </div>
+
+    <!-- RAW HEADERS TAB -->
+    <div class="panel-body" id="panel-raw">
+      <div class="hint-box">Paste the full raw email including headers.<br>
+        Gmail: ⋮ → Show original &nbsp;|&nbsp; Outlook: File → Properties → Headers<br>
+        Apple Mail: View → Message → All Headers</div>
+      <textarea class="email-area" id="rawInput" placeholder="Received: from mail.example.com (mail.example.com [192.168.1.1])
+        by mx.example.com with ESMTP id abc123
+Date: Mon, 10 Jun 2024 12:00:00 +0000
+From: &quot;Support Team&quot; <support@paypa1.com>
+To: victim@company.com
+Subject: Urgent: Your account has been suspended
+DKIM-Signature: ...
+Authentication-Results: spf=fail; dkim=fail; dmarc=fail
+
+Your account has been suspended. Click here to verify:
+http://paypa1-verify.ru/login?token=abc123"></textarea>
+      <button class="analyze-btn" onclick="analyze()">⚡ ANALYZE EMAIL</button>
+    </div>
+
+    <!-- BODY ONLY TAB -->
+    <div class="panel-body" id="panel-body" style="display:none">
+      <div class="hint-box">Paste email body text only (no headers).<br>Header checks will be skipped — content, link, and AI analysis will still run.</div>
+      <textarea class="email-area" id="bodyInput" placeholder="Dear Customer,
+
+Your account requires immediate verification. Your account will be suspended within 24 hours if you do not act now.
+
+Please click the link below to verify your identity:
+http://secure-login.paypa1-verify.ru/account?id=victim@company.com
+
+Do not ignore this message.
+
+Support Team
+PayPal Security Department"></textarea>
+      <button class="analyze-btn" onclick="analyze()">⚡ ANALYZE EMAIL</button>
+    </div>
+
+    <!-- EML FILE TAB -->
+    <div class="panel-body" id="panel-eml" style="display:none">
+      <div class="hint-box">.eml files contain full headers + body.<br>
+        Outlook: Save As → .eml &nbsp;|&nbsp; Gmail: Download message<br>
+        Thunderbird: Save As → .eml</div>
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()"
+        ondragover="event.preventDefault();this.classList.add('drag')"
+        ondragleave="this.classList.remove('drag')"
+        ondrop="handleDrop(event)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <div class="drop-zone-text">Drop .eml file here or click to browse</div>
+        <div class="drop-zone-sub" id="emlFileName">No file loaded</div>
+      </div>
+      <input type="file" id="fileInput" accept=".eml,.txt,message/rfc822" onchange="handleFileSelect(event)">
+      <button class="analyze-btn" id="emlAnalyzeBtn" onclick="analyze()" disabled>⚡ ANALYZE EMAIL</button>
+    </div>
+  </div>
+
+  <!-- RESULTS PANEL -->
+  <div class="results-panel" id="resultsPanel">
+    <div class="empty-results" id="emptyResults">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+        <polyline points="22,6 12,13 2,6"/>
+      </svg>
+      <h3>Paste an email to analyze</h3>
+      <p>Supports raw headers + body, body-only text, or .eml file upload. AI verdict requires an Anthropic API key.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────────────────────
+var activeTab = 'raw';
+var emlContent = '';
+var apiKey = '';
+
+// ── TAB SWITCHING ─────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  ['raw','body','eml'].forEach(function(t) {
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+    document.getElementById('panel-' + t).style.display = t === tab ? 'flex' : 'none';
+  });
+}
+
+// ── FILE HANDLING ─────────────────────────────────────────────────────────────
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag');
+  var file = e.dataTransfer.files[0];
+  if (file) loadEmlFile(file);
+}
+function handleFileSelect(e) {
+  var file = e.target.files[0];
+  if (file) loadEmlFile(file);
+}
+function loadEmlFile(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    emlContent = e.target.result;
+    document.getElementById('emlFileName').textContent = file.name + ' (' + Math.round(file.size/1024) + ' KB)';
+    document.getElementById('dropZone').style.borderColor = 'var(--green-b)';
+    document.getElementById('emlAnalyzeBtn').disabled = false;
+  };
+  reader.readAsText(file);
+}
+
+// ── GET EMAIL TEXT ─────────────────────────────────────────────────────────────
+function getEmailText() {
+  if (activeTab === 'raw')  return document.getElementById('rawInput').value.trim();
+  if (activeTab === 'body') return document.getElementById('bodyInput').value.trim();
+  if (activeTab === 'eml')  return emlContent;
+  return '';
+}
+
+// ── HEADER PARSERS ────────────────────────────────────────────────────────────
+function parseHeaders(raw) {
+  var headers = {};
+  // Split headers from body at first blank line
+  var headerSection = raw.split(/\r?\n\r?\n/)[0];
+  // Unfold continuation lines
+  headerSection = headerSection.replace(/\r?\n[ \t]+/g, ' ');
+  var lines = headerSection.split(/\r?\n/);
+  lines.forEach(function(line) {
+    var m = line.match(/^([A-Za-z0-9\-]+)\s*:\s*(.*)/);
+    if (m) {
+      var key = m[1].toLowerCase();
+      if (!headers[key]) headers[key] = [];
+      headers[key].push(m[2].trim());
+    }
+  });
+  return headers;
+}
+
+function getBody(raw) {
+  var parts = raw.split(/\r?\n\r?\n/);
+  parts.shift();
+  return parts.join('\n\n');
+}
+
+// ── AUTHENTICATION CHECKS ─────────────────────────────────────────────────────
+function checkSPF(headers, authResults) {
+  var result = { label:'SPF', status:'info', detail:'Not found in headers' };
+  var src = authResults || (headers['authentication-results'] || []).join(' ');
+  if (!src) src = (headers['received-spf'] || []).join(' ');
+  if (!src) return result;
+  var m = src.match(/spf\s*=\s*(\S+)/i);
+  if (!m) { result.detail = 'SPF record not present'; return result; }
+  var val = m[1].toLowerCase().replace(/;.*/, '');
+  result.detail = 'SPF=' + val.toUpperCase() + ' — ' + (src.match(/smtp\.mailfrom\s*=\s*(\S+)/i)||[])[1] || '';
+  if (val === 'pass') { result.status = 'pass'; }
+  else if (val === 'softfail') { result.status = 'warn'; }
+  else if (val === 'fail' || val === 'hardfail') { result.status = 'fail'; }
+  else { result.status = 'warn'; }
+  return result;
+}
+
+function checkDKIM(headers, authResults) {
+  var result = { label:'DKIM', status:'info', detail:'Not found in headers' };
+  var src = authResults || (headers['authentication-results'] || []).join(' ');
+  if (!src && !headers['dkim-signature']) return result;
+  if (!src) { result.detail = 'DKIM-Signature present but no verification result'; result.status = 'warn'; return result; }
+  var m = src.match(/dkim\s*=\s*(\S+)/i);
+  if (!m) {
+    if (headers['dkim-signature']) { result.detail = 'DKIM-Signature present (unverified)'; result.status = 'warn'; }
+    return result;
+  }
+  var val = m[1].toLowerCase().replace(/;.*/, '');
+  var domainMatch = src.match(/header\.d\s*=\s*(\S+)/i);
+  result.detail = 'DKIM=' + val.toUpperCase() + (domainMatch ? ' (d=' + domainMatch[1] + ')' : '');
+  if (val === 'pass') result.status = 'pass';
+  else if (val === 'fail' || val === 'permerror') result.status = 'fail';
+  else result.status = 'warn';
+  return result;
+}
+
+function checkDMARC(headers, authResults) {
+  var result = { label:'DMARC', status:'info', detail:'Not found in headers' };
+  var src = authResults || (headers['authentication-results'] || []).join(' ');
+  if (!src) return result;
+  var m = src.match(/dmarc\s*=\s*(\S+)/i);
+  if (!m) return result;
+  var val = m[1].toLowerCase().replace(/;.*/, '');
+  var policy = src.match(/policy\.p\s*=\s*(\S+)/i) || src.match(/p\s*=\s*(reject|quarantine|none)/i);
+  result.detail = 'DMARC=' + val.toUpperCase() + (policy ? ' policy=' + policy[1] : '');
+  if (val === 'pass') result.status = 'pass';
+  else if (val === 'fail') result.status = 'fail';
+  else result.status = 'warn';
+  return result;
+}
+
+function checkFromReplyTo(headers) {
+  var results = [];
+  var from = (headers['from'] || [''])[0];
+  var replyTo = (headers['reply-to'] || [''])[0];
+  var returnPath = (headers['return-path'] || [''])[0];
+
+  // Extract domains
+  function extractDomain(str) {
+    var m = str.match(/@([\w.\-]+)/);
+    return m ? m[1].toLowerCase() : null;
+  }
+  function extractDisplay(str) {
+    var m = str.match(/^"?([^"<]+)"?\s*</);
+    return m ? m[1].trim() : null;
+  }
+
+  var fromDomain = extractDomain(from);
+  var fromDisplay = extractDisplay(from);
+  var replyToDomain = extractDomain(replyTo);
+  var returnDomain = extractDomain(returnPath);
+
+  // Check display name spoofing
+  if (fromDisplay) {
+    var trustedBrands = ['paypal','amazon','google','microsoft','apple','facebook','netflix','bank','irs','fedex','ups','dhl','chase','wellsfargo','citibank'];
+    var lowerDisplay = fromDisplay.toLowerCase();
+    trustedBrands.forEach(function(brand) {
+      if (lowerDisplay.includes(brand) && fromDomain && !fromDomain.includes(brand)) {
+        results.push({ label:'Display Name Spoofing', status:'fail',
+          detail:'Display "' + fromDisplay + '" claims to be ' + brand + ' but sends from @' + fromDomain });
+      }
+    });
+  }
+
+  // Check reply-to mismatch
+  if (replyToDomain && fromDomain && replyToDomain !== fromDomain) {
+    results.push({ label:'Reply-To Mismatch', status:'fail',
+      detail:'From: @' + fromDomain + ' but Reply-To: @' + replyToDomain + ' — replies go to different domain' });
+  } else if (!replyToDomain) {
+    results.push({ label:'Reply-To', status:'pass', detail:'Reply-To matches From domain' });
+  }
+
+  // Return-path check
+  if (returnDomain && fromDomain && returnDomain !== fromDomain) {
+    results.push({ label:'Return-Path Mismatch', status:'warn',
+      detail:'Bounces go to @' + returnDomain + ' not @' + fromDomain });
+  }
+
+  // Homoglyph / typosquat check on from domain
+  if (fromDomain) {
+    var homoChecks = [
+      { pattern:/paypa[^l]|p[^a]ypal|paypai/, brand:'paypal.com' },
+      { pattern:/amaz[0o]n|amazom/, brand:'amazon.com' },
+      { pattern:/g[o0]{2}gle|gooogle/, brand:'google.com' },
+      { pattern:/micros[o0]ft|microsoft\.(?!com)/, brand:'microsoft.com' },
+      { pattern:/app[l1]e(?!\.com)|appi\./, brand:'apple.com' },
+      { pattern:/netfl[i1]x|netfix/, brand:'netflix.com' },
+    ];
+    homoChecks.forEach(function(h) {
+      if (h.pattern.test(fromDomain)) {
+        results.push({ label:'Typosquatting / Homoglyph', status:'fail',
+          detail:'"' + fromDomain + '" appears to impersonate ' + h.brand });
+      }
+    });
+
+    // Suspicious TLD
+    var suspiciousTLDs = ['.ru','.cn','.tk','.ml','.ga','.cf','.gq','.xyz','.top','.work','.click','.link','.review','.country','.stream'];
+    suspiciousTLDs.forEach(function(tld) {
+      if (fromDomain.endsWith(tld)) {
+        results.push({ label:'Suspicious Sender TLD', status:'warn',
+          detail:'Sender domain uses high-risk TLD: ' + tld });
+      }
+    });
+  }
+
+  if (results.length === 0 && fromDomain) {
+    results.push({ label:'Sender Domain', status:'pass', detail:'From domain: ' + fromDomain });
+  }
+  return results;
+}
+
+function checkReceivedChain(headers) {
+  var results = [];
+  var received = headers['received'] || [];
+  if (!received.length) return [{ label:'Received Chain', status:'info', detail:'No Received headers found' }];
+
+  // Check for IP mismatches and suspicious relay hops
+  var ips = [];
+  received.forEach(function(r) {
+    var ipMatch = r.match(/\[(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\]/g);
+    if (ipMatch) ips = ips.concat(ipMatch.map(function(m){ return m.slice(1,-1); }));
+  });
+
+  // Check for unusual hop count
+  if (received.length > 6) {
+    results.push({ label:'Unusual Hop Count', status:'warn',
+      detail: received.length + ' Received hops detected (normal is 2–4) — may indicate obfuscation' });
+  } else {
+    results.push({ label:'Received Chain', status:'pass',
+      detail: received.length + ' hop' + (received.length > 1 ? 's' : '') + ' — ' + (ips.length ? 'IPs: ' + ips.slice(0,3).join(', ') : 'no IPs extracted') });
+  }
+
+  // Check for localhost / private IP in received
+  var privateIP = /\b(10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+|127\.0\.0\.1)\b/;
+  received.forEach(function(r) {
+    if (privateIP.test(r)) {
+      results.push({ label:'Private IP in Route', status:'warn',
+        detail:'Private/internal IP found in Received chain — may indicate internal relay or spoofing' });
+    }
+  });
+
+  return results;
+}
+
+// ── CONTENT CHECKS ────────────────────────────────────────────────────────────
+function checkContent(text) {
+  var results = [];
+  var lower = text.toLowerCase();
+
+  // Urgency keywords
+  var urgencyWords = ['urgent','immediate','immediately','act now','expires','24 hours','48 hours','within hours',
+    'account suspended','account locked','verify now','confirm now','unusual activity','suspicious activity',
+    'limited time','final notice','last warning','your account will be','click here now'];
+  var urgencyHits = urgencyWords.filter(function(w){ return lower.includes(w); });
+  if (urgencyHits.length >= 3) {
+    results.push({ label:'High Urgency Language', status:'fail',
+      detail: urgencyHits.length + ' urgency triggers: "' + urgencyHits.slice(0,4).join('", "') + '"' });
+  } else if (urgencyHits.length > 0) {
+    results.push({ label:'Urgency Language', status:'warn',
+      detail:'"' + urgencyHits.join('", "') + '"' });
+  }
+
+  // Threat keywords
+  var threatWords = ['your account has been','suspended','terminated','disabled','unauthorized access',
+    'compromised','hacked','verify your identity','confirm your information'];
+  var threatHits = threatWords.filter(function(w){ return lower.includes(w); });
+  if (threatHits.length > 0) {
+    results.push({ label:'Threat / Fear Triggers', status: threatHits.length >= 2 ? 'fail' : 'warn',
+      detail:'"' + threatHits.slice(0,4).join('", "') + '"' });
+  }
+
+  // Credential harvesting
+  var credWords = ['enter your password','enter password','confirm your password','type your password',
+    'verify your card','enter your ssn','social security','enter credit card','billing information'];
+  var credHits = credWords.filter(function(w){ return lower.includes(w); });
+  if (credHits.length > 0) {
+    results.push({ label:'Credential Harvesting Language', status:'fail',
+      detail:'Requests sensitive data: "' + credHits.slice(0,3).join('", "') + '"' });
+  }
+
+  // Generic greeting
+  if (/dear (customer|user|account holder|member|client|sir|madam)/i.test(text)) {
+    results.push({ label:'Generic Greeting', status:'warn',
+      detail:'Non-personalized greeting — legitimate services address you by name' });
+  }
+
+  // Excessive capitalization
+  var caps = text.match(/[A-Z]{4,}/g) || [];
+  var uniqueCaps = caps.filter(function(w, i, a){ return a.indexOf(w) === i && !['HTML','HTTP','HTTPS','SMTP','DKIM','SPF'].includes(w); });
+  if (uniqueCaps.length >= 3) {
+    results.push({ label:'Excessive Capitalization', status:'warn',
+      detail: uniqueCaps.slice(0,5).join(', ') });
+  }
+
+  // Poor grammar signals
+  var grammarPatterns = [/\bplease to\b/i,/\bkindly do the needful\b/i,/\bdo the needful\b/i,
+    /\byour account is been\b/i,/\bwe have detect\b/i,/\bwe has detect\b/i];
+  grammarPatterns.forEach(function(p) {
+    var m = text.match(p);
+    if (m) results.push({ label:'Grammar Anomaly', status:'warn', detail:'"' + m[0] + '"' });
+  });
+
+  if (results.length === 0) {
+    results.push({ label:'Content Analysis', status:'pass', detail:'No high-risk language patterns detected' });
+  }
+  return results;
+}
+
+// ── LINK EXTRACTION ────────────────────────────────────────────────────────────
+function extractLinks(text) {
+  var links = [];
+  var seen = new Set();
+  var urlRe = /https?:\/\/[^\s"'<>\])\}\|]+/gi;
+  var m;
+  while ((m = urlRe.exec(text)) !== null) {
+    var url = m[0].replace(/[.,;:!?)]+$/, '');
+    if (!seen.has(url)) { seen.add(url); links.push(url); }
+  }
+  return links;
+}
+
+function analyzeLink(url) {
+  var result = { url: url, domain: '', suspicious: false, reasons: [] };
+  try {
+    var parsed = new URL(url);
+    result.domain = parsed.hostname.toLowerCase();
+  } catch(e) { result.domain = url; return result; }
+
+  var d = result.domain;
+
+  // IP address as hostname
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(d)) {
+    result.suspicious = true;
+    result.reasons.push('IP address used as host (no domain)');
+  }
+
+  // Suspicious TLDs
+  var badTLDs = ['.ru','.cn','.tk','.ml','.ga','.cf','.gq','.xyz','.top','.work','.click','.link','.country','.stream','.review'];
+  badTLDs.forEach(function(tld){ if(d.endsWith(tld)){ result.suspicious=true; result.reasons.push('High-risk TLD: '+tld); } });
+
+  // URL shorteners
+  var shorteners = ['bit.ly','tinyurl.com','t.co','goo.gl','ow.ly','buff.ly','is.gd','v.gd','tiny.cc','cutt.ly','rb.gy','shorturl.at'];
+  if (shorteners.some(function(s){ return d === s || d.endsWith('.'+s); })) {
+    result.suspicious = true;
+    result.reasons.push('URL shortener — destination hidden');
+  }
+
+  // Brand impersonation in subdomain/path
+  var brands = ['paypal','amazon','google','microsoft','apple','facebook','instagram','netflix','chase','wellsfargo','irs','fedex','ups','dhl'];
+  brands.forEach(function(brand) {
+    var url2 = url.toLowerCase();
+    if (url2.includes(brand) && !d.endsWith(brand + '.com') && !d.endsWith(brand + '.net') && !d.endsWith(brand + '.org')) {
+      result.suspicious = true;
+      result.reasons.push('Brand "' + brand + '" in URL but domain is not ' + brand + '.com');
+    }
+  });
+
+  // Excessive subdomains
+  var parts = d.split('.');
+  if (parts.length > 4) {
+    result.suspicious = true;
+    result.reasons.push('Excessive subdomains (' + parts.length + ' levels)');
+  }
+
+  // Login / credential page patterns
+  var url3 = url.toLowerCase();
+  var phishPaths = ['login','signin','verify','confirm','secure','account','update','validate','billing','payment'];
+  var pathHits = phishPaths.filter(function(p){ return url3.includes(p); });
+  if (pathHits.length >= 2) {
+    result.suspicious = true;
+    result.reasons.push('Path contains credential triggers: ' + pathHits.join(', '));
+  }
+
+  // Long random paths
+  if (url.length > 120) {
+    result.suspicious = true;
+    result.reasons.push('Unusually long URL (' + url.length + ' chars)');
+  }
+
+  // HTTP (not HTTPS)
+  if (url.startsWith('http://')) {
+    result.reasons.push('Non-HTTPS (unencrypted)');
+  }
+
+  return result;
+}
+
+// ── SCORE CALCULATOR ──────────────────────────────────────────────────────────
+function calculateScore(authChecks, fromChecks, contentChecks, receivedChecks, links) {
+  var score = 0;
+
+  function addScore(checks) {
+    checks.forEach(function(c) {
+      if (c.status === 'fail') score += 20;
+      else if (c.status === 'warn') score += 8;
+    });
+  }
+
+  addScore(authChecks);
+  addScore(fromChecks);
+  addScore(contentChecks);
+  addScore(receivedChecks);
+
+  links.forEach(function(l) {
+    if (l.suspicious) score += Math.min(l.reasons.length * 12, 24);
+  });
+
+  return Math.min(score, 100);
+}
+
+// ── RENDER RESULTS ─────────────────────────────────────────────────────────────
+function renderCheckList(checks) {
+  return '<div class="check-list">' + checks.map(function(c) {
+    return '<div class="check-item ' + c.status + '">'
+      + '<span class="check-dot"></span>'
+      + '<div><div class="check-label">' + c.label + '</div>'
+      + '<div class="check-detail">' + c.detail + '</div></div>'
+      + '</div>';
+  }).join('') + '</div>';
+}
+
+function renderLinksTable(links) {
+  if (!links.length) return '<div style="padding:16px;font-size:12px;color:var(--muted)">No URLs found in email</div>';
+  return '<div style="overflow-x:auto"><table class="link-table"><thead><tr>'
+    + '<th>URL</th><th>Domain</th><th>Reputation</th><th>Findings</th>'
+    + '</tr></thead><tbody>'
+    + links.map(function(l) {
+      var rep = l.suspicious ? 'SUSPICIOUS' : 'CLEAN';
+      var repCls = l.suspicious ? 'rep-suspicious' : 'rep-clean';
+      return '<tr>'
+        + '<td style="max-width:200px;font-size:10px;color:var(--muted2)">' + l.url.substring(0,80) + (l.url.length > 80 ? '…' : '') + '</td>'
+        + '<td style="color:var(--blue)">' + l.domain + '</td>'
+        + '<td><span class="link-rep ' + repCls + '">' + rep + '</span></td>'
+        + '<td style="font-size:10px;color:var(--muted2)">' + (l.reasons.length ? l.reasons.join(' · ') : '—') + '</td>'
+        + '</tr>';
+    }).join('')
+    + '</tbody></table></div>';
+}
+
+function countStatus(checks, status) {
+  return checks.filter(function(c){ return c.status === status; }).length;
+}
+
+function sectionBadge(checks) {
+  var fails = countStatus(checks, 'fail');
+  var warns = countStatus(checks, 'warn');
+  if (fails > 0) return '<span class="sec-badge" style="background:var(--red-s);color:var(--red);border:1px solid var(--red-b)">' + fails + ' FAIL</span>';
+  if (warns > 0) return '<span class="sec-badge" style="background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)">' + warns + ' WARN</span>';
+  return '<span class="sec-badge" style="background:var(--green-s);color:var(--green);border:1px solid var(--green-b)">PASS</span>';
+}
+
+function makeSection(id, title, badge, content, openByDefault) {
+  return '<div class="sec fade-in" id="sec-' + id + '">'
+    + '<div class="sec-hdr" onclick="toggleSec(\'' + id + '\')">'
+      + '<div class="sec-hdr-left"><span class="sec-title-text">' + title + '</span>' + badge + '</div>'
+      + '<span class="sec-arrow" id="arr-' + id + '">' + (openByDefault ? '▲' : '▼') + '</span>'
+    + '</div>'
+    + '<div class="sec-body' + (openByDefault ? ' open' : '') + '" id="body-' + id + '">' + content + '</div>'
+    + '</div>';
+}
+
+function toggleSec(id) {
+  var body = document.getElementById('body-' + id);
+  var arr  = document.getElementById('arr-' + id);
+  var open = body.classList.toggle('open');
+  arr.textContent = open ? '▲' : '▼';
+}
+
+// ── MAIN ANALYZE ─────────────────────────────────────────────────────────────
+async function analyze() {
+  var text = getEmailText();
+  if (!text) { alert('Paste an email or load a .eml file first.'); return; }
+
+  // Show loading
+  document.getElementById('resultsPanel').innerHTML =
+    '<div class="empty-results"><div class="spinner spin-lg"></div><div style="margin-top:16px;color:var(--muted2);font-family:var(--mono)">Analyzing email…</div></div>';
+
+  // Small delay so spinner renders
+  await new Promise(function(r){ setTimeout(r, 50); });
+
+  // Parse
+  var hasHeaders = activeTab !== 'body' && /^[\w\-]+\s*:/m.test(text.split(/\r?\n\r?\n/)[0]);
+  var headers = hasHeaders ? parseHeaders(text) : {};
+  var body = hasHeaders ? getBody(text) : text;
+  var fullText = text;
+  var authResults = (headers['authentication-results'] || []).join(' ');
+
+  // Run checks
+  var authChecks = hasHeaders ? [checkSPF(headers, authResults), checkDKIM(headers, authResults), checkDMARC(headers, authResults)]
+    : [{ label:'Authentication', status:'info', detail:'No headers provided — paste raw email with headers for SPF/DKIM/DMARC checks' }];
+  var fromChecks = hasHeaders ? checkFromReplyTo(headers)
+    : [{ label:'Sender Analysis', status:'info', detail:'No headers provided' }];
+  var receivedChecks = hasHeaders ? checkReceivedChain(headers)
+    : [{ label:'Routing Analysis', status:'info', detail:'No headers provided' }];
+  var contentChecks = checkContent(fullText);
+  var links = extractLinks(fullText).map(analyzeLink);
+  var suspiciousLinks = links.filter(function(l){ return l.suspicious; });
+
+  // Score
+  var score = calculateScore(authChecks, fromChecks, contentChecks, receivedChecks, links);
+
+  // Verdict
+  var verdict, verdictColor, verdictIcon;
+  if (score >= 60) {
+    verdict = 'PHISHING DETECTED'; verdictColor = 'var(--red)'; verdictIcon = '🎣';
+  } else if (score >= 30) {
+    verdict = 'SUSPICIOUS EMAIL'; verdictColor = 'var(--orange)'; verdictIcon = '⚠️';
+  } else {
+    verdict = 'LIKELY LEGITIMATE'; verdictColor = 'var(--green)'; verdictIcon = '✅';
+  }
+
+  var totalFails = countStatus(authChecks,'fail') + countStatus(fromChecks,'fail') + countStatus(contentChecks,'fail') + countStatus(receivedChecks,'fail') + suspiciousLinks.length;
+
+  // Build HTML
+  var html = '';
+
+  // Verdict banner
+  html += '<div class="verdict fade-in">'
+    + '<div class="verdict-icon" style="background:' + (score>=60?'var(--red-s)':score>=30?'var(--orange-s)':'var(--green-s)') + '">' + verdictIcon + '</div>'
+    + '<div><div class="verdict-label" style="color:' + verdictColor + '">' + verdict + '</div>'
+    + '<div class="verdict-sub">Risk score ' + score + '/100 &nbsp;·&nbsp; '
+    + totalFails + ' indicator' + (totalFails !== 1 ? 's' : '') + ' flagged &nbsp;·&nbsp; '
+    + links.length + ' URL' + (links.length !== 1 ? 's' : '') + ' found</div>'
+    + '</div></div>';
+
+  // Risk meter
+  html += '<div class="risk-meter">'
+    + '<span style="font-size:11px;color:var(--muted);font-family:var(--mono);flex-shrink:0">Phishing Risk</span>'
+    + '<div class="risk-track"><div class="risk-fill" style="width:' + score + '%;background:' + verdictColor + '"></div></div>'
+    + '<span class="risk-pct" style="color:' + verdictColor + '">' + score + ' / 100</span>'
+    + '</div>';
+
+  // Sections
+  var linkBadge = suspiciousLinks.length > 0
+    ? '<span class="sec-badge" style="background:var(--red-s);color:var(--red);border:1px solid var(--red-b)">' + suspiciousLinks.length + ' SUSPICIOUS</span>'
+    : '<span class="sec-badge" style="background:var(--green-s);color:var(--green);border:1px solid var(--green-b)">CLEAN</span>';
+
+  html += makeSection('auth',     'Authentication (SPF · DKIM · DMARC)', sectionBadge(authChecks),     renderCheckList(authChecks),     true);
+  html += makeSection('sender',   'Sender Analysis',                      sectionBadge(fromChecks),     renderCheckList(fromChecks),     true);
+  html += makeSection('routing',  'Email Routing',                        sectionBadge(receivedChecks), renderCheckList(receivedChecks), false);
+  html += makeSection('content',  'Content Analysis',                     sectionBadge(contentChecks),  renderCheckList(contentChecks),  true);
+  html += makeSection('links',    'URL / Link Analysis (' + links.length + ')', linkBadge,             renderLinksTable(links),         true);
+
+  // AI Verdict section (placeholder — filled async below)
+  html += '<div class="sec fade-in" id="sec-ai">'
+    + '<div class="sec-hdr" onclick="toggleSec(\'ai\')">'
+      + '<div class="sec-hdr-left"><span class="sec-title-text">AI Verdict</span>'
+      + '<span class="sec-badge" style="background:var(--accent-s);color:var(--accent);border:1px solid var(--accent-b)" id="aiBadge"><span class="pulse-dot"></span>&nbsp; Analyzing…</span>'
+      + '</div><span class="sec-arrow" id="arr-ai">▲</span>'
+    + '</div>'
+    + '<div class="sec-body open" id="body-ai">'
+      + '<div class="ai-block"><div class="ai-block-title"><span class="spinner"></span> Querying AI…</div>'
+      + '<div style="font-size:12px;color:var(--muted);font-family:var(--mono)">AI analysis in progress…</div>'
+      + '</div>'
+    + '</div></div>';
+
+  document.getElementById('resultsPanel').innerHTML = html;
+
+  // Run AI async
+  runAIAnalysis(text, score, totalFails, links);
+}
+
+// ── AI ANALYSIS ───────────────────────────────────────────────────────────────
+async function runAIAnalysis(emailText, score, flags, links) {
+  var key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) {
+    document.getElementById('body-ai').innerHTML =
+      '<div class="ai-block"><div class="ai-block-title">AI Verdict — Not Available</div>'
+      + '<div style="font-size:12px;color:var(--muted);font-family:var(--mono);line-height:1.7">'
+      + 'Paste your Anthropic API key in the top-right field for AI-powered verdict and IOC extraction.<br>'
+      + 'Get a free key at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--blue)">console.anthropic.com</a></div></div>';
+    document.getElementById('aiBadge').innerHTML = 'NO KEY';
+    document.getElementById('aiBadge').style.cssText = 'background:var(--s3);color:var(--muted);border:1px solid var(--border2)';
+    return;
+  }
+
+  // Truncate email for API — keep first 3000 chars
+  var truncated = emailText.length > 3000 ? emailText.substring(0, 3000) + '\n[truncated]' : emailText;
+  var linkList = links.map(function(l){ return l.url; }).join('\n');
+
+  var prompt = 'You are a cybersecurity analyst specializing in phishing detection.\n\n'
+    + 'Analyze the following email for phishing indicators. The automated scanner gave it a risk score of ' + score + '/100 with ' + flags + ' flags raised.\n\n'
+    + '--- EMAIL START ---\n' + truncated + '\n--- EMAIL END ---\n\n'
+    + (linkList ? 'URLs found:\n' + linkList + '\n\n' : '')
+    + 'Provide:\n'
+    + '1. VERDICT: One of PHISHING / SUSPICIOUS / LEGITIMATE with confidence (e.g. "PHISHING — 95% confidence")\n'
+    + '2. REASONING: 3-5 sentences explaining the key indicators\n'
+    + '3. CAMPAIGN: If identifiable, name the phishing campaign or threat actor\n'
+    + '4. IOCS: List specific IOCs (domains, IPs, email addresses, URLs) found — one per line prefixed with "IOC:"\n'
+    + '5. RECOMMENDED ACTION: What the recipient should do\n\n'
+    + 'Be concise and technical. Format each section with the label in caps followed by a colon.';
+
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    var data = await resp.json();
+
+    if (!resp.ok) {
+      throw new Error((data.error && data.error.message) || 'API error ' + resp.status);
+    }
+
+    var aiText = (data.content || []).map(function(b){ return b.text || ''; }).join('');
+
+    // Extract IOCs
+    var iocs = [];
+    aiText.replace(/IOC:\s*(.+)/gi, function(_, ioc) { iocs.push(ioc.trim()); });
+
+    // Extract verdict line
+    var verdictLine = (aiText.match(/VERDICT\s*:\s*(.+)/i) || [])[1] || '';
+    var isPhish = /phishing/i.test(verdictLine);
+    var isSusp  = /suspicious/i.test(verdictLine);
+
+    // Badge
+    var badgeHtml, badgeStyle;
+    if (isPhish) {
+      badgeHtml = '🎣 PHISHING';
+      badgeStyle = 'background:var(--red-s);color:var(--red);border:1px solid var(--red-b)';
+    } else if (isSusp) {
+      badgeHtml = '⚠ SUSPICIOUS';
+      badgeStyle = 'background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)';
+    } else {
+      badgeHtml = '✓ LEGITIMATE';
+      badgeStyle = 'background:var(--green-s);color:var(--green);border:1px solid var(--green-b)';
+    }
+    document.getElementById('aiBadge').innerHTML = badgeHtml;
+    document.getElementById('aiBadge').style.cssText = badgeStyle;
+
+    // Format the AI text nicely
+    var formatted = aiText
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/(VERDICT|REASONING|CAMPAIGN|IOCS|RECOMMENDED ACTION)\s*:/gi,
+        '<br><strong style="color:var(--muted2);font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em">$1:</strong><br>')
+      .replace(/^IOC:\s*.+$/gmi, '')   // remove raw IOC lines (shown separately)
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/\n/g, '<br>');
+
+    var iocHtml = iocs.length
+      ? '<div class="ai-iocs">' + iocs.map(function(ioc){ return '<span class="ioc-tag">⚠ ' + ioc + '</span>'; }).join('') + '</div>'
+      : '';
+
+    document.getElementById('body-ai').innerHTML =
+      '<div class="ai-block">'
+      + '<div class="ai-block-title"><span class="pulse-dot"></span> Claude AI Analysis</div>'
+      + '<div class="ai-verdict-text">' + formatted + '</div>'
+      + (iocHtml ? '<div style="margin-top:12px;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-family:var(--mono);margin-bottom:6px">Extracted IOCs</div>' + iocHtml : '')
+      + '</div>';
+
+  } catch(err) {
+    document.getElementById('body-ai').innerHTML =
+      '<div class="ai-block"><div class="ai-block-title">AI Error</div>'
+      + '<div style="font-size:12px;color:var(--red);font-family:var(--mono)">' + err.message + '</div></div>';
+    document.getElementById('aiBadge').innerHTML = 'ERROR';
+    document.getElementById('aiBadge').style.cssText = 'background:var(--red-s);color:var(--red);border:1px solid var(--red-b)';
+  }
+}
+
+// ── API KEY TEST ───────────────────────────────────────────────────────────────
+async function testAPIKey() {
+  var key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) { alert('Paste your API key first.'); return; }
+  var btn = document.getElementById('testKeyBtn');
+  btn.textContent = 'TESTING…'; btn.disabled = true;
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json','x-api-key':key,
+        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({ model:'claude-opus-4-6', max_tokens:10, messages:[{role:'user',content:'OK'}] })
+    });
+    if (resp.ok) { btn.textContent='KEY OK ✓'; btn.classList.add('ok'); }
+    else { btn.textContent='FAILED ✗'; btn.classList.add('fail'); }
+  } catch(e) { btn.textContent='NET ERR'; btn.classList.add('fail'); }
+  setTimeout(function(){ btn.textContent='TEST KEY'; btn.disabled=false; btn.className='test-btn'; }, 3500);
+}
+
+// ── TOOL 19: ATTACHMENT SANDBOX ───────────────────────────────────────────────
+var SUSPICIOUS_STRINGS = [
+  // PowerShell
+  { re:/powershell/i,           sev:'HIGH',   label:'PowerShell reference' },
+  { re:/Invoke-Expression|IEX/i,sev:'CRITICAL',label:'IEX/Invoke-Expression — code execution' },
+  { re:/DownloadString|WebClient/i,sev:'HIGH',label:'WebClient download — dropper indicator' },
+  { re:/EncodedCommand|-enc\s/i,sev:'HIGH',   label:'Encoded PowerShell command' },
+  { re:/bypass.*execution/i,    sev:'HIGH',   label:'ExecutionPolicy bypass' },
+  // Office macros
+  { re:/Auto_Open|AutoOpen|AutoExec/i,sev:'CRITICAL',label:'Auto-execute macro trigger' },
+  { re:/Shell\s*\(/i,           sev:'HIGH',   label:'Shell execution in macro' },
+  { re:/WScript\.Shell/i,       sev:'HIGH',   label:'WScript.Shell — command execution' },
+  { re:/CreateObject/i,         sev:'MEDIUM', label:'CreateObject — COM object creation' },
+  { re:/Chr\(\d+\)\s*&/i,       sev:'HIGH',   label:'Character obfuscation — Chr() concatenation' },
+  // VBScript/JS
+  { re:/eval\s*\(/i,            sev:'HIGH',   label:'eval() — dynamic code execution' },
+  { re:/ActiveXObject/i,        sev:'HIGH',   label:'ActiveXObject — Windows automation' },
+  { re:/XMLHTTP|WinHttp/i,      sev:'HIGH',   label:'HTTP request object — C2/dropper' },
+  // Network IOCs
+  { re:/https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/i, sev:'HIGH', label:'URL with raw IP address' },
+  { re:/\.onion/i,              sev:'HIGH',   label:'Tor .onion address' },
+  { re:/pastebin\.com|raw\.githubusercontent/i, sev:'MEDIUM', label:'Public paste/raw hosting — dropper staging' },
+  { re:/bit\.ly|tinyurl|t\.co|goo\.gl/i, sev:'MEDIUM', label:'URL shortener — obfuscated destination' },
+  // Crypto
+  { re:/bitcoin|monero|wallet|ransom/i, sev:'HIGH', label:'Ransomware/crypto keyword' },
+  // Base64 blocks
+  { re:/[A-Za-z0-9+\/]{60,}={0,2}/,    sev:'MEDIUM', label:'Long Base64 block — possible encoded payload' },
+  // PE / shellcode
+  { re:/MZ|This program cannot be run/i, sev:'CRITICAL', label:'Embedded PE executable (MZ header)' },
+  { re:/4d5a9000/i,             sev:'CRITICAL',label:'PE MZ header (hex) — embedded executable' },
+];
+
+var FILE_TYPES = {
+  // Signatures by magic bytes
+  '4d5a':     { type:'PE Executable',  risk:'CRITICAL', icon:'⚠️' },
+  '504b0304': { type:'ZIP Archive',     risk:'HIGH',     icon:'🗜️' },
+  '25504446': { type:'PDF Document',   risk:'MEDIUM',   icon:'📄' },
+  'd0cf11e0': { type:'MS Office (OLE)',risk:'HIGH',     icon:'📊' },  // DOC/XLS/PPT legacy
+  '504b0304': { type:'OOXML (DOCX/XLSX/PPTX)',risk:'MEDIUM',icon:'📝' },
+  '7f454c46': { type:'ELF Executable', risk:'CRITICAL', icon:'🐧' },
+  'cafebabe': { type:'Java Class',     risk:'HIGH',     icon:'☕' },
+  '1f8b08':   { type:'GZIP Archive',   risk:'MEDIUM',   icon:'🗜️' },
+  '526172':   { type:'RAR Archive',    risk:'HIGH',     icon:'🗜️' },
+  '377abcaf': { type:'7-Zip Archive',  risk:'HIGH',     icon:'🗜️' },
+};
+
+function analyzeAttachment(file) {
+  if (!file) return;
+  var el = document.getElementById('attachResults');
+  el.innerHTML = '<div style="color:var(--muted2);font-family:var(--mono);font-size:12px">⟳ Analyzing ' + esc(file.name) + ' (' + (file.size/1024).toFixed(1) + ' KB)…</div>';
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var buf     = e.target.result;
+    var bytes   = new Uint8Array(buf);
+    var hexHead = Array.from(bytes.slice(0,8)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+    var text    = '';
+    try { text = new TextDecoder('utf-8', {fatal:false}).decode(buf); } catch(ex) {}
+
+    // File type detection
+    var fileTypeInfo = detectFileType(hexHead, file.name);
+
+    // String extraction — printable runs ≥ 6 chars
+    var strings = extractStrings(bytes);
+
+    // IOC extraction from strings
+    var iocs = extractIOCs(text + strings.join('\n'));
+
+    // Suspicious pattern matching
+    var suspHits = [];
+    SUSPICIOUS_STRINGS.forEach(function(rule) {
+      var testStr = text + strings.join('\n');
+      if (rule.re.test(testStr)) {
+        var match = testStr.match(rule.re);
+        suspHits.push({ sev:rule.sev, label:rule.label, sample:match ? match[0].substring(0,60) : '' });
+      }
+    });
+
+    // PE analysis
+    var peInfo = null;
+    if (hexHead.startsWith('4d5a') && bytes.length > 64) {
+      peInfo = analyzePE(bytes);
+    }
+
+    // Risk score
+    var riskScore = 0;
+    suspHits.forEach(function(h) {
+      riskScore += {CRITICAL:40,HIGH:25,MEDIUM:15,LOW:5}[h.sev]||0;
+    });
+    riskScore = Math.min(100, riskScore);
+
+    renderAttachResults(file, fileTypeInfo, strings, iocs, suspHits, peInfo, riskScore, hexHead, bytes);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function detectFileType(hexHead, fname) {
+  var ext = fname.split('.').pop().toLowerCase();
+  for (var magic in FILE_TYPES) {
+    if (hexHead.startsWith(magic)) return FILE_TYPES[magic];
+  }
+  var extMap = {
+    pdf:'PDF Document',docx:'OOXML Document',xlsx:'OOXML Spreadsheet',
+    pptx:'OOXML Presentation',doc:'MS Word (Legacy)',xls:'MS Excel (Legacy)',
+    js:'JavaScript',vbs:'VBScript',ps1:'PowerShell Script',
+    exe:'PE Executable',dll:'PE DLL',bat:'Batch Script',
+    zip:'ZIP Archive',rar:'RAR Archive',gz:'GZIP',
+    py:'Python Script',sh:'Shell Script',hta:'HTML Application',
+  };
+  var riskMap = {
+    exe:'CRITICAL',dll:'CRITICAL',vbs:'CRITICAL',ps1:'HIGH',hta:'CRITICAL',
+    js:'HIGH',bat:'HIGH',doc:'HIGH',xls:'HIGH',docx:'MEDIUM',xlsx:'MEDIUM',
+    pdf:'MEDIUM',zip:'HIGH',rar:'HIGH',py:'MEDIUM',sh:'MEDIUM',
+  };
+  return {
+    type: extMap[ext] || 'Unknown (.' + ext + ')',
+    risk: riskMap[ext] || 'LOW',
+    icon: {exe:'⚠️',dll:'⚠️',vbs:'🔴',ps1:'🔴',hta:'🔴',js:'🟠',bat:'🟠',pdf:'📄',doc:'📊',xls:'📊',zip:'🗜️'}[ext] || '📎'
+  };
+}
+
+function extractStrings(bytes) {
+  var strings = []; var curr = '';
+  for (var i = 0; i < bytes.length && strings.length < 200; i++) {
+    var b = bytes[i];
+    if (b >= 32 && b < 127) { curr += String.fromCharCode(b); }
+    else {
+      if (curr.length >= 6) strings.push(curr);
+      curr = '';
+    }
+  }
+  if (curr.length >= 6) strings.push(curr);
+  return strings;
+}
+
+function extractIOCs(text) {
+  var iocs = { urls:[], ips:[], emails:[], hashes:[], domains:[] };
+  // URLs
+  var urlRe = /https?:\/\/[^\s"'<>()]+/gi;
+  var m; while((m=urlRe.exec(text))!==null) if(iocs.urls.length<20) iocs.urls.push(m[0].substring(0,120));
+  // IPs
+  var ipRe = /(\d{1,3}\.){3}\d{1,3}/g;
+  while((m=ipRe.exec(text))!==null) if(iocs.ips.length<20) iocs.ips.push(m[0]);
+  // Emails
+  var emailRe = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+  while((m=emailRe.exec(text))!==null) if(iocs.emails.length<20) iocs.emails.push(m[0]);
+  // MD5/SHA hashes
+  var hashRe = /[0-9a-fA-F]{32,64}/g;
+  while((m=hashRe.exec(text))!==null) if(iocs.hashes.length<10) iocs.hashes.push(m[0]);
+  // Deduplicate
+  Object.keys(iocs).forEach(function(k){ iocs[k]=[...new Set(iocs[k])]; });
+  return iocs;
+}
+
+function analyzePE(bytes) {
+  try {
+    var e_lfanew = bytes[60] | (bytes[61]<<8) | (bytes[62]<<16) | (bytes[63]<<24);
+    if (e_lfanew < 0 || e_lfanew + 24 >= bytes.length) return null;
+    var machine = bytes[e_lfanew+4] | (bytes[e_lfanew+5]<<8);
+    var numSections = bytes[e_lfanew+6] | (bytes[e_lfanew+7]<<8);
+    var timestamp = bytes[e_lfanew+8]|(bytes[e_lfanew+9]<<8)|(bytes[e_lfanew+10]<<16)|(bytes[e_lfanew+11]<<24);
+    var machineStr = {0x014c:'x86 (32-bit)',0x8664:'x86-64 (64-bit)',0x01c4:'ARM',0xaa64:'ARM64'}[machine] || '0x'+machine.toString(16);
+    return { machine:machineStr, numSections, timestamp:new Date(timestamp*1000).toUTCString() };
+  } catch(e) { return null; }
+}
+
+function renderAttachResults(file, ft, strings, iocs, suspHits, peInfo, riskScore, hexHead, bytes) {
+  var riskCol = riskScore>=70?'var(--red)':riskScore>=40?'var(--orange)':riskScore>=15?'var(--yellow)':'var(--green)';
+  var riskLabel = riskScore>=70?'CRITICAL':riskScore>=40?'HIGH':riskScore>=15?'MEDIUM':'LOW';
+
+  var html = '<div style="margin-bottom:14px">';
+  html += '<div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:10px">📎 ' + esc(file.name) + ' — Analysis Complete</div>';
+
+  // Stats
+  html += '<div class="attach-stat">'
+    + attachStat(ft.icon+' '+ft.type, 'File Type', ft.risk==='CRITICAL'?'var(--red)':ft.risk==='HIGH'?'var(--orange)':'var(--muted2)')
+    + attachStat((file.size/1024).toFixed(1)+' KB', 'File Size', 'var(--text)')
+    + attachStat(suspHits.length, 'Detections', suspHits.length>0?'var(--red)':'var(--green)')
+    + attachStat(iocs.urls.length+iocs.ips.length, 'Network IOCs', (iocs.urls.length+iocs.ips.length)>0?'var(--orange)':'var(--green)')
+    + attachStat(strings.length, 'Strings', 'var(--muted2)')
+    + attachStat(riskLabel, 'Risk Level', riskCol)
+    + '</div>';
+
+  // Risk meter
+  html += '<div style="margin-bottom:14px"><div style="font-size:10px;font-family:var(--mono);color:var(--muted2);margin-bottom:4px">RISK SCORE: <span style="color:'+riskCol+';font-weight:700">'+riskScore+'/100</span></div>'
+    + '<div class="risk-meter"><div class="risk-fill" style="width:'+riskScore+'%;background:'+riskCol+'"></div></div></div>';
+
+  // Suspicious hits
+  if (suspHits.length) {
+    html += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--red);font-family:var(--mono);margin-bottom:7px">🚨 SUSPICIOUS PATTERNS ('+suspHits.length+')</div>';
+    suspHits.forEach(function(h) {
+      var col = {CRITICAL:'var(--red)',HIGH:'var(--orange)',MEDIUM:'var(--yellow)',LOW:'var(--muted2)'}[h.sev]||'var(--muted2)';
+      html += '<div style="display:flex;gap:10px;background:var(--s2);border:1px solid '+col+';border-radius:7px;padding:9px 12px;margin-bottom:6px;font-family:var(--mono);font-size:11px">'
+        + '<span style="color:'+col+';font-weight:700;flex-shrink:0">['+h.sev+']</span>'
+        + '<div><div style="color:var(--text)">'+esc(h.label)+'</div>'
+        + (h.sample?'<div style="color:var(--muted2);font-size:10px;margin-top:2px">'+esc(h.sample)+'</div>':'')
+        + '</div></div>';
+    });
+    html += '</div>';
+  }
+
+  // IOCs
+  var allIOCs = [];
+  iocs.urls.forEach(function(u){allIOCs.push({type:'URL',val:u,sev:'HIGH'});});
+  iocs.ips.forEach(function(ip){allIOCs.push({type:'IP',val:ip,sev:'MEDIUM'});});
+  iocs.emails.forEach(function(e){allIOCs.push({type:'EMAIL',val:e,sev:'LOW'});});
+  iocs.hashes.forEach(function(h){allIOCs.push({type:'HASH',val:h,sev:'MEDIUM'});});
+  if (allIOCs.length) {
+    html += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--orange);font-family:var(--mono);margin-bottom:7px">🔗 NETWORK IOCs ('+allIOCs.length+')</div><div style="display:flex;flex-wrap:wrap;gap:4px">';
+    allIOCs.forEach(function(ioc) {
+      var col = {HIGH:'var(--red)',MEDIUM:'var(--orange)',LOW:'var(--muted2)'}[ioc.sev]||'var(--muted2)';
+      html += '<div style="background:var(--s2);border:1px solid var(--border2);border-radius:5px;padding:4px 9px;font-family:var(--mono);font-size:10px"><span style="color:'+col+';font-weight:700">'+ioc.type+'</span> <span style="color:var(--text)">'+esc(ioc.val.substring(0,60))+'</span></div>';
+    });
+    html += '</div></div>';
+  }
+
+  // PE info
+  if (peInfo) {
+    html += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--red);font-family:var(--mono);margin-bottom:7px">⚠️ PE EXECUTABLE INFO</div>'
+      + '<div style="background:var(--s2);border:1px solid var(--red-b);border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:11px;color:var(--text)">'
+      + 'Architecture: <span style="color:var(--red)">'+esc(peInfo.machine)+'</span> &nbsp;|&nbsp; Sections: '+peInfo.numSections
+      + ' &nbsp;|&nbsp; Compile time: '+esc(peInfo.timestamp)+'</div></div>';
+  }
+
+  // Hex preview
+  html += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--muted2);font-family:var(--mono);margin-bottom:7px">HEX PREVIEW (first 256 bytes)</div>'
+    + '<div class="hex-view">'
+    + Array.from(bytes.slice(0,256)).map(function(b,i){
+        return (i%16===0?'<span style="color:var(--muted)">'+i.toString(16).padStart(4,'0')+'</span> ':'')
+             + '<span style="color:'+(b===0?'var(--muted)':b>=32&&b<127?'var(--green)':'var(--blue)')+'">'+b.toString(16).padStart(2,'0')+'</span> '
+             + (i%16===15?'<br>':'');
+      }).join('')
+    + '</div></div>';
+
+  // Strings preview
+  if (strings.length) {
+    html += '<div><div style="font-size:11px;font-weight:700;color:var(--muted2);font-family:var(--mono);margin-bottom:7px">EXTRACTED STRINGS ('+strings.length+' total, showing 50)</div>'
+    html += '<div><div style="font-size:11px;font-weight:700;color:var(--muted2);font-family:var(--mono);margin-bottom:7px">EXTRACTED STRINGS</div>'
+      + '<div class="string-view">' + strings.slice(0,50).map(function(s){return esc(s);}).join('\n') + '</div></div>';
+  }
+
+  html += '</div>';
+  document.getElementById('attachResults').innerHTML = html;
+}
+
+function attachStat(num, lbl, col) {
+  return '<div class="attach-stat-box"><div class="attach-stat-num" style="color:'+col+'">'+num+'</div><div class="attach-stat-lbl">'+lbl+'</div></div>';
+}
+
+</script>
+</body>
+</html>

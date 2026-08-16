@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>IP Checker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070e;--s1:#0e0e1a;--s2:#141728;--s3:#1c2035;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
+  --text:#eeedf8;--muted:#6b6a84;--muted2:#9998b8;
+  --accent:#5b54ff;--accent-s:rgba(91,84,255,0.12);
+  --green:#2fd98a;--green-s:rgba(47,217,138,0.1);--green-b:rgba(47,217,138,0.25);
+  --red:#ff4d4d;--red-s:rgba(255,77,77,0.1);--red-b:rgba(255,77,77,0.25);
+  --orange:#ff8c42;--orange-s:rgba(255,140,66,0.1);
+  --yellow:#ffd166;--yellow-s:rgba(255,209,102,0.1);
+  --blue:#4cc9f0;--blue-s:rgba(76,201,240,0.1);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html{background:var(--bg)}
+body{font-family:var(--sans);color:var(--text);min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;
+  padding:40px 16px 60px;gap:0}
+
+/* ── HEADER ── */
+.hdr{text-align:center;margin-bottom:28px;animation:fadeUp .4s ease both}
+.hdr-tag{font-size:10px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;font-family:var(--mono)}
+.hdr h1{font-size:22px;font-weight:300;letter-spacing:-.02em}
+.hdr h1 span{font-weight:600;color:#a09bff}
+
+/* ── SEARCH BAR ── */
+.search-wrap{width:100%;max-width:560px;margin-bottom:20px;display:flex;gap:8px;animation:fadeUp .4s .05s ease both}
+.ip-input{flex:1;background:var(--s1);border:1px solid var(--border2);border-radius:10px;
+  color:var(--text);font-family:var(--mono);font-size:14px;padding:11px 16px;outline:none;
+  transition:border-color .15s}
+.ip-input::placeholder{color:var(--muted)}
+.ip-input:focus{border-color:rgba(91,84,255,.5)}
+.scan-btn{background:var(--accent);border:none;border-radius:10px;color:#fff;
+  font-family:var(--sans);font-size:13px;font-weight:600;padding:11px 20px;
+  cursor:pointer;transition:all .15s;white-space:nowrap;letter-spacing:.02em}
+.scan-btn:hover{background:#6e68ff}
+.scan-btn:active{transform:scale(.97)}
+.scan-btn:disabled{opacity:.5;cursor:default}
+
+/* ── MAIN CARD ── */
+.card{width:100%;max-width:560px;background:var(--s1);border:1px solid var(--border);
+  border-radius:16px;overflow:hidden;animation:fadeUp .4s .1s ease both}
+
+/* ── IP HERO ── */
+.ip-hero{padding:24px 20px 20px;border-bottom:1px solid var(--border);position:relative}
+.ip-hero-label{font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;font-family:var(--mono)}
+.ip-val{font-family:var(--mono);font-size:28px;font-weight:500;letter-spacing:-.01em;
+  min-height:38px;display:flex;align-items:center;gap:10px;word-break:break-all}
+.ip-sub{margin-top:6px;font-size:12px;color:var(--muted2);font-weight:300;min-height:16px;font-family:var(--mono)}
+.copy-btn{position:absolute;top:22px;right:18px;background:var(--s2);
+  border:1px solid var(--border2);border-radius:7px;color:var(--muted);
+  font-family:var(--sans);font-size:11px;padding:5px 11px;cursor:pointer;transition:all .15s}
+.copy-btn.copied{color:var(--green);border-color:var(--green-b)}
+
+/* ── SECTION TITLE ── */
+.sec-title{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);
+  font-family:var(--mono);padding:12px 20px 8px;border-bottom:1px solid var(--border);
+  background:var(--s2)}
+
+/* ── ROW GRID ── */
+.rows{padding:4px 0}
+.row{display:flex;justify-content:space-between;align-items:center;
+  padding:11px 20px;border-bottom:1px solid var(--border);gap:12px}
+.row:last-child{border-bottom:none}
+.row-label{font-size:12px;color:var(--muted);flex-shrink:0}
+.row-val{font-family:var(--mono);font-size:12px;color:var(--text);
+  text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px}
+
+/* ── SUBNET BLOCK ── */
+.subnet-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
+.subnet-cell{background:var(--s1);padding:12px 20px}
+.subnet-cell-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-family:var(--mono)}
+.subnet-cell-val{font-family:var(--mono);font-size:12px;color:var(--text)}
+
+/* ── PORTS ── */
+.ports-wrap{padding:12px 20px;display:flex;flex-wrap:wrap;gap:6px}
+.port-chip{display:inline-flex;flex-direction:column;align-items:center;
+  background:var(--s2);border:1px solid var(--border2);border-radius:8px;
+  padding:6px 10px;min-width:64px;cursor:default;transition:border-color .15s}
+.port-chip:hover{border-color:rgba(91,84,255,.4)}
+.port-num{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--accent)}
+.port-svc{font-size:10px;color:var(--muted2);margin-top:2px;text-align:center}
+.port-chip.risky{border-color:var(--red-b)}
+.port-chip.risky .port-num{color:var(--red)}
+
+/* ── SOFTWARE / CPE ── */
+.sw-list{padding:10px 20px;display:flex;flex-direction:column;gap:6px}
+.sw-item{display:flex;align-items:center;gap:10px;background:var(--s2);
+  border:1px solid var(--border);border-radius:8px;padding:9px 12px}
+.sw-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;
+  justify-content:center;font-size:14px;flex-shrink:0}
+.sw-name{font-size:12px;font-weight:500;color:var(--text)}
+.sw-ver{font-family:var(--mono);font-size:11px;color:var(--muted2)}
+.sw-type{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:1px}
+
+/* ── VULNS ── */
+.vuln-list{padding:10px 20px;display:flex;flex-direction:column;gap:6px}
+.vuln-item{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:var(--red-s);border:1px solid var(--red-b);border-radius:8px;padding:9px 12px}
+.vuln-cve{font-family:var(--mono);font-size:12px;color:var(--red);font-weight:500}
+.vuln-link{font-size:11px;color:var(--muted2);text-decoration:none;transition:color .15s}
+.vuln-link:hover{color:var(--blue)}
+
+/* ── TAGS / BADGES ── */
+.tags-wrap{padding:12px 20px;display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:10px;font-family:var(--mono);padding:3px 9px;border-radius:4px;
+  font-weight:500;letter-spacing:.04em}
+.tag-threat{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.tag-warn{background:var(--orange-s);color:var(--orange);border:1px solid rgba(255,140,66,.25)}
+.tag-info{background:var(--blue-s);color:var(--blue);border:1px solid rgba(76,201,240,.25)}
+.tag-ok{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.tag-neutral{background:var(--s3);color:var(--muted2);border:1px solid var(--border2)}
+
+/* ── STATUS ── */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;
+  padding:3px 9px;border-radius:99px;font-family:var(--sans)}
+.badge-green{background:var(--green-s);color:var(--green)}
+.badge-red{background:var(--red-s);color:var(--red)}
+.badge-accent{background:var(--accent-s);color:#a09bff}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+/* ── SPINNER ── */
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,.1);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+.spin-sm{width:14px;height:14px}
+
+/* ── EMPTY / ERROR ── */
+.empty-state{padding:32px 20px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6}
+.error-state{padding:16px 20px;background:var(--red-s);border-top:1px solid var(--border);
+  font-size:12px;color:var(--red);font-family:var(--mono);line-height:1.5}
+
+/* ── FOOTER ── */
+.footer{margin-top:20px;font-size:11px;color:rgba(255,255,255,.15);text-align:center;
+  animation:fadeUp .4s .3s ease both;line-height:1.8}
+.footer a{color:rgba(255,255,255,.25);text-decoration:none}
+
+/* ── DIVIDER ── */
+.divider{height:1px;background:var(--border)}
+
+/* ── RISK METER ── */
+.risk-wrap{padding:14px 20px;display:flex;align-items:center;gap:14px}
+.risk-bar-track{flex:1;height:6px;background:var(--s3);border-radius:3px;overflow:hidden}
+.risk-bar-fill{height:100%;border-radius:3px;transition:width .6s ease}
+.risk-label{font-family:var(--mono);font-size:11px;font-weight:500;flex-shrink:0;min-width:64px;text-align:right}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ── MAP ── */
+.map-wrap{position:relative;overflow:hidden;border-top:1px solid var(--border)}
+.map-wrap iframe{display:block;width:100%;height:220px;border:none;filter:invert(0.92) hue-rotate(180deg) saturate(0.7)}
+.map-overlay{position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(transparent,rgba(7,7,14,.85));
+  padding:12px 16px;display:flex;align-items:flex-end;justify-content:space-between;pointer-events:none}
+.map-coords{font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.7);line-height:1.5}
+.map-open-btn{pointer-events:all;display:inline-flex;align-items:center;gap:5px;
+  background:var(--accent);border:none;border-radius:7px;color:#fff;
+  font-family:var(--sans);font-size:11px;font-weight:600;padding:6px 12px;
+  cursor:pointer;text-decoration:none;transition:background .15s;white-space:nowrap}
+.map-open-btn:hover{background:#6e68ff}
+.map-open-btn svg{width:12px;height:12px;flex-shrink:0}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:400px){.subnet-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-tag">Ghost Defense · Network Intelligence</div>
+  <h1>IP <span>Checker</span></h1>
+</div>
+
+<div class="search-wrap">
+  <input class="ip-input" id="ipInput" type="text" placeholder="IP address — blank = my IP" autocomplete="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')scan()">
+  <button class="scan-btn" id="scanBtn" onclick="scan()">Scan</button>
+</div>
+
+<div class="card" id="card">
+  <div class="empty-state" id="emptyState">
+    <div style="font-size:24px;margin-bottom:8px">🔍</div>
+    Enter an IP or leave blank to check your own
+  </div>
+</div>
+
+<div class="footer">
+  ipapi.co · Shodan InternetDB · No data stored · Ghost Defense
+</div>
+
+<script>
+// ── PORT → SERVICE MAP (nmap-style) ──────────────────────────────────────────
+var PORT_SVC = {
+  20:'FTP-Data',21:'FTP',22:'SSH',23:'Telnet',25:'SMTP',53:'DNS',
+  67:'DHCP',68:'DHCP',69:'TFTP',80:'HTTP',110:'POP3',111:'RPC',
+  119:'NNTP',123:'NTP',135:'MS-RPC',137:'NetBIOS',138:'NetBIOS',
+  139:'NetBIOS',143:'IMAP',161:'SNMP',162:'SNMP-Trap',
+  179:'BGP',194:'IRC',389:'LDAP',
+  443:'HTTPS',445:'SMB',465:'SMTPS',500:'IKE',514:'Syslog',
+  515:'LPD',587:'SMTP',631:'IPP',636:'LDAPS',
+  873:'rsync',902:'VMware',989:'FTPS',990:'FTPS',993:'IMAPS',
+  995:'POP3S',1080:'SOCKS',1194:'OpenVPN',1433:'MSSQL',
+  1434:'MSSQL',1521:'Oracle',1723:'PPTP',
+  2049:'NFS',2082:'cPanel',2083:'cPanel-SSL',2086:'WHM',2087:'WHM-SSL',
+  2181:'ZooKeeper',2375:'Docker',2376:'Docker-TLS',
+  3000:'Dev-HTTP',3306:'MySQL',3389:'RDP',3690:'SVN',
+  4443:'HTTPS-Alt',4848:'GlassFish',5000:'Flask/UPnP',
+  5432:'PostgreSQL',5601:'Kibana',5672:'AMQP',5900:'VNC',
+  5985:'WinRM',5986:'WinRM-SSL',6379:'Redis',6443:'K8s-API',
+  7001:'WebLogic',8000:'HTTP-Alt',8008:'HTTP-Alt',
+  8080:'HTTP-Proxy',8081:'HTTP-Alt',8443:'HTTPS-Alt',
+  8888:'Jupyter',9000:'PHP-FPM/SonarQube',9090:'Prometheus',
+  9092:'Kafka',9200:'Elasticsearch',9300:'Elasticsearch',
+  9418:'Git',10250:'Kubelet',11211:'Memcached',
+  27017:'MongoDB',27018:'MongoDB',50000:'DB2',50070:'Hadoop'
+};
+
+// Ports that are high-risk if exposed to internet
+var RISKY_PORTS = new Set([
+  21,23,25,53,69,111,135,137,138,139,161,162,179,
+  389,445,500,514,873,902,1080,1194,1433,1434,1521,
+  2049,2375,2376,3306,3389,5432,5900,5985,5986,
+  6379,7001,8888,9000,9200,9300,11211,27017,27018,50000,50070
+]);
+
+// ── CPE PARSER ────────────────────────────────────────────────────────────────
+// Converts cpe:/a:vendor:product:version → human readable
+var SW_ICONS = {
+  apache:{icon:'🌐',type:'Web Server'},nginx:{icon:'🌐',type:'Web Server'},
+  iis:{icon:'🌐',type:'Web Server'},lighttpd:{icon:'🌐',type:'Web Server'},
+  caddy:{icon:'🌐',type:'Web Server'},
+  openssh:{icon:'🔐',type:'SSH'},openssl:{icon:'🔑',type:'TLS Library'},
+  linux:{icon:'🐧',type:'OS'},windows:{icon:'🪟',type:'OS'},
+  ubuntu:{icon:'🐧',type:'OS'},debian:{icon:'🐧',type:'OS'},
+  centos:{icon:'🐧',type:'OS'},redhat:{icon:'🐧',type:'OS'},
+  freebsd:{icon:'😈',type:'OS'},openbsd:{icon:'🐡',type:'OS'},
+  mysql:{icon:'🗄️',type:'Database'},mariadb:{icon:'🗄️',type:'Database'},
+  postgresql:{icon:'🐘',type:'Database'},mongodb:{icon:'🍃',type:'Database'},
+  redis:{icon:'🔴',type:'Cache'},memcached:{icon:'🔵',type:'Cache'},
+  elasticsearch:{icon:'🔍',type:'Search Engine'},
+  microsoft:{icon:'🪟',type:'Software'},cisco:{icon:'🌐',type:'Network'},
+  fortinet:{icon:'🛡️',type:'Firewall'},juniper:{icon:'🌿',type:'Network'},
+  wordpress:{icon:'📝',type:'CMS'},drupal:{icon:'💧',type:'CMS'},
+  joomla:{icon:'🎯',type:'CMS'},magento:{icon:'🛒',type:'E-Commerce'},
+  docker:{icon:'🐳',type:'Container'},kubernetes:{icon:'⚙️',type:'Orchestrator'},
+  jenkins:{icon:'🔧',type:'CI/CD'},gitlab:{icon:'🦊',type:'DevOps'},
+  tomcat:{icon:'🐱',type:'App Server'},jboss:{icon:'☕',type:'App Server'},
+  weblogic:{icon:'☕',type:'App Server'},websphere:{icon:'☕',type:'App Server'},
+  php:{icon:'🐘',type:'Language'},python:{icon:'🐍',type:'Language'},
+  node:{icon:'💚',type:'Runtime'},ruby:{icon:'💎',type:'Language'},
+  java:{icon:'☕',type:'Runtime'},
+  exim:{icon:'📧',type:'Mail Server'},postfix:{icon:'📧',type:'Mail Server'},
+  sendmail:{icon:'📧',type:'Mail Server'},dovecot:{icon:'📬',type:'Mail Server'},
+  bind:{icon:'📡',type:'DNS'},dnsmasq:{icon:'📡',type:'DNS'},
+  vsftpd:{icon:'📁',type:'FTP'},proftpd:{icon:'📁',type:'FTP'},
+  samba:{icon:'📂',type:'File Share'},
+  default:{icon:'📦',type:'Software'}
+};
+
+function parseCPE(cpe) {
+  // cpe:/a:vendor:product:version or cpe:2.3:a:vendor:product:version:...
+  var parts = cpe.replace('cpe:2.3:','cpe:/').replace('cpe:/','').split(':');
+  // parts: [type, vendor, product, version, ...]
+  var vendor  = (parts[1] || '').replace(/_/g,' ');
+  var product = (parts[2] || '').replace(/_/g,' ');
+  var version = (parts[3] || '').replace(/_/g,'.');
+  if (!product && !vendor) return null;
+
+  var name = product || vendor;
+  // Capitalize
+  name = name.charAt(0).toUpperCase() + name.slice(1);
+  if (vendor && product && vendor !== product) {
+    name = vendor.charAt(0).toUpperCase() + vendor.slice(1) + ' ' + name;
+  }
+
+  // Find icon by matching product/vendor keys
+  var key = (product + vendor).toLowerCase().replace(/[^a-z]/g,'');
+  var meta = SW_ICONS.default;
+  for (var k in SW_ICONS) {
+    if (key.includes(k)) { meta = SW_ICONS[k]; break; }
+  }
+
+  return { name: name.trim(), version: version !== '*' ? version : '', icon: meta.icon, type: meta.type, raw: cpe };
+}
+
+// ── ASN THREAT INTEL ─────────────────────────────────────────────────────────
+// Known high-risk ASN orgs (VPN providers, bulletproof hosters, Tor exits)
+var HIGH_RISK_ORGS = [
+  'M247','PureVPN','NordVPN','ExpressVPN','Mullvad','Surfshark',
+  'CyberGhost','HideMyAss','IPVanish','TorGuard',
+  'Frantech','Serverius','Quasi Networks','Psychz',
+  'Leaseweb','FranTech','BuyVM','Sharktech',
+  'DataShack','NFOrce','Ecatel',
+];
+
+function assessThreat(ipData, shodanData) {
+  var tags = [];
+  var riskScore = 0;
+
+  var org = (ipData.org || '').toLowerCase();
+  var asn = ipData.asn || '';
+
+  // VPN / Proxy / Hosting check
+  if (shodanData && shodanData.tags) {
+    if (shodanData.tags.includes('vpn'))       { tags.push({t:'VPN',   cls:'tag-warn'});  riskScore += 20; }
+    if (shodanData.tags.includes('tor'))       { tags.push({t:'TOR EXIT',cls:'tag-threat'}); riskScore += 40; }
+    if (shodanData.tags.includes('proxy'))     { tags.push({t:'PROXY', cls:'tag-warn'});  riskScore += 20; }
+    if (shodanData.tags.includes('cdn'))       { tags.push({t:'CDN',   cls:'tag-info'});  }
+    if (shodanData.tags.includes('cloud'))     { tags.push({t:'CLOUD', cls:'tag-info'});  }
+    if (shodanData.tags.includes('scanner'))   { tags.push({t:'SCANNER',cls:'tag-threat'}); riskScore += 30; }
+    if (shodanData.tags.includes('honeypot'))  { tags.push({t:'HONEYPOT',cls:'tag-warn'}); }
+  }
+
+  // Shodan vulns
+  if (shodanData && shodanData.vulns && shodanData.vulns.length > 0) {
+    riskScore += Math.min(shodanData.vulns.length * 15, 45);
+    tags.push({t: shodanData.vulns.length + ' CVE' + (shodanData.vulns.length > 1 ? 'S' : ''), cls:'tag-threat'});
+  }
+
+  // Risky open ports
+  if (shodanData && shodanData.ports) {
+    var riskyOpen = shodanData.ports.filter(function(p){ return RISKY_PORTS.has(p); });
+    if (riskyOpen.length > 0) riskScore += Math.min(riskyOpen.length * 8, 25);
+    if (shodanData.ports.includes(3389)) tags.push({t:'RDP EXPOSED', cls:'tag-threat'});
+    if (shodanData.ports.includes(445))  tags.push({t:'SMB EXPOSED', cls:'tag-threat'});
+    if (shodanData.ports.includes(23))   tags.push({t:'TELNET',      cls:'tag-threat'});
+    if (shodanData.ports.includes(2375)) tags.push({t:'DOCKER API',  cls:'tag-threat'});
+    if (shodanData.ports.includes(6379)) tags.push({t:'REDIS OPEN',  cls:'tag-threat'});
+    if (shodanData.ports.includes(9200)) tags.push({t:'ELASTIC OPEN',cls:'tag-threat'});
+  }
+
+  // High-risk hosting org
+  HIGH_RISK_ORGS.forEach(function(o) {
+    if ((ipData.org || '').includes(o)) {
+      tags.push({t:'HIGH-RISK HOST', cls:'tag-warn'});
+      riskScore += 15;
+    }
+  });
+
+  // Bogon / private range detection
+  if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|::1|fc|fd)/.test(ipData.ip || '')) {
+    tags.push({t:'PRIVATE IP', cls:'tag-neutral'});
+  } else {
+    tags.push({t:'PUBLIC IP', cls:'tag-ok'});
+  }
+
+  riskScore = Math.min(riskScore, 100);
+  return { tags: tags, riskScore: riskScore };
+}
+
+// ── RENDER HELPERS ────────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderRows(rows) {
+  return rows.map(function(r) {
+    return '<div class="row"><span class="row-label">' + esc(r[0]) + '</span>'
+      + '<span class="row-val">' + (r[1] || '<span style="color:var(--muted)">—</span>') + '</span></div>';
+  }).join('');
+}
+
+function renderPorts(ports) {
+  if (!ports || !ports.length) return '<div class="empty-state" style="padding:16px">No open ports detected</div>';
+  var sorted = ports.slice().sort(function(a,b){return a-b;});
+  return '<div class="ports-wrap">' + sorted.map(function(p) {
+    var svc = PORT_SVC[p] || 'Unknown';
+    var risky = RISKY_PORTS.has(p);
+    return '<div class="port-chip' + (risky?' risky':'') + '" title="Port ' + p + ' — ' + svc + '">'
+      + '<span class="port-num">' + p + '</span>'
+      + '<span class="port-svc">' + svc + '</span>'
+      + '</div>';
+  }).join('') + '</div>';
+}
+
+function renderSoftware(cpes) {
+  if (!cpes || !cpes.length) return '<div class="empty-state" style="padding:16px">No software fingerprints available</div>';
+  var seen = {};
+  var items = cpes.map(parseCPE).filter(function(x){
+    if (!x) return false;
+    if (seen[x.name]) return false;
+    seen[x.name] = true;
+    return true;
+  });
+  if (!items.length) return '<div class="empty-state" style="padding:16px">No software fingerprints available</div>';
+  return '<div class="sw-list">' + items.map(function(sw) {
+    return '<div class="sw-item">'
+      + '<div class="sw-icon">' + sw.icon + '</div>'
+      + '<div style="flex:1;min-width:0">'
+        + '<div class="sw-name">' + esc(sw.name) + '</div>'
+        + (sw.version ? '<div class="sw-ver">v' + esc(sw.version) + '</div>' : '')
+        + '<div class="sw-type">' + sw.type + '</div>'
+      + '</div>'
+      + '</div>';
+  }).join('') + '</div>';
+}
+
+function renderVulns(vulns) {
+  if (!vulns || !vulns.length) return '<div class="empty-state" style="padding:16px;color:var(--green)">✓ No known CVEs detected</div>';
+  return '<div class="vuln-list">' + vulns.map(function(cve) {
+    return '<div class="vuln-item">'
+      + '<span class="vuln-cve">⚠ ' + esc(cve) + '</span>'
+      + '<a class="vuln-link" href="https://nvd.nist.gov/vuln/detail/' + esc(cve) + '" target="_blank" rel="noopener">NVD →</a>'
+      + '</div>';
+  }).join('') + '</div>';
+}
+
+function renderTags(tags) {
+  if (!tags.length) return '';
+  return '<div class="tags-wrap">' + tags.map(function(t){
+    return '<span class="tag ' + t.cls + '">' + t.t + '</span>';
+  }).join('') + '</div>';
+}
+
+function renderRisk(score) {
+  var color = score >= 60 ? 'var(--red)' : score >= 30 ? 'var(--orange)' : 'var(--green)';
+  var label = score >= 60 ? 'HIGH RISK' : score >= 30 ? 'MODERATE' : 'LOW RISK';
+  return '<div class="risk-wrap">'
+    + '<span style="font-size:11px;color:var(--muted);font-family:var(--mono);flex-shrink:0">Risk Score</span>'
+    + '<div class="risk-bar-track"><div class="risk-bar-fill" style="width:' + score + '%;background:' + color + '"></div></div>'
+    + '<span class="risk-label" style="color:' + color + '">' + score + ' — ' + label + '</span>'
+    + '</div>';
+}
+
+// ── SUBNET HELPERS ────────────────────────────────────────────────────────────
+function networkFromCIDR(ip, prefix) {
+  try {
+    var parts = ip.split('.').map(Number);
+    var mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
+    var ipInt = ((parts[0]<<24)|(parts[1]<<16)|(parts[2]<<8)|parts[3]) >>> 0;
+    var netInt = (ipInt & mask) >>> 0;
+    var bcInt  = (netInt | (~mask >>> 0)) >>> 0;
+    var hosts  = prefix < 31 ? Math.pow(2, 32 - prefix) - 2 : 2;
+    function int2ip(n){ return [(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255].join('.'); }
+    return {
+      network:   int2ip(netInt) + '/' + prefix,
+      netAddr:   int2ip(netInt),
+      broadcast: int2ip(bcInt),
+      first:     int2ip(prefix < 31 ? netInt + 1 : netInt),
+      last:      int2ip(prefix < 31 ? bcInt  - 1 : bcInt),
+      hosts:     hosts.toLocaleString(),
+      mask:      int2ip(mask)
+    };
+  } catch(e) { return null; }
+}
+
+// ── MAIN SCAN ────────────────────────────────────────────────────────────────
+var currentIP = '';
+
+function setCard(html) {
+  document.getElementById('card').innerHTML = html;
+}
+
+async function fetchWithTimeout(url, ms) {
+  return new Promise(function(resolve, reject) {
+    var done = false;
+    var t = setTimeout(function(){ if(!done){done=true;reject(new Error('timeout'));} }, ms);
+    fetch(url).then(function(r){ if(!done){done=true;clearTimeout(t);resolve(r);} }).catch(function(e){ if(!done){done=true;clearTimeout(t);reject(e);} });
+  });
+}
+
+async function scan() {
+  var inputVal = (document.getElementById('ipInput').value || '').trim();
+  var btn = document.getElementById('scanBtn');
+  btn.disabled = true;
+  btn.textContent = 'Scanning…';
+
+  setCard('<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Fetching IP data…</div>');
+
+  try {
+    // ── Step 1: IP geolocation ────────────────────────────────────────────
+    var geoUrl = inputVal ? 'https://ipapi.co/' + encodeURIComponent(inputVal) + '/json/' : 'https://ipapi.co/json/';
+    var geoResp = await fetchWithTimeout(geoUrl, 8000);
+    if (!geoResp.ok) throw new Error('IP lookup failed (' + geoResp.status + ')');
+    var geo = await geoResp.json();
+    if (geo.error) throw new Error(geo.reason || 'Invalid IP address');
+
+    var ip = geo.ip || inputVal;
+    currentIP = ip;
+    var prefix = geo.network ? parseInt(geo.network.split('/')[1]) : null;
+    var subnet = (prefix && ip.indexOf(':') === -1) ? networkFromCIDR(ip, prefix) : null;
+
+    setCard('<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div>Querying Shodan InternetDB…</div>');
+
+    // ── Step 2: Shodan InternetDB (free, no key) ─────────────────────────
+    var shodan = null;
+    try {
+      var shodanResp = await fetchWithTimeout('https://internetdb.shodan.io/' + ip, 8000);
+      if (shodanResp.ok) shodan = await shodanResp.json();
+    } catch(e) { /* Shodan optional — render what we have */ }
+
+    // ── Step 3: Assess threat ────────────────────────────────────────────
+    var threat = assessThreat(geo, shodan);
+
+    // ── Step 4: Render ───────────────────────────────────────────────────
+    var ipVer = geo.version || (ip.indexOf(':') !== -1 ? 'IPv6' : 'IPv4');
+    var city = [geo.city, geo.region, geo.country_name].filter(Boolean).join(', ');
+
+    var html = '';
+
+    // Hero
+    html += '<div class="ip-hero">';
+    html += '<div class="ip-hero-label">IP Address</div>';
+    html += '<div class="ip-val" id="ipDisp">' + esc(ip) + '</div>';
+    html += '<div class="ip-sub">' + esc(city) + (geo.network ? ' &nbsp;·&nbsp; ' + esc(geo.network) : '') + '</div>';
+    html += '<button class="copy-btn" id="copybtn" onclick="copyIP()">Copy</button>';
+    html += '</div>';
+
+    // Risk meter
+    html += renderRisk(threat.riskScore);
+    html += '<div class="divider"></div>';
+
+    // Tags
+    if (threat.tags.length) {
+      html += '<div class="sec-title">Threat Intelligence</div>';
+      html += renderTags(threat.tags);
+      html += '<div class="divider"></div>';
+    }
+
+    // Network info
+    html += '<div class="sec-title">Network</div>';
+    html += '<div class="rows">' + renderRows([
+      ['IP Version',  ipVer],
+      ['ASN',         geo.asn ? '<span style="font-family:var(--mono)">' + esc(geo.asn) + '</span>' : null],
+      ['ISP / Org',   geo.org ? esc(geo.org) : null],
+      ['Network',     geo.network ? '<span style="font-family:var(--mono)">' + esc(geo.network) + '</span>' : null],
+      ['Timezone',    geo.timezone ? esc(geo.timezone) : null],
+      ['Coordinates', (geo.latitude && geo.longitude) ? esc(geo.latitude) + ', ' + esc(geo.longitude) : null],
+    ]) + '</div>';
+
+    // GIS / Map
+    if (geo.latitude && geo.longitude) {
+      var lat = parseFloat(geo.latitude);
+      var lng = parseFloat(geo.longitude);
+      var mapsUrl = 'https://www.google.com/maps?q=' + lat + ',' + lng + '&z=10';
+      // Embed via OpenStreetMap (no API key, works in all browsers, dark-mode filtered via CSS)
+      var osmUrl = 'https://www.openstreetmap.org/export/embed.html?bbox='
+        + (lng-0.5) + ',' + (lat-0.3) + ',' + (lng+0.5) + ',' + (lat+0.3)
+        + '&layer=mapnik&marker=' + lat + ',' + lng;
+      html += '<div class="sec-title">GIS Location</div>';
+      html += '<div class="map-wrap">';
+      html += '<iframe src="' + osmUrl + '" loading="lazy" title="IP Location Map"></iframe>';
+      html += '<div class="map-overlay">';
+      html += '<div class="map-coords">';
+      html += '<span style="color:var(--muted2)">LAT</span> ' + lat.toFixed(5) + '<br>';
+      html += '<span style="color:var(--muted2)">LNG</span> ' + lng.toFixed(5);
+      html += '</div>';
+      html += '<a class="map-open-btn" href="' + mapsUrl + '" target="_blank" rel="noopener">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        + '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>'
+        + '<circle cx="12" cy="10" r="3"/>'
+        + '</svg>'
+        + 'Open in Google Maps</a>';
+      html += '</div></div><div class="divider"></div>';
+    }
+
+    // Subnet breakdown
+    if (subnet) {
+      html += '<div class="sec-title">Subnet Breakdown — ' + esc(subnet.network) + '</div>';
+      html += '<div class="subnet-grid">';
+      [
+        ['Subnet Mask',      subnet.mask],
+        ['Network Address',  subnet.netAddr],
+        ['First Host',       subnet.first],
+        ['Last Host',        subnet.last],
+        ['Broadcast',        subnet.broadcast],
+        ['Usable Hosts',     subnet.hosts],
+      ].forEach(function(r) {
+        html += '<div class="subnet-cell">'
+          + '<div class="subnet-cell-label">' + esc(r[0]) + '</div>'
+          + '<div class="subnet-cell-val">' + esc(r[1]) + '</div>'
+          + '</div>';
+      });
+      html += '</div><div class="divider"></div>';
+    }
+
+    // Shodan data
+    if (shodan && !shodan.detail) {
+
+      // Hostnames
+      if (shodan.hostnames && shodan.hostnames.length) {
+        html += '<div class="sec-title">Hostnames / Domains</div>';
+        html += '<div class="tags-wrap">' + shodan.hostnames.map(function(h){
+          return '<span class="tag tag-info">' + esc(h) + '</span>';
+        }).join('') + '</div><div class="divider"></div>';
+      }
+
+      // Open ports
+      html += '<div class="sec-title">Open Ports (' + (shodan.ports ? shodan.ports.length : 0) + ' detected)</div>';
+      html += renderPorts(shodan.ports);
+      html += '<div class="divider"></div>';
+
+      // Software / CPE fingerprints
+      html += '<div class="sec-title">Software & Hardware Fingerprints</div>';
+      html += renderSoftware(shodan.cpes);
+      html += '<div class="divider"></div>';
+
+      // CVEs / Vulns
+      html += '<div class="sec-title">Known Vulnerabilities (CVEs)</div>';
+      html += renderVulns(shodan.vulns);
+
+    } else {
+      html += '<div class="sec-title">Open Ports & Software</div>';
+      html += '<div class="empty-state" style="padding:20px">';
+      html += shodan && shodan.detail
+        ? 'No data in Shodan InternetDB for this IP'
+        : 'Shodan InternetDB unavailable — try again';
+      html += '</div>';
+    }
+
+    // Status row
+    html += '<div class="divider"></div>';
+    html += '<div class="rows"><div class="row"><span class="row-label">Status</span>'
+      + '<span class="row-val"><span class="badge badge-green"><span class="dot"></span>Connected</span></span></div></div>';
+
+    document.getElementById('card').innerHTML = html;
+
+  } catch(err) {
+    setCard(
+      '<div class="empty-state" style="color:var(--red)">'
+      + '<div style="font-size:20px;margin-bottom:8px">⚠</div>'
+      + esc(err.message)
+      + '</div>'
+    );
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Scan';
+}
+
+function copyIP() {
+  if (!currentIP) return;
+  var btn = document.getElementById('copybtn');
+  if (!btn) return;
+  navigator.clipboard && navigator.clipboard.writeText(currentIP).then(function() {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// Auto-scan own IP on load
+scan();
+</script>
+</body>
+</html>

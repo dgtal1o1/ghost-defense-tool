@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Botnet IOC Scanner — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070e;--s1:#0e0e1a;--s2:#141728;--s3:#1c2035;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);
+  --text:#eeedf8;--muted:#6b6a84;--muted2:#9998b8;
+  --accent:#5b54ff;--accent-s:rgba(91,84,255,0.12);--accent-b:rgba(91,84,255,0.3);
+  --green:#2fd98a;--green-s:rgba(47,217,138,0.1);--green-b:rgba(47,217,138,0.28);
+  --red:#ff4d4d;--red-s:rgba(255,77,77,0.1);--red-b:rgba(255,77,77,0.3);
+  --orange:#ff8c42;--orange-s:rgba(255,140,66,0.1);--orange-b:rgba(255,140,66,0.28);
+  --yellow:#ffd166;--yellow-s:rgba(255,209,102,0.1);--yellow-b:rgba(255,209,102,0.25);
+  --blue:#4cc9f0;--blue-s:rgba(76,201,240,0.1);--blue-b:rgba(76,201,240,0.28);
+  --purple:#b48eff;--purple-s:rgba(180,142,255,0.1);--purple-b:rgba(180,142,255,0.28);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html{background:var(--bg)}
+body{font-family:var(--sans);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:13px 24px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:30px;height:30px;background:var(--red-s);border:1px solid var(--red-b);
+  border-radius:8px;display:flex;align-items:center;justify-content:center}
+.brand-icon svg{width:16px;height:16px;stroke:var(--red)}
+.brand-name{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.brand-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.tlp-badge{font-family:var(--mono);font-size:10px;color:var(--text);background:#1e293b;
+  border:1px solid var(--border2);padding:4px 10px;border-radius:4px;letter-spacing:.08em}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:360px 1fr;flex:1;height:calc(100vh - 57px)}
+
+/* LEFT PANEL */
+.left-panel{border-right:1px solid var(--border);overflow-y:auto;background:var(--bg);
+  display:flex;flex-direction:column}
+
+/* THREAT INTEL CARD */
+.intel-card{background:var(--s1);border-bottom:1px solid var(--border);padding:16px}
+.intel-header{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.intel-icon{font-size:18px}
+.intel-title{font-size:13px;font-weight:600}
+.intel-badge{font-size:10px;font-family:var(--mono);background:var(--red-s);color:var(--red);
+  border:1px solid var(--red-b);padding:2px 8px;border-radius:4px;margin-left:auto}
+.ioc-list{display:flex;flex-direction:column;gap:6px}
+.ioc-row{display:flex;align-items:flex-start;gap:8px;background:var(--s2);
+  border:1px solid var(--border);border-radius:7px;padding:8px 10px;cursor:pointer;
+  transition:all .12s;position:relative}
+.ioc-row:hover{border-color:var(--border2)}
+.ioc-row.active{border-color:var(--red-b);background:var(--red-s)}
+.ioc-type-pill{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 6px;
+  border-radius:3px;white-space:nowrap;flex-shrink:0;margin-top:1px}
+.type-ip{background:rgba(255,77,77,.15);color:var(--red);border:1px solid var(--red-b)}
+.type-port{background:rgba(255,140,66,.15);color:var(--orange);border:1px solid var(--orange-b)}
+.type-hash{background:rgba(180,142,255,.15);color:var(--purple);border:1px solid var(--purple-b)}
+.type-path{background:rgba(76,201,240,.15);color:var(--blue);border:1px solid var(--blue-b)}
+.type-cve{background:rgba(255,77,77,.15);color:var(--red);border:1px solid var(--red-b)}
+.type-proc{background:rgba(255,209,102,.15);color:var(--yellow);border:1px solid var(--yellow-b)}
+.type-net{background:rgba(47,217,138,.15);color:var(--green);border:1px solid var(--green-b)}
+.type-ver{background:rgba(91,84,255,.15);color:#a09bff;border:1px solid var(--accent-b)}
+.type-arch{background:rgba(107,112,148,.15);color:var(--muted2);border:1px solid var(--border2)}
+.type-icmp{background:rgba(255,140,66,.15);color:var(--orange);border:1px solid var(--orange-b)}
+.ioc-val{font-family:var(--mono);font-size:11px;color:var(--text);word-break:break-all;line-height:1.4}
+.ioc-desc{font-size:10px;color:var(--muted);line-height:1.5;margin-top:2px}
+.ioc-check{position:absolute;top:8px;right:8px;width:14px;height:14px;display:none}
+.ioc-row.active .ioc-check{display:block}
+
+/* INPUT SECTION */
+.input-section{padding:16px;border-bottom:1px solid var(--border)}
+.input-label{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);
+  font-family:var(--mono);margin-bottom:8px}
+.target-area{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:8px;
+  color:var(--text);font-family:var(--mono);font-size:12px;line-height:1.7;
+  padding:10px 12px;resize:vertical;min-height:80px;outline:none;transition:border-color .15s}
+.target-area:focus{border-color:var(--red-b)}
+.target-area::placeholder{color:var(--muted)}
+.upload-label{display:flex;align-items:center;gap:7px;background:var(--s2);
+  border:1px dashed var(--border2);border-radius:7px;padding:8px 12px;cursor:pointer;
+  transition:all .15s;color:var(--muted2);font-size:12px;margin-top:6px}
+.upload-label:hover{border-color:var(--red-b);color:var(--red)}
+.upload-label svg{width:13px;height:13px;flex-shrink:0}
+.upload-label input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+
+/* SCAN CONTROLS */
+.scan-section{padding:14px 16px}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.mode-cell{background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:8px 10px}
+.mode-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+.mode-select{width:100%;background:transparent;border:none;color:var(--text);
+  font-family:var(--mono);font-size:11px;outline:none;cursor:pointer}
+.mode-select option{background:var(--s2)}
+.scan-btn{background:var(--red);border:none;border-radius:9px;color:#fff;
+  font-family:var(--sans);font-size:14px;font-weight:700;padding:12px;cursor:pointer;
+  transition:all .15s;width:100%;letter-spacing:.02em}
+.scan-btn:hover{background:#ff6666}
+.scan-btn:active{transform:scale(.98)}
+.scan-btn:disabled{opacity:.4;cursor:default;transform:none}
+.disclaimer{font-size:10px;color:var(--muted);font-family:var(--mono);line-height:1.6;margin-top:8px}
+
+/* RIGHT PANEL */
+.right-panel{overflow-y:auto;display:flex;flex-direction:column;background:var(--bg)}
+
+/* EMPTY */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  flex:1;gap:12px;color:var(--muted);text-align:center;padding:40px}
+.empty-state svg{width:52px;height:52px;opacity:.1;stroke:var(--red)}
+.empty-state h3{font-size:15px;font-weight:400;color:var(--muted2)}
+
+/* PROGRESS */
+.prog-wrap{background:var(--s1);border-bottom:1px solid var(--border);padding:16px 24px}
+.prog-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.prog-title{font-size:13px;font-weight:600}
+.prog-count{font-family:var(--mono);font-size:12px;color:var(--muted2)}
+.prog-track{height:5px;background:var(--s3);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.prog-fill{height:100%;background:var(--red);border-radius:3px;transition:width .3s ease}
+.prog-msg{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.live-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.lchip{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:3px;border:1px solid}
+.lchip-scanning{background:var(--blue-s);color:var(--blue);border-color:var(--blue-b)}
+.lchip-hit{background:var(--red-s);color:var(--red);border-color:var(--red-b)}
+.lchip-clean{background:var(--green-s);color:var(--green);border-color:var(--green-b)}
+.lchip-err{background:var(--s3);color:var(--muted);border-color:var(--border)}
+
+/* SUMMARY */
+.summary-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+  gap:10px;padding:16px 24px;border-bottom:1px solid var(--border)}
+.sum-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
+.sum-num{font-family:var(--mono);font-size:22px;font-weight:500;margin-bottom:3px}
+.sum-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;gap:8px;padding:10px 24px;
+  border-bottom:1px solid var(--border);flex-wrap:wrap}
+.filter-chip{font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:5px;
+  background:var(--s2);border:1px solid var(--border2);color:var(--muted2);cursor:pointer;transition:all .12s}
+.filter-chip.active{background:var(--red-s);color:var(--red);border-color:var(--red-b)}
+.spacer{flex:1}
+.exp-btn{display:flex;align-items:center;gap:5px;font-size:12px;font-family:var(--sans);
+  font-weight:600;padding:6px 12px;border-radius:7px;cursor:pointer;transition:all .15s;border:1px solid}
+.exp-csv{background:var(--green-s);color:var(--green);border-color:var(--green-b)}
+.exp-html{background:var(--accent-s);color:#a09bff;border-color:var(--accent-b)}
+.exp-pdf{background:var(--red-s);color:var(--red);border-color:var(--red-b)}
+.exp-btn svg{width:12px;height:12px}
+
+/* RESULTS TABLE */
+.table-wrap{overflow-x:auto;flex:1}
+.res-table{width:100%;border-collapse:collapse;font-size:12px}
+.res-table th{padding:8px 12px;text-align:left;color:var(--muted);font-size:10px;
+  text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);
+  background:var(--s2);white-space:nowrap}
+.res-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.res-table tr:hover td{background:rgba(255,255,255,.02);cursor:pointer}
+.target-cell{font-family:var(--mono);font-weight:500;color:var(--blue)}
+.hit-badge{font-size:10px;font-family:var(--mono);font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap}
+.hit-confirmed{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.hit-suspicious{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.hit-clean{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.hit-error{background:var(--s3);color:var(--muted);border:1px solid var(--border)}
+.ioc-hits-inline{display:flex;flex-wrap:wrap;gap:4px;max-width:340px}
+.hit-pill{font-size:9px;font-family:var(--mono);padding:2px 7px;border-radius:3px;
+  background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.clean-pill{font-size:9px;font-family:var(--mono);padding:2px 7px;border-radius:3px;
+  background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+
+/* EXPAND */
+.expand-row{background:var(--s1)}
+.expand-body{display:none;padding:16px 20px;grid-template-columns:1fr 1fr;gap:14px}
+.expand-body.open{display:grid}
+.det-box{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.det-title{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
+  font-family:var(--mono);margin-bottom:10px}
+.det-row{display:flex;justify-content:space-between;gap:8px;padding:5px 0;
+  border-bottom:1px solid var(--border);font-size:11px}
+.det-row:last-child{border-bottom:none}
+.dl{color:var(--muted2)}.dv{font-family:var(--mono);color:var(--text);text-align:right;word-break:break-all}
+
+/* SPINNER */
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.1);
+  border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .25s ease both}
+@media(max-width:860px){
+  .layout{grid-template-columns:1fr;height:auto}
+  .left-panel{border-right:none;border-bottom:1px solid var(--border);max-height:none}
+  .right-panel{min-height:60vh}
+}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+
+/* STIX/TAXII */
+.stix-panel{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px}
+.stix-title{font-size:11px;font-weight:700;font-family:var(--mono);color:var(--red);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.feed-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;
+  padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px}
+.feed-name{font-size:12px;font-weight:600;color:var(--text)}
+.feed-url{font-size:10px;color:var(--muted2);font-family:var(--mono)}
+.feed-btn{font-family:var(--mono);font-size:10px;padding:4px 10px;border-radius:4px;
+  cursor:pointer;border:1px solid;transition:all .12s;white-space:nowrap}
+.feed-load{background:var(--red-s);border-color:var(--red-b);color:var(--red)}
+.feed-load:hover{background:rgba(255,77,77,.2)}
+.feed-ok{background:var(--green-s);border-color:var(--green-b);color:var(--green)}
+.stix-custom{display:flex;gap:6px;margin-top:10px}
+.stix-input{flex:1;background:var(--s2);border:1px solid var(--border2);border-radius:6px;
+  color:var(--text);font-family:var(--mono);font-size:11px;padding:7px 10px;outline:none}
+.stix-input:focus{border-color:var(--red-b)}
+.stix-input::placeholder{color:var(--muted)}
+.stix-stat{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;
+  padding:3px 9px;border-radius:4px;background:var(--s3);color:var(--muted2)}
+
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+    </div>
+    <div>
+      <div class="brand-name">Botnet IOC Scanner</div>
+      <div class="brand-sub">Ghost Defense · Tool 22</div>
+    </div>
+  </div>
+  <span class="tlp-badge">TLP:CLEAR · DEFENSIVE USE ONLY</span>
+</div>
+
+<div class="layout">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <!-- JDY BOTNET INTEL CARD -->
+    <div class="intel-card">
+      <div class="intel-header">
+        <span class="intel-icon">🕷️</span>
+        <span class="intel-title">JDY Botnet — Active IOC Feed</span>
+        <span class="intel-badge">LIVE</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted2);line-height:1.6;margin-bottom:12px;font-family:var(--mono)">
+        Platypus C2 · Termite agents · CVE-2026-35616 exploit · MIPS targets
+      </div>
+      <div class="ioc-list" id="iocList"></div>
+    </div>
+
+    <!-- CUSTOM IOC IMPORT -->
+    <div style="background:var(--s1);border-bottom:1px solid var(--border);padding:14px 16px">
+      <div class="input-label">Add Custom IOCs</div>
+      <textarea class="target-area" id="customIOC" style="min-height:60px"
+        placeholder="IP:1.2.3.4&#10;HASH:abc123...&#10;DOMAIN:evil.com&#10;PATH:/tmp/malware&#10;PORT:4444"></textarea>
+      <button onclick="addCustomIOCs()" style="margin-top:6px;background:var(--s2);border:1px solid var(--border2);border-radius:7px;color:var(--muted2);font-family:var(--sans);font-size:12px;padding:6px 14px;cursor:pointer;width:100%;transition:all .12s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted2)'">+ Add to IOC List</button>
+    </div>
+
+    <!-- TARGET INPUT -->
+    <div class="input-section">
+      <div class="input-label">Targets to Check</div>
+      <textarea class="target-area" id="targetInput"
+        placeholder="One per line:&#10;192.168.1.1&#10;10.0.0.0/24&#10;server.company.com&#10;logs.txt content..."></textarea>
+      <label class="upload-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Upload IP list / log file / CSV
+        <input type="file" accept=".csv,.txt,.log" onclick="this.value=null" onchange="loadTargetFile(event)">
+      </label>
+    </div>
+
+    <!-- SCAN OPTIONS -->
+    <div class="scan-section">
+      <div class="mode-grid">
+        <div class="mode-cell">
+          <div class="mode-label">Check Mode</div>
+          <select class="mode-select" id="checkMode">
+            <option value="ip">IP + Domain</option>
+            <option value="full">Full (IP+Port+Path)</option>
+            <option value="passive">Passive (IOC match only)</option>
+          </select>
+        </div>
+        <div class="mode-cell">
+          <div class="mode-label">Enrichment</div>
+          <select class="mode-select" id="enrichMode">
+            <option value="shodan">Shodan InternetDB</option>
+            <option value="dns">DNS only</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+      </div>
+      <button class="scan-btn" id="scanBtn" onclick="startScan()">🔍 SCAN FOR IOC MATCHES</button>
+      <div class="disclaimer">
+        ⚠ This tool performs passive IOC matching and optional DNS/Shodan lookups.<br>
+        Only scan infrastructure you own or are authorized to assess.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel" id="rightPanel">
+    <div class="empty-state" id="emptyState">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <h3>No scan results yet</h3>
+      <p style="font-size:12px;line-height:1.7;max-width:300px">
+        Enter IPs, domains, or upload a log file. The scanner checks each target against the JDY botnet IOC feed and any custom IOCs you add.
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── JDY BOTNET IOC DATABASE ────────────────────────────────────────────────────
+var IOCS = [
+  { id:'ioc1',  type:'IP',      typeClass:'type-ip',   value:'149.248.3.38',                      desc:'JDY botnet payload server — Platypus C2 remote shell on port 13339', severity:'critical' },
+  { id:'ioc2',  type:'PORT',    typeClass:'type-port',  value:'13339',                             desc:'Default Platypus server port — Termite agent download and C2 comms', severity:'high' },
+  { id:'ioc3',  type:'AES KEY', typeClass:'type-hash',  value:'0000000000000000bdb718bdf47cbcde',  desc:'Hardcoded AES key for decrypting JDY C2 tasking responses', severity:'high' },
+  { id:'ioc4',  type:'VERSION', typeClass:'type-ver',   value:'1.8.3.9',                           desc:'Hardcoded version string in analyzed JDY malware samples', severity:'medium' },
+  { id:'ioc5',  type:'PROCESS', typeClass:'type-proc',  value:'auditdy',                           desc:'JDY dropper process name — checks for existing infections', severity:'high' },
+  { id:'ioc6',  type:'PATH',    typeClass:'type-path',  value:'/etc/',                             desc:'JDY payload write directory — payload written then deleted', severity:'medium' },
+  { id:'ioc7',  type:'PATH',    typeClass:'type-path',  value:'/tmp/',                             desc:'JDY payload write directory — payload written then deleted', severity:'medium' },
+  { id:'ioc8',  type:'ARCH',    typeClass:'type-arch',  value:'mips,mips64,mipsel,mipsel64',       desc:'Target processor architectures for JDY malware payloads', severity:'info' },
+  { id:'ioc9',  type:'CVE',     typeClass:'type-cve',   value:'CVE-2026-35616',                   desc:'Fortinet vulnerability exploited within hours of disclosure by JDY operators', severity:'critical' },
+  { id:'ioc10', type:'NET PATH',typeClass:'type-net',   value:'/dispatch_service/v2/probe_status', desc:'JDY C2 initial check-in beacon via HTTPS POST', severity:'critical' },
+  { id:'ioc11', type:'NET PATH',typeClass:'type-net',   value:'/data/v2/pscan',                    desc:'JDY C2 — compressed scan results delivery, filename attr.json', severity:'critical' },
+  { id:'ioc12', type:'ICMP ID', typeClass:'type-icmp',  value:'19037',                             desc:'Hardcoded ICMP packet identifier used in UDP/ICMP scanning (port 80 targets)', severity:'high' },
+  { id:'ioc13', type:'SRC PORT',typeClass:'type-port',  value:'19000',                             desc:'Fixed source port used in JDY high-speed SYN scanning mode', severity:'high' },
+];
+
+var activeIOCs = IOCS.slice(); // all enabled by default
+var scanResults = [];
+var scanStopped = false;
+var activeFilter = 'all';
+var expandedRow = null;
+
+// ── RENDER IOC LIST ────────────────────────────────────────────────────────────
+function renderIOCList() {
+  var list = document.getElementById('iocList');
+  list.innerHTML = activeIOCs.map(function(ioc) {
+    var sev = ioc.severity === 'critical' ? 'var(--red)' : ioc.severity === 'high' ? 'var(--orange)' : ioc.severity === 'medium' ? 'var(--yellow)' : 'var(--muted)';
+    return '<div class="ioc-row active" id="iocrow-'+ioc.id+'" onclick="toggleIOC(\''+ioc.id+'\')" title="Click to enable/disable">'
+      + '<span class="ioc-type-pill '+ioc.typeClass+'">'+ioc.type+'</span>'
+      + '<div style="flex:1;min-width:0">'
+        + '<div class="ioc-val">'+esc(ioc.value)+'</div>'
+        + '<div class="ioc-desc">'+esc(ioc.desc)+'</div>'
+      + '</div>'
+      + '<svg class="ioc-check" viewBox="0 0 14 14" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 7 5.5 10.5 12 3"/></svg>'
+      + '</div>';
+  }).join('');
+}
+
+function toggleIOC(id) {
+  var row = document.getElementById('iocrow-' + id);
+  row.classList.toggle('active');
+}
+
+function getEnabledIOCs() {
+  return activeIOCs.filter(function(ioc) {
+    var row = document.getElementById('iocrow-' + ioc.id);
+    return row && row.classList.contains('active');
+  });
+}
+
+// ── CUSTOM IOC PARSER ──────────────────────────────────────────────────────────
+function addCustomIOCs() {
+  var raw = document.getElementById('customIOC').value.trim();
+  if (!raw) return;
+  var lines = raw.split(/\n/);
+  var added = 0;
+  lines.forEach(function(line) {
+    line = line.trim();
+    if (!line) return;
+    var type = 'CUSTOM', typeClass = 'type-ip', value = line;
+    if (/^IP:/i.test(line))     { type='IP';      typeClass='type-ip';   value=line.replace(/^IP:/i,'').trim(); }
+    else if (/^HASH:/i.test(line))  { type='HASH';    typeClass='type-hash'; value=line.replace(/^HASH:/i,'').trim(); }
+    else if (/^DOMAIN:/i.test(line)){ type='DOMAIN';  typeClass='type-net';  value=line.replace(/^DOMAIN:/i,'').trim(); }
+    else if (/^PATH:/i.test(line))  { type='PATH';    typeClass='type-path'; value=line.replace(/^PATH:/i,'').trim(); }
+    else if (/^PORT:/i.test(line))  { type='PORT';    typeClass='type-port'; value=line.replace(/^PORT:/i,'').trim(); }
+    else if (/^CVE:/i.test(line))   { type='CVE';     typeClass='type-cve';  value=line.replace(/^CVE:/i,'').trim(); }
+    var id = 'custom_' + Date.now() + '_' + added;
+    activeIOCs.push({ id:id, type:type, typeClass:typeClass, value:value, desc:'Custom IOC', severity:'high' });
+    added++;
+  });
+  if (added) {
+    renderIOCList();
+    document.getElementById('customIOC').value = '';
+  }
+}
+
+// ── TARGET PARSING ─────────────────────────────────────────────────────────────
+function loadTargetFile(evt) {
+  var file = evt.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    evt.target.value = '';
+    var current = document.getElementById('targetInput').value.trim();
+    document.getElementById('targetInput').value = (current ? current + '\n' : '') + e.target.result;
+  };
+  reader.readAsText(file);
+}
+
+function parseTargets(text) {
+  var targets = new Set();
+  var ipRe    = /\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b/g;
+  var domRe   = /\b([a-z0-9][a-z0-9\-]{1,61}[a-z0-9]\.[a-z]{2,})\b/gi;
+  var m;
+  while ((m = ipRe.exec(text))   !== null) targets.add(m[1]);
+  while ((m = domRe.exec(text))  !== null) {
+    var d = m[1].toLowerCase();
+    if (!d.endsWith('.log') && !d.endsWith('.txt') && !d.endsWith('.csv')) targets.add(d);
+  }
+  // Also try line-by-line for manual entries
+  text.split(/\n/).forEach(function(line) {
+    var v = line.trim().replace(/^https?:\/\//,'').replace(/[\/\?#].*/,'').replace(/^www\./,'').toLowerCase();
+    if (v) targets.add(v);
+  });
+  return Array.from(targets).filter(function(t){return t.length > 3;});
+}
+
+// ── IOC MATCHING ENGINE ────────────────────────────────────────────────────────
+function checkTargetAgainstIOCs(target, enabledIOCs, shodanData) {
+  var hits = [];
+  var lTarget = target.toLowerCase();
+
+  enabledIOCs.forEach(function(ioc) {
+    var iocVal = ioc.value.toLowerCase();
+    var matched = false;
+    var matchDetail = '';
+
+    switch(ioc.type) {
+      case 'IP':
+        if (lTarget === iocVal ||
+            (shodanData && shodanData.hostnames && shodanData.hostnames.some(function(h){ return h.toLowerCase().includes(iocVal); }))) {
+          matched = true; matchDetail = 'Direct IP match';
+        }
+        break;
+      case 'PORT':
+        if (shodanData && shodanData.ports && shodanData.ports.includes(parseInt(ioc.value))) {
+          matched = true; matchDetail = 'Port ' + ioc.value + ' open on host';
+        }
+        break;
+      case 'NET PATH':
+        // Check if this target's URLs/paths include known C2 endpoints
+        if (lTarget.includes(iocVal) || lTarget.includes(iocVal.split('/').slice(-1)[0])) {
+          matched = true; matchDetail = 'C2 path match in target string';
+        }
+        break;
+      case 'CVE':
+        if (shodanData && shodanData.vulns && shodanData.vulns.some(function(v){ return v.toUpperCase() === ioc.value.toUpperCase(); })) {
+          matched = true; matchDetail = 'CVE confirmed by Shodan';
+        }
+        break;
+      case 'PROCESS':
+      case 'PATH':
+      case 'VERSION':
+      case 'AES KEY':
+      case 'HASH':
+        // Direct string match in target text (useful for log scanning)
+        if (lTarget.includes(iocVal)) {
+          matched = true; matchDetail = ioc.type + ' match in target string';
+        }
+        break;
+      case 'DOMAIN':
+        if (lTarget === iocVal || lTarget.endsWith('.' + iocVal)) {
+          matched = true; matchDetail = 'Domain match';
+        }
+        break;
+      default:
+        if (lTarget.includes(iocVal)) {
+          matched = true; matchDetail = 'String match';
+        }
+    }
+
+    if (matched) {
+      hits.push({ ioc: ioc, detail: matchDetail });
+    }
+  });
+
+  // Also check Shodan tags for botnet indicators
+  if (shodanData && shodanData.tags) {
+    if (shodanData.tags.includes('c2')) {
+      hits.push({ ioc: { type:'SHODAN TAG', typeClass:'type-cve', value:'c2', desc:'Shodan tagged as C2 server', severity:'critical' }, detail: 'Shodan C2 tag' });
+    }
+    if (shodanData.tags.includes('malware')) {
+      hits.push({ ioc: { type:'SHODAN TAG', typeClass:'type-cve', value:'malware', desc:'Shodan tagged as malware host', severity:'critical' }, detail: 'Shodan malware tag' });
+    }
+  }
+
+  // Check Shodan vulns against all CVE IOCs
+  if (shodanData && shodanData.vulns) {
+    enabledIOCs.filter(function(i){ return i.type==='CVE'; }).forEach(function(ioc) {
+      if (shodanData.vulns.some(function(v){ return v.toUpperCase()===ioc.value.toUpperCase(); })) {
+        if (!hits.some(function(h){ return h.ioc.value===ioc.value; })) {
+          hits.push({ ioc:ioc, detail:'CVE '+ioc.value+' confirmed by Shodan InternetDB' });
+        }
+      }
+    });
+  }
+
+  return hits;
+}
+
+// ── NETWORK HELPERS ────────────────────────────────────────────────────────────
+function fetchTimeout(url, ms, opts) {
+  return new Promise(function(resolve, reject) {
+    var done = false;
+    var t = setTimeout(function(){ if(!done){done=true;reject(new Error('timeout'));} }, ms);
+    fetch(url, opts||{}).then(function(r){ if(!done){done=true;clearTimeout(t);resolve(r);} }).catch(function(e){ if(!done){done=true;clearTimeout(t);reject(e);} });
+  });
+}
+
+async function getShodan(ip) {
+  var isIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip);
+  if (!isIP) return null;
+  try {
+    var r = await fetchTimeout('https://internetdb.shodan.io/' + ip, 8000);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+async function resolveHost(host) {
+  try {
+    var r = await fetchTimeout('https://cloudflare-dns.com/dns-query?name='+encodeURIComponent(host)+'&type=A', 5000, { headers:{'Accept':'application/dns-json'} });
+    if (!r.ok) return null;
+    var d = await r.json();
+    return (d.Answer && d.Answer.length) ? d.Answer[0].data : null;
+  } catch(e) { return null; }
+}
+
+// ── MAIN SCAN ──────────────────────────────────────────────────────────────────
+async function startScan() {
+  var raw = document.getElementById('targetInput').value.trim();
+  if (!raw) { alert('Enter at least one IP, domain, or paste log content.'); return; }
+
+  var targets = parseTargets(raw);
+  if (!targets.length) { alert('No valid IPs or domains found in input.'); return; }
+
+  var enabledIOCs = getEnabledIOCs();
+  if (!enabledIOCs.length) { alert('Enable at least one IOC on the left panel.'); return; }
+
+  var enrichMode = document.getElementById('enrichMode').value;
+  var checkMode  = document.getElementById('checkMode').value;
+
+  scanResults = [];
+  scanStopped = false;
+  activeFilter = 'all';
+  expandedRow = null;
+
+  document.getElementById('scanBtn').disabled = true;
+
+  document.getElementById('rightPanel').innerHTML =
+    '<div class="prog-wrap" id="progWrap">'
+    + '<div class="prog-hdr"><span class="prog-title">🔍 Scanning '+targets.length+' target'+(targets.length>1?'s':'')+' against '+enabledIOCs.length+' IOCs</span>'
+    + '<span class="prog-count" id="progCount">0 / '+targets.length+'</span></div>'
+    + '<div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>'
+    + '<div class="prog-msg" id="progMsg">Initializing…</div>'
+    + '<div class="live-chips" id="liveChips"></div>'
+    + '</div>';
+
+  // Pre-render chips
+  var chipsEl = document.getElementById('liveChips');
+  targets.forEach(function(t) {
+    var chip = document.createElement('span');
+    chip.className = 'lchip lchip-scanning';
+    chip.id = 'chip-' + t.replace(/[^a-z0-9]/gi,'_');
+    chip.textContent = t.length > 20 ? t.substring(0,18)+'…' : t;
+    chipsEl.appendChild(chip);
+  });
+
+  var CONCURRENCY = 5;
+  var queue = targets.slice();
+  var active = 0, done = 0;
+
+  await new Promise(function(resolve) {
+    function next() {
+      if (scanStopped) { resolve(); return; }
+      while (active < CONCURRENCY && queue.length) {
+        var target = queue.shift();
+        active++;
+        var chipEl = document.getElementById('chip-' + target.replace(/[^a-z0-9]/gi,'_'));
+        var progMsg = document.getElementById('progMsg');
+        if (progMsg) progMsg.textContent = 'Checking: ' + target;
+
+        (async function(tgt) {
+          var ip = tgt;
+          var hostname = null;
+          var shodanData = null;
+
+          // Resolve hostname to IP
+          if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(tgt)) {
+            hostname = tgt;
+            if (enrichMode !== 'none') {
+              ip = await resolveHost(tgt) || tgt;
+            }
+          }
+
+          // Shodan enrichment
+          if (enrichMode === 'shodan') {
+            shodanData = await getShodan(ip);
+          }
+
+          // IOC matching
+          var hits = checkTargetAgainstIOCs(tgt, enabledIOCs, shodanData);
+
+          // Also check resolved IP against IOCs
+          if (ip !== tgt) {
+            var ipHits = checkTargetAgainstIOCs(ip, enabledIOCs, shodanData);
+            ipHits.forEach(function(h) {
+              if (!hits.some(function(e){ return e.ioc.id===h.ioc.id; })) hits.push(h);
+            });
+          }
+
+          var status = hits.length > 0
+            ? (hits.some(function(h){return h.ioc.severity==='critical';}) ? 'confirmed' : 'suspicious')
+            : 'clean';
+
+          active--;
+          done++;
+          scanResults.push({ target:tgt, ip:ip, hostname:hostname, hits:hits, status:status, shodanData:shodanData });
+
+          if (chipEl) chipEl.className = 'lchip ' + (status==='confirmed'?'lchip-hit':status==='suspicious'?'lchip-hit':'lchip-clean');
+
+          var fill  = document.getElementById('progFill');
+          var count = document.getElementById('progCount');
+          if (fill)  fill.style.width  = Math.round(done/targets.length*100)+'%';
+          if (count) count.textContent = done+' / '+targets.length;
+
+          renderResults(true);
+
+          if (done >= targets.length || scanStopped) resolve();
+          else next();
+        })(target);
+      }
+    }
+    next();
+  });
+
+  document.getElementById('scanBtn').disabled = false;
+  renderResults(false);
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderResults(isLive) {
+  if (!scanResults.length) return;
+
+  var total     = scanResults.length;
+  var confirmed = scanResults.filter(function(r){return r.status==='confirmed';}).length;
+  var suspicious= scanResults.filter(function(r){return r.status==='suspicious';}).length;
+  var clean     = scanResults.filter(function(r){return r.status==='clean';}).length;
+  var totalHits = scanResults.reduce(function(s,r){return s+r.hits.length;}, 0);
+
+  var filtered = scanResults.filter(function(r) {
+    if (activeFilter==='all')        return true;
+    if (activeFilter==='hits')       return r.hits.length > 0;
+    if (activeFilter==='confirmed')  return r.status==='confirmed';
+    if (activeFilter==='suspicious') return r.status==='suspicious';
+    if (activeFilter==='clean')      return r.status==='clean';
+    return true;
+  });
+
+  var html = '';
+
+  if (isLive) {
+    var pw = document.getElementById('progWrap');
+    if (pw) html += pw.outerHTML;
+  }
+
+  // Summary
+  html += '<div class="summary-row fade-in">';
+  [[total,'Targets','var(--text)'],[confirmed,'IOC Matches',confirmed>0?'var(--red)':'var(--muted)'],
+   [suspicious,'Suspicious',suspicious>0?'var(--orange)':'var(--muted)'],[clean,'Clean','var(--green)'],
+   [totalHits,'Total Hits',totalHits>0?'var(--red)':'var(--muted)']].forEach(function(s){
+    html += '<div class="sum-card"><div class="sum-num" style="color:'+s[2]+'">'+s[0]+'</div><div class="sum-lbl">'+s[1]+'</div></div>';
+  });
+  html += '</div>';
+
+  // Toolbar
+  html += '<div class="toolbar">';
+  [['all','All ('+total+')'],['hits','IOC Hits ('+confirmed+')'],['suspicious','Suspicious ('+suspicious+')'],['clean','Clean ('+clean+')']].forEach(function(f){
+    html += '<span class="filter-chip'+(activeFilter===f[0]?' active':'')+'" onclick="setFilter(\''+f[0]+'\')" >'+f[1]+'</span>';
+  });
+  html += '<span class="spacer"></span>';
+  if (!isLive) {
+    html += '<button class="exp-btn exp-csv" onclick="exportCSV()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>CSV</button>';
+    html += '<button class="exp-btn exp-html" onclick="exportHTML()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>HTML</button>';
+    html += '<button class="exp-btn exp-pdf" onclick="exportPDF()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>PDF</button>';
+  }
+  html += '</div>';
+
+  // Table
+  html += '<div class="table-wrap"><table class="res-table"><thead><tr>'
+    + '<th>Target</th><th>Resolved IP</th><th>Status</th><th>IOC Matches</th><th>Open Ports</th><th>CVEs</th>'
+    + '</tr></thead><tbody>';
+
+  filtered.forEach(function(r, i) {
+    var rowId = 'resrow_' + i;
+    var expId = 'resexp_' + i;
+    var statusBadge = r.status==='confirmed'
+      ? '<span class="hit-badge hit-confirmed">⚠ IOC MATCH</span>'
+      : r.status==='suspicious'
+        ? '<span class="hit-badge hit-suspicious">⚡ SUSPICIOUS</span>'
+        : '<span class="hit-badge hit-clean">✓ CLEAN</span>';
+
+    var hitPills = r.hits.length
+      ? '<div class="ioc-hits-inline">' + r.hits.slice(0,5).map(function(h){
+          return '<span class="hit-pill">'+esc(h.ioc.type)+': '+esc(h.ioc.value.length>20?h.ioc.value.substring(0,18)+'…':h.ioc.value)+'</span>';
+        }).join('') + (r.hits.length>5?'<span class="hit-pill">+'+( r.hits.length-5)+' more</span>':'') + '</div>'
+      : '<span class="clean-pill">No matches</span>';
+
+    var ports = r.shodanData && r.shodanData.ports && r.shodanData.ports.length
+      ? r.shodanData.ports.slice(0,6).join(', ') + (r.shodanData.ports.length>6?'…':'')
+      : '<span style="color:var(--muted);font-size:11px">—</span>';
+
+    var cves = r.shodanData && r.shodanData.vulns && r.shodanData.vulns.length
+      ? '<span style="color:var(--red);font-family:var(--mono);font-size:10px">'+r.shodanData.vulns.slice(0,2).join(', ')+(r.shodanData.vulns.length>2?' +'+( r.shodanData.vulns.length-2):'')+'</span>'
+      : '<span style="color:var(--muted);font-size:11px">—</span>';
+
+    html += '<tr id="'+rowId+'" onclick="toggleExpand('+i+')" style="cursor:pointer">'
+      + '<td><div class="target-cell">'+esc(r.target)+'</div></td>'
+      + '<td style="font-family:var(--mono);font-size:11px;color:var(--muted2)">'+esc(r.ip!==r.target?r.ip:'—')+'</td>'
+      + '<td>'+statusBadge+'</td>'
+      + '<td>'+hitPills+'</td>'
+      + '<td style="font-family:var(--mono);font-size:11px;color:var(--accent)">'+ports+'</td>'
+      + '<td>'+cves+'</td>'
+      + '</tr>';
+
+    // Expand row
+    html += '<tr class="expand-row" id="'+expId+'"><td colspan="6"><div class="expand-body" id="expbody_'+i+'">';
+    // IOC match detail
+    html += '<div class="det-box">'
+      + '<div class="det-title">IOC Match Detail ('+r.hits.length+')</div>'
+      + (r.hits.length ? r.hits.map(function(h){
+          var sev = h.ioc.severity==='critical'?'var(--red)':h.ioc.severity==='high'?'var(--orange)':h.ioc.severity==='medium'?'var(--yellow)':'var(--muted)';
+          return '<div class="det-row">'
+            + '<span class="dl"><span style="font-family:var(--mono);font-size:9px;background:'+sev+'22;color:'+sev+';padding:1px 5px;border-radius:3px;margin-right:4px">'+esc(h.ioc.type)+'</span>'+esc(h.ioc.value)+'</span>'
+            + '<span class="dv" style="font-size:10px;color:var(--muted2)">'+esc(h.detail)+'</span>'
+            + '</div>';
+        }).join('') : '<div style="color:var(--muted);font-size:12px">No IOC matches</div>')
+      + '</div>';
+    // Host detail
+    html += '<div class="det-box">'
+      + '<div class="det-title">Host Intelligence</div>'
+      + detRow('Target', r.target)
+      + detRow('Resolved IP', r.ip !== r.target ? r.ip : '—')
+      + detRow('Hostname', r.hostname || '—')
+      + detRow('Open Ports', r.shodanData && r.shodanData.ports ? r.shodanData.ports.join(', ') : '—')
+      + detRow('Shodan Tags', r.shodanData && r.shodanData.tags && r.shodanData.tags.length ? r.shodanData.tags.join(', ') : '—')
+      + detRow('CVEs', r.shodanData && r.shodanData.vulns && r.shodanData.vulns.length ? r.shodanData.vulns.slice(0,5).join(', ') : '—')
+      + '</div>';
+    html += '</div></td></tr>';
+  });
+
+  html += '</tbody></table></div>';
+
+  document.getElementById('rightPanel').innerHTML = html;
+}
+
+function detRow(l, v) {
+  return '<div class="det-row"><span class="dl">'+l+'</span><span class="dv">'+esc(String(v||'—'))+'</span></div>';
+}
+
+function toggleExpand(idx) {
+  var body = document.getElementById('expbody_' + idx);
+  if (!body) return;
+  if (expandedRow !== null && expandedRow !== idx) {
+    var old = document.getElementById('expbody_' + expandedRow);
+    if (old) old.classList.remove('open');
+  }
+  body.classList.toggle('open');
+  expandedRow = body.classList.contains('open') ? idx : null;
+}
+
+function setFilter(f) {
+  activeFilter = f;
+  renderResults(false);
+}
+
+// ── EXPORT CSV ─────────────────────────────────────────────────────────────────
+function exportCSV() {
+  var rows = [['target','resolved_ip','status','ioc_matches','ioc_types','ioc_values','open_ports','cves'].join(',')];
+  scanResults.forEach(function(r) {
+    rows.push([
+      '"'+r.target+'"','"'+(r.ip!==r.target?r.ip:'')+'"','"'+r.status+'"',
+      r.hits.length,
+      '"'+r.hits.map(function(h){return h.ioc.type;}).join(';')+'"',
+      '"'+r.hits.map(function(h){return h.ioc.value;}).join(';')+'"',
+      '"'+(r.shodanData&&r.shodanData.ports?r.shodanData.ports.join(';'):'')+'"',
+      '"'+(r.shodanData&&r.shodanData.vulns?r.shodanData.vulns.join(';'):'')+'"',
+    ].join(','));
+  });
+  var blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'botnet-ioc-scan-'+new Date().toISOString().split('T')[0]+'.csv'; a.click();
+}
+
+// ── EXPORT HTML ────────────────────────────────────────────────────────────────
+function exportHTML() {
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  var timeStr = now.toUTCString();
+  var total = scanResults.length;
+  var confirmed = scanResults.filter(function(r){return r.status==='confirmed';}).length;
+  var suspicious = scanResults.filter(function(r){return r.status==='suspicious';}).length;
+  var totalHits = scanResults.reduce(function(s,r){return s+r.hits.length;},0);
+  function safe(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  var rows = scanResults.slice().sort(function(a,b){return b.hits.length-a.hits.length;}).map(function(r,i){
+    var sc = r.status==='confirmed'?'#dc2626':r.status==='suspicious'?'#ea580c':'#16a34a';
+    var sl = r.status==='confirmed'?'⚠ IOC MATCH':r.status==='suspicious'?'⚡ SUSPICIOUS':'✓ CLEAN';
+    var hitList = r.hits.map(function(h){return safe(h.ioc.type)+': '+safe(h.ioc.value);}).join('<br>') || '—';
+    return '<tr style="background:'+(i%2===0?'#f9fafb':'#fff')+'">'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-weight:600;color:#1d4ed8">'+safe(r.target)+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:11px;color:#6b7280">'+safe(r.ip!==r.target?r.ip:'—')+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb"><span style="background:'+sc+'22;color:'+sc+';font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px;border:1px solid '+sc+'55">'+sl+'</span></td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:11px">'+hitList+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:10px;color:#6b7280">'+(r.shodanData&&r.shodanData.vulns?r.shodanData.vulns.join(', '):'—')+'</td>'
+      +'</tr>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+    +'<title>Ghost Defense — Botnet IOC Scan Report</title>'
+    +'<style>body{font-family:Calibri,Arial,sans-serif;margin:0;background:#f3f4f6;color:#111}'
+    +'@media print{body{background:#fff}.no-print{display:none}}</style></head><body>'
+    +'<div style="background:#0f172a;padding:22px 40px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div><div style="font-size:22px;font-weight:bold;color:#00ff41;letter-spacing:3px">GHOST DEFENSE</div>'
+        +'<div style="color:#9ca3af;font-size:12px;letter-spacing:2px;margin-top:2px">BOTNET IOC SCAN REPORT — JDY BOTNET INDICATORS</div></div>'
+      +'<div style="text-align:right;color:#9ca3af;font-size:11px">'+safe(timeStr)+'<br>TLP:CLEAR · DEFEND ALWAYS 🛡️</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:18px 40px">'
+    +[[total,'Targets','#1d4ed8'],[confirmed,'IOC Matches',confirmed>0?'#dc2626':'#6b7280'],[suspicious,'Suspicious',suspicious>0?'#ea580c':'#6b7280'],[total-confirmed-suspicious,'Clean','#16a34a'],[totalHits,'Total Hits',totalHits>0?'#dc2626':'#6b7280']].map(function(s){
+      return '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:13px;text-align:center"><div style="font-size:24px;font-weight:bold;color:'+s[2]+'">'+s[0]+'</div><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-top:3px">'+s[1]+'</div></div>';
+    }).join('')
+    +'</div>'
+    +'<div style="background:#fff;margin:0 40px 16px;border-radius:8px;padding:14px 18px;border:1px solid #e5e7eb">'
+      +'<strong>IOC Feed:</strong> JDY Botnet (Platypus C2 / Termite agents). Indicators include C2 server IP 149.248.3.38, port 13339, process name auditdy, AES key, C2 paths /dispatch_service/v2/probe_status and /data/v2/pscan, CVE-2026-35616, ICMP ID 19037, and source port 19000. '
+      +'<strong>Scan date:</strong> '+safe(dateStr)+'. <strong>Data sources:</strong> Shodan InternetDB + Cloudflare DoH.'
+    +'</div>'
+    +'<div style="background:#fff;margin:0 40px 20px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb">'
+      +'<div style="background:#1e293b;padding:10px 18px"><span style="color:#fff;font-weight:bold;font-size:12px">Scan Results — All Targets</span></div>'
+      +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
+        +'<thead><tr style="background:#f1f5f9"><th style="padding:7px 10px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Target</th><th style="padding:7px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Resolved IP</th><th style="padding:7px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Status</th><th style="padding:7px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">IOC Matches</th><th style="padding:7px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">CVEs</th></tr></thead>'
+        +'<tbody>'+rows+'</tbody></table></div>'
+    +'</div>'
+    +'<div style="background:#0f172a;padding:12px 40px;display:flex;justify-content:space-between;color:#9ca3af;font-size:11px" class="no-print">'
+      +'<span>Sources: Shodan InternetDB · Cloudflare DoH · JDY IOC Feed</span>'
+      +'<span>Ghost Defense · For authorized defensive use only · DEFEND ALWAYS</span>'
+    +'</div></body></html>';
+
+  var blob = new Blob([html],{type:'text/html'});
+  var a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='botnet-ioc-report-'+now.toISOString().split('T')[0]+'.html'; a.click();
+}
+
+// ── EXPORT PDF ─────────────────────────────────────────────────────────────────
+function exportPDF() {
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  var timeStr = now.toUTCString();
+  var total = scanResults.length;
+  var confirmed = scanResults.filter(function(r){return r.status==='confirmed';}).length;
+  var suspicious = scanResults.filter(function(r){return r.status==='suspicious';}).length;
+  var totalHits = scanResults.reduce(function(s,r){return s+r.hits.length;},0);
+  function safe(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  var sorted = scanResults.slice().sort(function(a,b){return b.hits.length-a.hits.length;});
+
+  var tableRows = sorted.map(function(r,i){
+    var sc=r.status==='confirmed'?'#dc2626':r.status==='suspicious'?'#ea580c':'#16a34a';
+    var sl=r.status==='confirmed'?'MATCH':r.status==='suspicious'?'SUSPECT':'CLEAN';
+    var hits = r.hits.slice(0,3).map(function(h){return '<div style="font-size:9px;color:#dc2626;font-family:monospace">'+safe(h.ioc.type)+': '+safe(h.ioc.value.length>24?h.ioc.value.substring(0,22)+'…':h.ioc.value)+'</div>';}).join('')+(r.hits.length>3?'<div style="font-size:9px;color:#6b7280">+'+( r.hits.length-3)+' more</div>':'');
+    return '<tr style="background:'+(i%2===0?'#f9fafb':'#fff')+'">'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:10px;font-weight:600;color:#1d4ed8">'+safe(r.target)+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:9px;color:#6b7280">'+safe(r.ip!==r.target?r.ip:'—')+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb"><span style="background:'+sc+'22;color:'+sc+';font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px">'+sl+'</span></td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;vertical-align:top">'+( hits||'<span style="color:#16a34a;font-size:9px">None</span>')+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:9px;color:#dc2626">'+(r.shodanData&&r.shodanData.vulns&&r.shodanData.vulns.length?r.shodanData.vulns.slice(0,2).join(', '):'—')+'</td>'
+      +'</tr>';
+  }).join('');
+
+  var iocTable = IOCS.map(function(ioc,i){
+    var sc=ioc.severity==='critical'?'#dc2626':ioc.severity==='high'?'#ea580c':ioc.severity==='medium'?'#ca8a04':'#6b7280';
+    return '<tr style="background:'+(i%2===0?'#f9fafb':'#fff')+'">'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb"><span style="background:'+sc+'22;color:'+sc+';font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px">'+safe(ioc.type)+'</span></td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:10px">'+safe(ioc.value)+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-size:10px;color:#374151">'+safe(ioc.desc)+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb"><span style="color:'+sc+';font-size:9px;font-weight:700">'+ioc.severity.toUpperCase()+'</span></td>'
+      +'</tr>';
+  }).join('');
+
+  var pdfDoc = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    +'<style>body{font-family:Arial,sans-serif;margin:0;background:#fff;color:#111;font-size:12px}'
+    +'@page{size:A4;margin:14mm}@media print{.pb{page-break-before:always}}'
+    +'.cover{min-height:100vh;background:linear-gradient(135deg,#0f172a,#1a0a2e);color:#fff;'
+      +'display:flex;flex-direction:column;align-items:center;justify-content:center;'
+      +'padding:60px 40px;text-align:center;page-break-after:always}'
+    +'.sec-hdr{background:#1e293b;color:#fff;padding:9px 16px;border-radius:5px;font-size:12px;font-weight:700;margin:16px 0 10px}'
+    +'.pdf-table{width:100%;border-collapse:collapse;font-size:11px}'
+    +'.pdf-table th{background:#1e293b;color:#fff;padding:7px 8px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.5px}'
+    +'.pdf-table td{padding:5px 8px;border-bottom:1px solid #f1f5f9;vertical-align:top}'
+    +'</style></head><body>'
+    // Cover
+    +'<div class="cover">'
+      +'<div style="font-size:11px;letter-spacing:3px;color:#94a3b8;border:1px solid #475569;padding:4px 14px;border-radius:4px;margin-bottom:32px">TLP:CLEAR · GHOST DEFENSE</div>'
+      +'<div style="font-size:13px;letter-spacing:4px;color:#ff4444;font-weight:700;margin-bottom:16px">🕷️ BOTNET DETECTION</div>'
+      +'<div style="font-size:38px;font-weight:700;line-height:1.15;margin-bottom:10px">IOC Scan Report</div>'
+      +'<div style="font-size:16px;color:#94a3b8;margin-bottom:8px">JDY Botnet · Platypus C2 · Termite Agents</div>'
+      +'<div style="font-size:13px;color:#64748b;margin-bottom:32px">CVE-2026-35616 · Port 13339 · 149.248.3.38</div>'
+      +'<div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:18px 28px;width:100%;max-width:360px;margin-bottom:32px">'
+        +[['Date',safe(dateStr)],['Targets Scanned',total],['IOC Matches',confirmed],['Suspicious',suspicious],['Total IOC Hits',totalHits],['IOC Feed','JDY Botnet (13 indicators)']].map(function(row){
+          return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:11px;color:#cbd5e1"><span>'+row[0]+'</span><span style="color:#fff;font-weight:500">'+row[1]+'</span></div>';
+        }).join('')
+      +'</div>'
+      +'<div style="font-size:10px;color:#64748b;letter-spacing:1px">For authorized defensive security use only · DEFEND ALWAYS</div>'
+    +'</div>'
+    // Findings page
+    +'<div class="pb">'
+    +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px">'
+    +[[total,'Scanned','#1d4ed8','#eff6ff','#bfdbfe'],[confirmed,'IOC Matches',confirmed>0?'#dc2626':'#6b7280',confirmed>0?'#fef2f2':'#f9fafb',confirmed>0?'#fca5a5':'#e5e7eb'],[suspicious,'Suspicious',suspicious>0?'#ea580c':'#6b7280',suspicious>0?'#fff7ed':'#f9fafb',suspicious>0?'#fdba74':'#e5e7eb'],[total-confirmed-suspicious,'Clean','#16a34a','#f0fdf4','#86efac'],[totalHits,'Total Hits',totalHits>0?'#dc2626':'#6b7280',totalHits>0?'#fef2f2':'#f9fafb',totalHits>0?'#fca5a5':'#e5e7eb']].map(function(s){
+      return '<div style="background:'+s[3]+';border:1px solid '+s[4]+';border-radius:6px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:'+s[2]+'">'+s[0]+'</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin-top:3px">'+s[1]+'</div></div>';
+    }).join('')
+    +'</div>'
+    +'<div style="background:#fef2f2;border:1px solid #fca5a5;border-left:4px solid #dc2626;border-radius:0 6px 6px 0;padding:12px 14px;margin-bottom:14px;font-size:11px;line-height:1.7;color:#374151">'
+      +'<strong>Threat Summary:</strong> JDY botnet operators have been observed exploiting CVE-2026-35616 within hours of public disclosure. '
+      +'The malware deploys Platypus C2 on port 13339 and uses Termite agent implants targeting MIPS architecture devices. '
+      +'C2 beacon paths include /dispatch_service/v2/probe_status and /data/v2/pscan. '
+      +'The dropper process runs as <em>auditdy</em> and writes payloads to /etc/ or /tmp/ before deleting them. '
+      +'Any match against these indicators should be treated as a confirmed compromise and escalated immediately.'
+    +'</div>'
+    +'<div class="sec-hdr">Scan Results — All Targets</div>'
+    +'<table class="pdf-table"><thead><tr><th>Target</th><th>Resolved IP</th><th>Status</th><th>IOC Matches</th><th>CVEs</th></tr></thead>'
+    +'<tbody>'+tableRows+'</tbody></table>'
+    +'</div>'
+    // IOC reference appendix
+    +'<div class="pb">'
+    +'<div class="sec-hdr">Appendix — JDY Botnet IOC Reference (13 Indicators)</div>'
+    +'<table class="pdf-table"><thead><tr><th>Type</th><th>Indicator</th><th>Description</th><th>Severity</th></tr></thead>'
+    +'<tbody>'+iocTable+'</tbody></table>'
+    +'</div>'
+    +'</body></html>';
+
+  var win = window.open('','_blank','width=1000,height=750');
+  if (!win){ alert('Popup blocked — allow popups and retry.'); return; }
+  win.document.write(pdfDoc); win.document.close(); win.focus();
+  setTimeout(function(){ win.print(); }, 900);
+}
+
+// ── INIT ────────────────────────────────────────────────────────────────────────
+renderIOCList();
+
+// ── TOOL 22: STIX / TAXII FEED IMPORT ────────────────────────────────────────
+// Imports STIX 2.x bundles from public threat feeds and parses
+// indicator objects into the custom IOC table for scanning.
+
+var STIX_FEEDS = [
+  { name:'CISA AIS STIX Feed',        url:'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json', type:'KEV', desc:'CISA public indicators' },
+  { name:'Abuse.ch ThreatFox',        url:'https://threatfox-api.abuse.ch/api/v1/', type:'TAXII', desc:'Malware IOCs — IPs, URLs, hashes' },
+  { name:'MITRE ATT&CK STIX',         url:'https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json', type:'STIX', desc:'ATT&CK techniques as STIX' },
+  { name:'OpenCTI Public Feed',        url:'https://demo.opencti.io/graphql', type:'OpenCTI', desc:'Open threat intelligence platform' },
+];
+
+function initFeedList() {
+  var el = document.getElementById('feedList');
+  if (!el) return;
+  el.innerHTML = STIX_FEEDS.map(function(f, i) {
+    return '<div class="feed-row">'
+      + '<div><div class="feed-name">'+esc(f.name)+'</div>'
+        + '<div class="feed-url">'+esc(f.type)+' · '+esc(f.desc)+'</div></div>'
+      + '<span class="stix-stat" id="feedStat'+i+'">—</span>'
+      + '<button class="feed-btn feed-load" onclick="loadFeed('+i+')">LOAD</button>'
+    + '</div>';
+  }).join('');
+}
+
+async function loadFeed(idx) {
+  var feed = STIX_FEEDS[idx];
+  var statEl = document.getElementById('feedStat'+idx);
+  if (statEl) statEl.textContent = '⟳';
+  setSTIXStatus('Loading ' + feed.name + '…');
+
+  try {
+    if (feed.type === 'TAXII' && feed.url.includes('threatfox')) {
+      // ThreatFox API
+      var r = await fetchT(feed.url, 10000, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: 'get_iocs', days: 1 })
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      var data = await r.json();
+      var count = importThreatFox(data);
+      if (statEl) { statEl.textContent = count + ' IOCs'; statEl.className = 'stix-stat feed-ok'; }
+      setSTIXStatus('✓ ThreatFox: imported ' + count + ' IOCs');
+      return;
+    }
+
+    // Generic STIX 2.x JSON fetch
+    var r = await fetchT(feed.url, 12000);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var data = await r.json();
+    var count = parseSTIX(data);
+    if (statEl) { statEl.textContent = count + ' IOCs'; statEl.className = 'stix-stat feed-ok'; }
+    setSTIXStatus('✓ ' + feed.name + ': imported ' + count + ' indicators');
+
+  } catch(err) {
+    if (statEl) statEl.textContent = '✗ err';
+    setSTIXStatus('✗ Could not load feed (CORS or network): ' + err.message + ' — try pasting JSON instead');
+  }
+}
+
+async function loadSTIXUrl() {
+  var url = document.getElementById('stixUrlIn').value.trim();
+  if (!url) { setSTIXStatus('⚠ Enter a URL first'); return; }
+  setSTIXStatus('⟳ Fetching…');
+  try {
+    var r = await fetchT(url, 12000);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var data = await r.json();
+    var count = parseSTIX(data);
+    setSTIXStatus('✓ Imported ' + count + ' indicators from ' + url.split('/').pop());
+  } catch(err) {
+    setSTIXStatus('✗ ' + err.message + ' — if CORS blocked, download the file and paste the JSON');
+  }
+}
+
+function parseSTIXPaste() {
+  var json = document.getElementById('stixJsonIn').value.trim();
+  if (!json) { setSTIXStatus('⚠ Paste STIX JSON first'); return; }
+  try {
+    var data = JSON.parse(json);
+    var count = parseSTIX(data);
+    setSTIXStatus('✓ Parsed ' + count + ' indicators from pasted JSON');
+    document.getElementById('stixJsonIn').value = '';
+  } catch(err) {
+    setSTIXStatus('✗ JSON parse error: ' + err.message);
+  }
+}
+
+function parseSTIX(data) {
+  // Handles STIX 2.x bundles, arrays, and single objects
+  var objects = [];
+  if (data && data.objects) objects = data.objects;          // STIX Bundle
+  else if (Array.isArray(data)) objects = data;               // Array
+  else if (data && data.type) objects = [data];               // Single object
+  else if (data && data.iocs) return importThreatFox(data);   // ThreatFox format
+
+  var count = 0;
+  objects.forEach(function(obj) {
+    if (!obj || !obj.type) return;
+
+    // STIX indicator objects — contain pattern field
+    if (obj.type === 'indicator' && obj.pattern) {
+      var iocs = extractSTIXPattern(obj.pattern, obj.name || obj.id, obj.description || '');
+      iocs.forEach(function(ioc) {
+        addCustomIOCFromSTIX(ioc.type, ioc.value, ioc.label);
+        count++;
+      });
+    }
+
+    // STIX malware objects with hashes
+    if (obj.type === 'malware' && obj.name) {
+      if (obj.hashes) {
+        Object.entries(obj.hashes).forEach(function(kv) {
+          addCustomIOCFromSTIX('HASH', kv[1], obj.name + ' (' + kv[0] + ')');
+          count++;
+        });
+      }
+    }
+
+    // Observable objects
+    if (obj.type === 'ipv4-addr' && obj.value) {
+      addCustomIOCFromSTIX('IP', obj.value, 'STIX IPv4');
+      count++;
+    }
+    if (obj.type === 'domain-name' && obj.value) {
+      addCustomIOCFromSTIX('DOMAIN', obj.value, 'STIX Domain');
+      count++;
+    }
+    if (obj.type === 'url' && obj.value) {
+      addCustomIOCFromSTIX('URL', obj.value, 'STIX URL');
+      count++;
+    }
+    if (obj.type === 'file' && obj.hashes) {
+      Object.entries(obj.hashes).forEach(function(kv) {
+        addCustomIOCFromSTIX('HASH', kv[1], (obj.name||'File') + ' ' + kv[0]);
+        count++;
+      });
+    }
+  });
+
+  refreshCustomIOCTable();
+  return count;
+}
+
+function extractSTIXPattern(pattern, name, desc) {
+  // Parse STIX pattern language: [ipv4-addr:value = '1.2.3.4']
+  var iocs = [];
+  var rules = [
+    { re:/ipv4-addr:value\s*=\s*'([^']+)'/gi,   type:'IP' },
+    { re:/domain-name:value\s*=\s*'([^']+)'/gi,  type:'DOMAIN' },
+    { re:/url:value\s*=\s*'([^']+)'/gi,          type:'URL' },
+    { re:/file:hashes\.'[^']+'\s*=\s*'([^']+)'/gi, type:'HASH' },
+    { re:/file:hashes\.MD5\s*=\s*'([^']+)'/gi,  type:'HASH' },
+    { re:/file:hashes\.SHA-256\s*=\s*'([^']+)'/gi, type:'HASH' },
+    { re:/email-addr:value\s*=\s*'([^']+)'/gi,  type:'EMAIL' },
+  ];
+  rules.forEach(function(rule) {
+    var m;
+    while ((m = rule.re.exec(pattern)) !== null) {
+      iocs.push({ type: rule.type, value: m[1], label: name || desc || 'STIX Indicator' });
+    }
+  });
+  return iocs;
+}
+
+function importThreatFox(data) {
+  var count = 0;
+  var items = data.data || data.iocs || [];
+  if (!Array.isArray(items)) return 0;
+  items.slice(0, 200).forEach(function(item) {
+    if (item.ioc_type === 'ip:port') {
+      var parts = item.ioc.split(':');
+      addCustomIOCFromSTIX('IP', parts[0], item.malware || 'ThreatFox');
+    } else if (item.ioc_type === 'domain') {
+      addCustomIOCFromSTIX('DOMAIN', item.ioc, item.malware || 'ThreatFox');
+    } else if (item.ioc_type === 'url') {
+      addCustomIOCFromSTIX('URL', item.ioc, item.malware || 'ThreatFox');
+    } else if (item.ioc_type && item.ioc_type.includes('sha')) {
+      addCustomIOCFromSTIX('HASH', item.ioc, item.malware || 'ThreatFox');
+    }
+    count++;
+  });
+  refreshCustomIOCTable();
+  return count;
+}
+
+function addCustomIOCFromSTIX(type, value, label) {
+  // Add to existing custom IOC array used by the scanner
+  if (typeof customIOCs !== 'undefined') {
+    // Check for duplicate
+    var exists = customIOCs.some(function(i){ return i.value === value; });
+    if (!exists) customIOCs.push({ type: type, value: value, label: label || 'STIX Import', source: 'STIX/TAXII' });
+  }
+}
+
+function refreshCustomIOCTable() {
+  // Re-render custom IOC table if that function exists
+  if (typeof renderCustomIOCs === 'function') renderCustomIOCs();
+  // Update status display
+  var count = typeof customIOCs !== 'undefined' ? customIOCs.length : 0;
+  setSTIXStatus('✓ ' + count + ' custom IOCs loaded — click Scan to check targets');
+}
+
+function setSTIXStatus(msg) {
+  var el = document.getElementById('stixStatus');
+  if (el) el.textContent = msg;
+}
+
+function fetchT(url, ms, opts) {
+  return new Promise(function(resolve, reject) {
+    var done = false;
+    var t = setTimeout(function(){ if(!done){done=true;reject(new Error('timeout'));} }, ms);
+    fetch(url, opts||{}).then(function(r){ if(!done){done=true;clearTimeout(t);resolve(r);} })
+      .catch(function(e){ if(!done){done=true;clearTimeout(t);reject(e);} });
+  });
+}
+
+// Init on load
+document.addEventListener('DOMContentLoaded', initFeedList);
+
+</script>
+</body>
+</html>

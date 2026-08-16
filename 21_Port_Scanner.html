@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Port Scanner — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070e;--s1:#0e0e1a;--s2:#141728;--s3:#1c2035;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);
+  --text:#eeedf8;--muted:#6b6a84;--muted2:#9998b8;
+  --accent:#5b54ff;--accent-s:rgba(91,84,255,0.12);--accent-b:rgba(91,84,255,0.3);
+  --green:#2fd98a;--green-s:rgba(47,217,138,0.1);--green-b:rgba(47,217,138,0.28);
+  --red:#ff4d4d;--red-s:rgba(255,77,77,0.1);--red-b:rgba(255,77,77,0.3);
+  --orange:#ff8c42;--orange-s:rgba(255,140,66,0.1);--orange-b:rgba(255,140,66,0.28);
+  --yellow:#ffd166;--yellow-s:rgba(255,209,102,0.1);--yellow-b:rgba(255,209,102,0.25);
+  --blue:#4cc9f0;--blue-s:rgba(76,201,240,0.1);--blue-b:rgba(76,201,240,0.28);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html{background:var(--bg)}
+body{font-family:var(--sans);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:13px 24px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.brand-icon{width:30px;height:30px;background:var(--green-s);border:1px solid var(--green-b);
+  border-radius:8px;display:flex;align-items:center;justify-content:center}
+.brand-icon svg{width:16px;height:16px;stroke:var(--green)}
+.brand-name{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.brand-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.topbar-note{font-size:11px;color:var(--muted);font-family:var(--mono);
+  background:var(--s2);border:1px solid var(--border2);padding:5px 12px;border-radius:6px}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:360px 1fr;flex:1;min-height:0;height:calc(100vh - 57px)}
+
+/* INPUT PANEL */
+.input-panel{border-right:1px solid var(--border);display:flex;flex-direction:column;
+  overflow-y:auto;background:var(--bg);padding:20px;gap:14px}
+.panel-section{display:flex;flex-direction:column;gap:8px}
+.panel-label{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);
+  font-family:var(--mono);margin-bottom:2px}
+
+/* INPUTS */
+.ip-textarea{background:var(--s2);border:1px solid var(--border2);border-radius:10px;
+  color:var(--text);font-family:var(--mono);font-size:12px;line-height:1.7;
+  padding:12px 14px;resize:vertical;min-height:120px;outline:none;transition:border-color .15s;width:100%}
+.ip-textarea:focus{border-color:var(--green-b)}
+.ip-textarea::placeholder{color:var(--muted)}
+
+/* UPLOAD */
+.upload-label{display:flex;align-items:center;gap:8px;background:var(--s2);
+  border:1px dashed var(--border2);border-radius:8px;padding:10px 14px;cursor:pointer;
+  transition:all .15s;color:var(--muted2);font-size:12px}
+.upload-label:hover{border-color:var(--green-b);color:var(--green)}
+.upload-label svg{width:14px;height:14px;flex-shrink:0}
+.upload-label input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+
+/* PORT PRESET BUTTONS */
+.preset-wrap{display:flex;flex-wrap:wrap;gap:5px}
+.preset-btn{font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:5px;
+  background:var(--s2);border:1px solid var(--border2);color:var(--muted2);cursor:pointer;transition:all .12s}
+.preset-btn:hover{color:var(--green);border-color:var(--green-b)}
+.preset-btn.active{background:var(--green-s);color:var(--green);border-color:var(--green-b)}
+.port-input{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:8px;
+  color:var(--text);font-family:var(--mono);font-size:12px;padding:9px 12px;outline:none;transition:border-color .15s}
+.port-input:focus{border-color:var(--green-b)}
+.port-input::placeholder{color:var(--muted)}
+
+/* OPTIONS */
+.options-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opt-cell{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.opt-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.opt-select{width:100%;background:transparent;border:none;color:var(--text);
+  font-family:var(--mono);font-size:12px;outline:none;cursor:pointer}
+.opt-select option{background:var(--s2)}
+
+/* SCAN BTN */
+.scan-btn{background:var(--green);border:none;border-radius:10px;color:#0a1a12;
+  font-family:var(--sans);font-size:14px;font-weight:700;padding:14px;cursor:pointer;
+  transition:all .15s;width:100%;letter-spacing:.02em}
+.scan-btn:hover{background:#3feba0}
+.scan-btn:active{transform:scale(.98)}
+.scan-btn:disabled{opacity:.4;cursor:default;transform:none}
+.stop-btn{background:var(--red-s);border:1px solid var(--red-b);border-radius:10px;
+  color:var(--red);font-family:var(--sans);font-size:13px;font-weight:600;padding:10px;
+  cursor:pointer;transition:all .15s;width:100%}
+.stop-btn:hover{background:rgba(255,77,77,.2)}
+
+/* DIVIDER */
+.divider{height:1px;background:var(--border);margin:4px 0}
+
+/* RESULTS PANEL */
+.results-panel{overflow-y:auto;background:var(--bg);display:flex;flex-direction:column}
+
+/* EMPTY */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  flex:1;gap:12px;color:var(--muted);text-align:center;padding:40px}
+.empty-state svg{width:52px;height:52px;opacity:.1;stroke:var(--green)}
+.empty-state h3{font-size:15px;font-weight:400;color:var(--muted2)}
+.empty-state p{font-size:12px;line-height:1.7;max-width:300px}
+
+/* PROGRESS */
+.progress-bar-outer{background:var(--s1);border-bottom:1px solid var(--border);padding:16px 24px}
+.prog-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.prog-title{font-size:13px;font-weight:600}
+.prog-count{font-family:var(--mono);font-size:12px;color:var(--muted2)}
+.prog-track{height:6px;background:var(--s3);border-radius:3px;overflow:hidden;margin-bottom:8px}
+.prog-fill{height:100%;background:var(--green);border-radius:3px;transition:width .3s ease}
+.prog-current{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.live-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;max-height:48px;overflow:hidden}
+.lchip{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:4px;border:1px solid}
+.lchip-scanning{background:var(--blue-s);color:var(--blue);border-color:var(--blue-b)}
+.lchip-done{background:var(--green-s);color:var(--green);border-color:var(--green-b)}
+.lchip-closed{background:var(--s3);color:var(--muted);border-color:var(--border2)}
+.lchip-error{background:var(--red-s);color:var(--red);border-color:var(--red-b)}
+
+/* SUMMARY CARDS */
+.summary-bar{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+  gap:10px;padding:16px 24px;border-bottom:1px solid var(--border)}
+.sum-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;text-align:center}
+.sum-num{font-family:var(--mono);font-size:22px;font-weight:500;margin-bottom:3px}
+.sum-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+
+/* TOOLBAR */
+.result-toolbar{display:flex;align-items:center;gap:8px;padding:12px 24px;
+  border-bottom:1px solid var(--border);flex-wrap:wrap}
+.filter-chip{font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:5px;
+  background:var(--s2);border:1px solid var(--border2);color:var(--muted2);cursor:pointer;transition:all .12s}
+.filter-chip:hover{color:var(--text)}
+.filter-chip.active{background:var(--green-s);color:var(--green);border-color:var(--green-b)}
+.toolbar-spacer{flex:1}
+.export-btn{display:flex;align-items:center;gap:5px;font-size:12px;font-family:var(--sans);
+  font-weight:600;padding:6px 14px;border-radius:7px;cursor:pointer;transition:all .15s;border:1px solid}
+.btn-html{background:var(--accent-s);color:#a09bff;border-color:var(--accent-b)}
+.btn-html:hover{background:rgba(91,84,255,.2)}
+.btn-csv{background:var(--green-s);color:var(--green);border-color:var(--green-b)}
+.btn-csv:hover{background:rgba(47,217,138,.2)}
+.export-btn svg{width:13px;height:13px}
+
+/* RESULTS TABLE */
+.table-wrap{overflow-x:auto;flex:1}
+.scan-table{width:100%;border-collapse:collapse;font-size:12px}
+.scan-table th{padding:8px 12px;text-align:left;color:var(--muted);font-size:10px;
+  text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);
+  font-weight:500;background:var(--s2);white-space:nowrap;cursor:pointer;user-select:none}
+.scan-table th:hover{color:var(--text)}
+.scan-table td{padding:0;border-bottom:1px solid var(--border);vertical-align:top}
+.scan-table tr:last-child td{border-bottom:none}
+.scan-table tr:hover .td-inner{background:rgba(255,255,255,.02)}
+.td-inner{padding:10px 12px}
+
+/* IP ROW */
+.ip-cell{font-family:var(--mono);font-weight:500;color:var(--blue);white-space:nowrap}
+.hostname-cell{font-size:11px;color:var(--muted2);font-family:var(--mono)}
+.risk-pill{font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;white-space:nowrap}
+.risk-critical{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.risk-high{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.risk-medium{background:var(--yellow-s);color:var(--yellow);border:1px solid var(--yellow-b)}
+.risk-low{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.risk-none{background:var(--s3);color:var(--muted2);border:1px solid var(--border2)}
+
+/* PORTS INLINE */
+.ports-inline{display:flex;flex-wrap:wrap;gap:4px;max-width:380px}
+.port-tag{display:inline-flex;flex-direction:column;align-items:center;
+  background:var(--s2);border:1px solid var(--border2);border-radius:6px;
+  padding:3px 7px;cursor:default;transition:border-color .12s;min-width:52px}
+.port-tag:hover{border-color:rgba(91,84,255,.4)}
+.port-tag.risky{border-color:var(--red-b)}
+.port-tag.risky .ptnum{color:var(--red)}
+.port-tag.warn-port{border-color:var(--orange-b)}
+.port-tag.warn-port .ptnum{color:var(--orange)}
+.ptnum{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--accent)}
+.ptsvc{font-size:9px;color:var(--muted2);text-align:center}
+.no-ports{font-size:11px;color:var(--muted);font-family:var(--mono)}
+
+/* EXPAND ROW */
+.expand-row{background:var(--s1)}
+.expand-row td{padding:0}
+.expand-body{padding:16px 20px;display:none}
+.expand-body.open{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.detail-box{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.detail-box-title{font-size:10px;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--muted);font-family:var(--mono);margin-bottom:10px}
+.detail-row2{display:flex;justify-content:space-between;padding:5px 0;
+  border-bottom:1px solid var(--border);font-size:11px;gap:8px}
+.detail-row2:last-child{border-bottom:none}
+.dl{color:var(--muted2)}
+.dv{font-family:var(--mono);color:var(--text);text-align:right;word-break:break-all}
+
+/* SHODAN BADGE */
+.shodan-tag{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:3px;
+  background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b);margin:2px}
+
+/* SPINNER */
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.1);
+  border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .25s ease both}
+
+/* RESPONSIVE */
+@media(max-width:860px){
+  .layout{grid-template-columns:1fr;height:auto}
+  .input-panel{border-right:none;border-bottom:1px solid var(--border);max-height:none}
+  .results-panel{min-height:60vh}
+  .topbar-note{display:none}
+  .expand-body.open{grid-template-columns:1fr}
+}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+
+.btn-pdf{background:rgba(239,68,68,0.12);color:#f87171;border-color:rgba(239,68,68,0.35)}
+.btn-pdf:hover{background:rgba(239,68,68,0.22)}
+@media print{
+  .topbar,.input-panel,.result-toolbar,.progress-bar-outer,.live-chips,.stop-btn,.scan-btn{display:none!important}
+  .layout{display:block!important}
+  .results-panel{overflow:visible!important;height:auto!important}
+  .table-wrap{overflow:visible!important}
+  body{background:#fff!important;color:#000!important;font-family:Arial,sans-serif}
+  .scan-table{font-size:10px}
+  .scan-table th{background:#1e293b!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .summary-bar{display:flex!important;flex-wrap:wrap;gap:8px;padding:12px}
+  .sum-card{border:1px solid #e5e7eb!important;padding:8px;min-width:80px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .expand-body{display:none!important}
+  .risk-pill{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .port-tag{border:1px solid #ccc!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .ports-inline{flex-wrap:wrap}
+}
+
+/* HISTORICAL COMPARISON */
+.hist-panel{background:var(--s1);border:1px solid var(--border);border-radius:8px;
+  padding:14px;margin:10px 0}
+.hist-title{font-size:11px;font-weight:700;font-family:var(--mono);color:var(--green);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+.hist-row{display:grid;grid-template-columns:160px 1fr 1fr 80px;gap:8px;align-items:center;
+  padding:8px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px}
+.hist-row:last-child{border-bottom:none}
+.hist-hdr{background:var(--s2);font-size:10px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.08em;border-radius:6px 6px 0 0;padding:7px 10px}
+.hist-new{background:rgba(47,217,138,.12);border-left:3px solid var(--green)}
+.hist-gone{background:rgba(255,77,77,.08);border-left:3px solid var(--red);opacity:.7}
+.hist-changed{background:rgba(255,140,66,.08);border-left:3px solid var(--orange)}
+.hist-same{border-left:3px solid transparent}
+.change-badge{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 7px;
+  border-radius:4px;white-space:nowrap}
+.ch-new{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.ch-gone{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.ch-changed{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.ch-same{background:var(--s3);color:var(--muted2);border:1px solid var(--border)}
+.hist-summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.hist-sum-box{background:var(--s2);border:1px solid var(--border);border-radius:6px;
+  padding:8px 14px;text-align:center;flex:1;min-width:80px}
+.hist-sum-num{font-family:var(--mono);font-size:18px;font-weight:600;margin-bottom:2px}
+.hist-sum-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.snapshot-row{display:flex;align-items:center;gap:8px;padding:7px 10px;
+  background:var(--s2);border:1px solid var(--border);border-radius:6px;margin-bottom:5px;
+  font-family:var(--mono);font-size:11px}
+.snap-ts{color:var(--muted2);flex-shrink:0;width:120px}
+.snap-ports{color:var(--green);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.snap-btn{font-size:10px;padding:3px 8px;border-radius:4px;cursor:pointer;
+  background:var(--green-s);border:1px solid var(--green-b);color:var(--green);flex-shrink:0}
+
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+    </div>
+    <div>
+      <div class="brand-name">Port Scanner</div>
+      <div class="brand-sub">Ghost Defense · Tool 21</div>
+    </div>
+  </div>
+  <span class="topbar-note">Uses Shodan InternetDB + DNS — no install required · authorized targets only</span>
+</div>
+
+<div class="layout">
+
+  <!-- INPUT PANEL -->
+  <div class="input-panel">
+
+    <div class="panel-section">
+      <div class="panel-label">Target IPs / Hosts</div>
+      <textarea class="ip-textarea" id="ipInput" placeholder="One per line:
+192.168.1.1
+10.0.0.1
+example.com
+scanme.nmap.org"></textarea>
+      <label class="upload-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Upload CSV / TXT of IPs
+        <input type="file" accept=".csv,.txt" onclick="this.value=null" onchange="loadIPFile(event)">
+      </label>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="panel-section">
+      <div class="panel-label">Port Presets</div>
+      <div class="preset-wrap">
+        <button class="preset-btn" onclick="setPreset('top20')">Top 20</button>
+        <button class="preset-btn active" onclick="setPreset('top100')">Top 100</button>
+        <button class="preset-btn" onclick="setPreset('web')">Web</button>
+        <button class="preset-btn" onclick="setPreset('db')">Databases</button>
+        <button class="preset-btn" onclick="setPreset('remote')">Remote Access</button>
+        <button class="preset-btn" onclick="setPreset('mail')">Mail</button>
+        <button class="preset-btn" onclick="setPreset('all-common')">All Common</button>
+        <button class="preset-btn" onclick="setPreset('custom')">Custom</button>
+      </div>
+      <input class="port-input" id="portInput" type="text" placeholder="22,80,443 or 1-1024" value="21,22,23,25,53,80,110,111,135,139,143,179,389,443,445,465,514,587,636,993,995,1080,1433,1521,1723,2049,2375,3306,3389,5432,5900,5985,6379,7001,8080,8443,8888,9200,27017">
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="panel-section">
+      <div class="panel-label">Options</div>
+      <div class="options-grid">
+        <div class="opt-cell">
+          <div class="opt-label">Concurrency</div>
+          <select class="opt-select" id="concOpt">
+            <option value="2">2 (safe)</option>
+            <option value="5" selected>5 (default)</option>
+            <option value="10">10 (fast)</option>
+          </select>
+        </div>
+        <div class="opt-cell">
+          <div class="opt-label">Enrichment</div>
+          <select class="opt-select" id="enrichOpt">
+            <option value="shodan" selected>Shodan InternetDB</option>
+            <option value="dns">DNS only</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        <div class="opt-cell">
+          <div class="opt-label">Risk Scoring</div>
+          <select class="opt-select" id="riskOpt">
+            <option value="on" selected>Enabled</option>
+            <option value="off">Disabled</option>
+          </select>
+        </div>
+        <div class="opt-cell">
+          <div class="opt-label">Sort By</div>
+          <select class="opt-select" id="sortOpt">
+            <option value="risk" selected>Risk Score</option>
+            <option value="ports">Open Ports</option>
+            <option value="ip">IP Address</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <button class="scan-btn" id="scanBtn" onclick="startScan()">⚡ START SCAN</button>
+    <button class="stop-btn" id="stopBtn" onclick="stopScan()" style="display:none">■ STOP SCAN</button>
+
+    <div style="font-size:11px;color:var(--muted);font-family:var(--mono);line-height:1.7;margin-top:4px">
+      ⚠ Only scan systems you own or have written authorization to test. Port scanning without permission may be illegal.
+    </div>
+
+  </div>
+
+  <!-- RESULTS PANEL -->
+  <div class="results-panel" id="resultsPanel">
+    <div class="empty-state" id="emptyState">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+      <h3>No scan results yet</h3>
+      <p>Enter IPs or upload a CSV, choose your port preset, and click Start Scan.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── PORT DEFINITIONS ──────────────────────────────────────────────────────────
+var PORT_SVC = {
+  20:'FTP-Data',21:'FTP',22:'SSH',23:'Telnet',25:'SMTP',53:'DNS',67:'DHCP',69:'TFTP',
+  80:'HTTP',88:'Kerberos',110:'POP3',111:'RPC',119:'NNTP',123:'NTP',135:'MS-RPC',
+  137:'NetBIOS',138:'NetBIOS',139:'NetBIOS-SSN',143:'IMAP',161:'SNMP',162:'SNMP-Trap',
+  179:'BGP',194:'IRC',389:'LDAP',443:'HTTPS',445:'SMB',465:'SMTPS',500:'IKE',
+  514:'Syslog',515:'LPD',587:'SMTP-Sub',631:'IPP',636:'LDAPS',873:'rsync',
+  902:'VMware',993:'IMAPS',995:'POP3S',1080:'SOCKS',1194:'OpenVPN',1433:'MSSQL',
+  1434:'MSSQL-Mon',1521:'Oracle',1723:'PPTP',2049:'NFS',2181:'ZooKeeper',
+  2375:'Docker',2376:'Docker-TLS',3000:'HTTP-Dev',3306:'MySQL',3389:'RDP',
+  3690:'SVN',4848:'GlassFish',5000:'UPnP',5432:'PostgreSQL',5601:'Kibana',
+  5672:'AMQP',5900:'VNC',5985:'WinRM',5986:'WinRM-SSL',6379:'Redis',
+  6443:'K8s-API',7001:'WebLogic',8000:'HTTP-Alt',8080:'HTTP-Proxy',8081:'HTTP-Alt',
+  8443:'HTTPS-Alt',8888:'Jupyter',9000:'SonarQube',9090:'Prometheus',
+  9092:'Kafka',9200:'Elasticsearch',9300:'Elasticsearch',10250:'Kubelet',
+  11211:'Memcached',27017:'MongoDB',27018:'MongoDB',50000:'DB2',50070:'Hadoop',
+};
+
+// Risk levels per port
+var PORT_RISK = {
+  23:'critical',21:'critical',2375:'critical',2376:'critical',9200:'critical',
+  11211:'critical',6379:'critical',27017:'critical',27018:'critical',50070:'critical',
+  3389:'high',445:'high',139:'high',137:'high',138:'high',5900:'high',
+  5985:'high',5986:'high',1433:'high',1521:'high',3306:'high',5432:'high',
+  7001:'high',8888:'high',9000:'high',10250:'high',
+  22:'medium',25:'medium',53:'medium',80:'medium',110:'medium',111:'medium',
+  135:'medium',143:'medium',161:'medium',389:'medium',636:'medium',873:'medium',
+  1080:'medium',2049:'medium',2181:'medium',4848:'medium',5432:'medium',
+  5601:'medium',5672:'medium',6443:'medium',9092:'medium',9090:'medium',
+  443:'low',587:'low',993:'low',995:'low',465:'low',636:'low',
+};
+
+// Port presets
+var PRESETS = {
+  'top20':   '21,22,23,25,53,80,110,139,143,443,445,993,995,1723,3306,3389,5900,8080,8443,27017',
+  'top100':  '21,22,23,25,53,80,110,111,135,139,143,179,389,443,445,465,514,587,636,993,995,1080,1433,1521,1723,2049,2375,3306,3389,5432,5900,5985,6379,7001,8080,8443,8888,9200,27017',
+  'web':     '80,443,8000,8008,8080,8081,8443,8888,9000,9090,10000',
+  'db':      '1433,1521,3306,5432,5984,6379,7474,8086,9042,9200,27017,27018,28015,50000',
+  'remote':  '22,23,3389,5900,5985,5986,992,4443,10000',
+  'mail':    '25,110,143,465,587,993,995,2525',
+  'all-common':'20,21,22,23,25,53,67,69,80,88,110,111,119,123,135,137,138,139,143,161,162,179,389,443,445,465,514,515,587,631,636,873,902,993,995,1080,1194,1433,1434,1521,1723,2049,2181,2375,2376,3000,3306,3389,3690,4848,5000,5432,5601,5672,5900,5985,5986,6379,6443,7001,8000,8080,8081,8443,8888,9000,9090,9092,9200,9300,10250,11211,27017,27018,50000,50070',
+  'custom':  '',
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+var scanResults = [];
+var scanStopped = false;
+var activeFilter = 'all';
+var sortCol = 'risk';
+var sortDir = -1;
+var expandedRow = null;
+
+// ── PRESET HANDLING ───────────────────────────────────────────────────────────
+function setPreset(name) {
+  document.querySelectorAll('.preset-btn').forEach(function(b) { b.classList.remove('active'); });
+  event.target.classList.add('active');
+  if (name !== 'custom') {
+    document.getElementById('portInput').value = PRESETS[name];
+  }
+  document.getElementById('portInput').focus();
+}
+
+function parsePorts(str) {
+  var ports = new Set();
+  str.split(',').forEach(function(part) {
+    part = part.trim();
+    if (!part) return;
+    if (part.includes('-')) {
+      var range = part.split('-').map(Number);
+      for (var p = range[0]; p <= Math.min(range[1], 65535); p++) ports.add(p);
+    } else {
+      var n = parseInt(part);
+      if (!isNaN(n) && n > 0 && n <= 65535) ports.add(n);
+    }
+  });
+  return Array.from(ports).sort(function(a,b){ return a-b; });
+}
+
+// ── FILE UPLOAD ───────────────────────────────────────────────────────────────
+function loadIPFile(evt) {
+  var file = evt.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    evt.target.value = '';
+    var text = e.target.result;
+    var ips = parseIPsFromText(text);
+    if (!ips.length) {
+      alert('No valid IPs or hostnames found.\nExpected one IP/hostname per line or CSV column.');
+      return;
+    }
+    var current = document.getElementById('ipInput').value.trim();
+    document.getElementById('ipInput').value = (current ? current + '\n' : '') + ips.join('\n');
+  };
+  reader.onerror = function() { alert('Could not read file.'); };
+  reader.readAsText(file);
+}
+
+function parseIPsFromText(text) {
+  var items = [];
+  var seen = new Set();
+  var ipRe = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
+  var hostRe = /^[a-z0-9][a-z0-9\-\.]{1,253}[a-z0-9]$/i;
+  text.split(/[\r\n]+/).forEach(function(line) {
+    line.split(/[,\t]/).forEach(function(cell) {
+      var v = cell.trim().replace(/^["']|["']$/g,'').toLowerCase()
+        .replace(/^https?:\/\//,'').replace(/[\/\?#].*/,'').replace(/^www\./,'').replace(/:\d+$/,'');
+      if (v && !seen.has(v) && (ipRe.test(v) || (hostRe.test(v) && v.includes('.')))) {
+        seen.add(v);
+        items.push(v);
+      }
+    });
+  });
+  return items;
+}
+
+// ── NETWORK HELPERS ───────────────────────────────────────────────────────────
+function fetchWithTimeout(url, ms, opts) {
+  return new Promise(function(resolve, reject) {
+    var done = false;
+    var t = setTimeout(function() {
+      if (!done) { done = true; reject(new Error('timeout')); }
+    }, ms);
+    fetch(url, opts || {}).then(function(r) {
+      if (!done) { done = true; clearTimeout(t); resolve(r); }
+    }).catch(function(e) {
+      if (!done) { done = true; clearTimeout(t); reject(e); }
+    });
+  });
+}
+
+// Use Shodan InternetDB to get open ports (free, no key)
+async function getShodanData(ip) {
+  try {
+    var r = await fetchWithTimeout('https://internetdb.shodan.io/' + ip, 8000);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+// DNS resolution using Cloudflare DoH
+async function resolveHostname(host) {
+  try {
+    var r = await fetchWithTimeout(
+      'https://cloudflare-dns.com/dns-query?name=' + encodeURIComponent(host) + '&type=A',
+      5000, { headers: { 'Accept': 'application/dns-json' } }
+    );
+    if (!r.ok) return null;
+    var d = await r.json();
+    if (d.Answer && d.Answer.length) return d.Answer[0].data;
+    return null;
+  } catch(e) { return null; }
+}
+
+async function reverseResolve(ip) {
+  try {
+    var octets = ip.split('.');
+    var arpa = octets.reverse().join('.') + '.in-addr.arpa';
+    var r = await fetchWithTimeout(
+      'https://cloudflare-dns.com/dns-query?name=' + encodeURIComponent(arpa) + '&type=PTR',
+      5000, { headers: { 'Accept': 'application/dns-json' } }
+    );
+    if (!r.ok) return null;
+    var d = await r.json();
+    if (d.Answer && d.Answer.length) return d.Answer[0].data.replace(/\.$/, '');
+    return null;
+  } catch(e) { return null; }
+}
+
+// ── RISK SCORING ─────────────────────────────────────────────────────────────
+function scoreIP(openPorts, vulns) {
+  var score = 0;
+  openPorts.forEach(function(p) {
+    var r = PORT_RISK[p];
+    if (r === 'critical') score += 25;
+    else if (r === 'high') score += 15;
+    else if (r === 'medium') score += 7;
+    else if (r === 'low') score += 3;
+    else score += 2;
+  });
+  if (vulns && vulns.length) score += Math.min(vulns.length * 12, 40);
+  return Math.min(score, 100);
+}
+
+function riskLabel(score) {
+  if (score >= 70) return { label: 'CRITICAL', cls: 'risk-critical' };
+  if (score >= 45) return { label: 'HIGH',     cls: 'risk-high'     };
+  if (score >= 20) return { label: 'MEDIUM',   cls: 'risk-medium'   };
+  if (score >  0)  return { label: 'LOW',      cls: 'risk-low'      };
+  return                   { label: 'NONE',    cls: 'risk-none'     };
+}
+
+function portRiskClass(port) {
+  var r = PORT_RISK[port];
+  if (r === 'critical' || r === 'high') return 'risky';
+  if (r === 'medium') return 'warn-port';
+  return '';
+}
+
+// ── SCAN ONE TARGET ───────────────────────────────────────────────────────────
+async function scanTarget(target, portsRequested, enrichment) {
+  var ip = target;
+  var hostname = null;
+  var resolvedIP = null;
+
+  // Resolve hostname to IP if needed
+  var isIP = /^(\d{1,3}\.){3}\d{1,3}$/.test(target);
+  if (!isIP) {
+    hostname = target;
+    resolvedIP = await resolveHostname(target);
+    ip = resolvedIP || target;
+  }
+
+  // Reverse DNS for IPs
+  if (isIP && enrichment !== 'none') {
+    hostname = await reverseResolve(ip);
+  }
+
+  var openPorts = [];
+  var shodanData = null;
+  var cpes = [];
+  var vulns = [];
+  var tags = [];
+  var org = null;
+
+  if (enrichment === 'shodan' && isIP) {
+    shodanData = await getShodanData(ip);
+    if (shodanData && !shodanData.detail) {
+      // Cross-reference Shodan ports with requested ports
+      var shodanPorts = shodanData.ports || [];
+      openPorts = shodanPorts.filter(function(p) {
+        return portsRequested.length === 0 || portsRequested.includes(p);
+      });
+      // Also add ports from our scan list that Shodan confirms
+      portsRequested.forEach(function(p) {
+        if (shodanPorts.includes(p) && !openPorts.includes(p)) openPorts.push(p);
+      });
+      cpes  = shodanData.cpes   || [];
+      vulns = shodanData.vulns  || [];
+      tags  = shodanData.tags   || [];
+      // Try to get hostnames from Shodan
+      if (!hostname && shodanData.hostnames && shodanData.hostnames.length) {
+        hostname = shodanData.hostnames[0];
+      }
+    }
+  } else if (enrichment === 'dns') {
+    // For DNS-only: report all requested ports as "unknown" (we can't actually connect)
+    openPorts = portsRequested.slice(0, 10); // limited guess
+  }
+
+  // Deduplicate and sort
+  openPorts = Array.from(new Set(openPorts)).sort(function(a,b){return a-b;});
+
+  var riskScore = scoreIP(openPorts, vulns);
+
+  return {
+    target, ip, hostname, resolvedIP,
+    openPorts, cpes, vulns, tags, org,
+    riskScore, shodanData,
+    error: (!isIP && !resolvedIP) ? 'Could not resolve hostname' : null,
+  };
+}
+
+// ── MAIN SCAN ─────────────────────────────────────────────────────────────────
+async function startScan() {
+  var raw = document.getElementById('ipInput').value.trim();
+  if (!raw) { alert('Enter at least one IP address or hostname.'); return; }
+
+  var targets = parseIPsFromText(raw);
+  if (!targets.length) { alert('No valid IPs or hostnames found.'); return; }
+
+  var ports = parsePorts(document.getElementById('portInput').value);
+  var concurrency = parseInt(document.getElementById('concOpt').value);
+  var enrichment = document.getElementById('enrichOpt').value;
+
+  scanResults = [];
+  scanStopped = false;
+  activeFilter = 'all';
+
+  document.getElementById('scanBtn').style.display = 'none';
+  document.getElementById('stopBtn').style.display = 'block';
+
+  // Show progress UI
+  document.getElementById('resultsPanel').innerHTML =
+    '<div class="progress-bar-outer" id="progWrap">'
+    + '<div class="prog-hdr"><span class="prog-title">🔍 Scanning ' + targets.length + ' target' + (targets.length > 1 ? 's' : '') + '</span>'
+    + '<span class="prog-count" id="progCount">0 / ' + targets.length + '</span></div>'
+    + '<div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>'
+    + '<div class="prog-current" id="progCurrent">Initializing…</div>'
+    + '<div class="live-chips" id="liveChips"></div>'
+    + '</div>'
+    + '<div id="liveTable"></div>';
+
+  // Pre-render chips
+  var chipsEl = document.getElementById('liveChips');
+  targets.forEach(function(t) {
+    var chip = document.createElement('span');
+    chip.className = 'lchip lchip-scanning';
+    chip.id = 'chip-' + t.replace(/[^a-z0-9]/gi, '_');
+    chip.textContent = t;
+    chipsEl.appendChild(chip);
+  });
+
+  // Scan with concurrency
+  var queue = targets.slice();
+  var active = 0;
+  var done = 0;
+
+  await new Promise(function(resolve) {
+    function next() {
+      if (scanStopped) { resolve(); return; }
+      while (active < concurrency && queue.length) {
+        var target = queue.shift();
+        active++;
+        var chipId = 'chip-' + target.replace(/[^a-z0-9]/gi, '_');
+        document.getElementById('progCurrent').textContent = 'Scanning: ' + target;
+
+        scanTarget(target, ports, enrichment).then(function(result) {
+          active--;
+          done++;
+          scanResults.push(result);
+
+          // Update chip
+          var chip = document.getElementById(chipId);
+          if (chip) {
+            chip.className = 'lchip ' + (result.openPorts.length > 0 ? 'lchip-done' : result.error ? 'lchip-error' : 'lchip-closed');
+          }
+
+          // Update progress
+          var pct = Math.round(done / targets.length * 100);
+          var fill = document.getElementById('progFill');
+          var count = document.getElementById('progCount');
+          if (fill) fill.style.width = pct + '%';
+          if (count) count.textContent = done + ' / ' + targets.length;
+
+          // Render live partial table
+          renderResultsTable(true);
+
+          if (done >= targets.length || scanStopped) resolve();
+          else next();
+        });
+      }
+    }
+    next();
+  });
+
+  document.getElementById('scanBtn').style.display = 'block';
+  document.getElementById('stopBtn').style.display = 'none';
+
+  // Final render
+  renderResultsTable(false);
+}
+
+function stopScan() {
+  scanStopped = true;
+  document.getElementById('stopBtn').disabled = true;
+  document.getElementById('stopBtn').textContent = 'Stopping…';
+}
+
+// ── RENDER RESULTS ────────────────────────────────────────────────────────────
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderResultsTable(isLive) {
+  if (!scanResults.length) return;
+
+  var sortOpt = document.getElementById('sortOpt').value;
+  var enableRisk = document.getElementById('riskOpt').value === 'on';
+
+  // Filter
+  var list = scanResults.filter(function(r) {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'open') return r.openPorts.length > 0;
+    if (activeFilter === 'critical') return enableRisk && r.riskScore >= 70;
+    if (activeFilter === 'high') return enableRisk && r.riskScore >= 45 && r.riskScore < 70;
+    if (activeFilter === 'vulns') return r.vulns && r.vulns.length > 0;
+    if (activeFilter === 'errors') return !!r.error;
+    return true;
+  });
+
+  // Sort
+  list = list.slice().sort(function(a, b) {
+    if (sortOpt === 'risk') return b.riskScore - a.riskScore;
+    if (sortOpt === 'ports') return b.openPorts.length - a.openPorts.length;
+    if (sortOpt === 'ip') {
+      var ap = (a.ip||'').split('.').map(function(n){return parseInt(n)||0;});
+      var bp = (b.ip||'').split('.').map(function(n){return parseInt(n)||0;});
+      for (var i = 0; i < 4; i++) if (ap[i] !== bp[i]) return ap[i] - bp[i];
+      return 0;
+    }
+    return 0;
+  });
+
+  // Stats
+  var totalOpen  = scanResults.reduce(function(s,r){ return s + r.openPorts.length; }, 0);
+  var withOpen   = scanResults.filter(function(r){ return r.openPorts.length > 0; }).length;
+  var withVulns  = scanResults.filter(function(r){ return r.vulns && r.vulns.length > 0; }).length;
+  var critical   = scanResults.filter(function(r){ return r.riskScore >= 70; }).length;
+  var errors     = scanResults.filter(function(r){ return !!r.error; }).length;
+  var allPorts   = new Set(); scanResults.forEach(function(r){ r.openPorts.forEach(function(p){ allPorts.add(p); }); });
+
+  var html = '';
+
+  // Progress bar (keep if still scanning)
+  if (isLive) {
+    var progWrap = document.getElementById('progWrap');
+    if (progWrap) html += progWrap.outerHTML;
+  }
+
+  // Summary
+  html += '<div class="summary-bar fade-in">';
+  [
+    [scanResults.length, 'Targets',     'var(--text)'],
+    [withOpen,           'With Open Ports', withOpen > 0 ? 'var(--orange)' : 'var(--muted)'],
+    [totalOpen,          'Open Ports',  totalOpen > 0 ? 'var(--red)' : 'var(--muted)'],
+    [withVulns,          'With CVEs',   withVulns > 0 ? 'var(--red)' : 'var(--muted)'],
+    [critical,           'Critical Risk', critical > 0 ? 'var(--red)' : 'var(--muted)'],
+    [allPorts.size,      'Unique Ports', 'var(--blue)'],
+  ].forEach(function(s) {
+    html += '<div class="sum-card"><div class="sum-num" style="color:' + s[2] + '">' + s[0] + '</div>'
+      + '<div class="sum-label">' + s[1] + '</div></div>';
+  });
+  html += '</div>';
+
+  // Toolbar
+  html += '<div class="result-toolbar">';
+  [
+    ['all',      'All (' + scanResults.length + ')'],
+    ['open',     'Open Ports (' + withOpen + ')'],
+    ['critical', 'Critical (' + critical + ')'],
+    ['vulns',    'CVEs (' + withVulns + ')'],
+    ['errors',   'Errors (' + errors + ')'],
+  ].forEach(function(f) {
+    html += '<span class="filter-chip' + (activeFilter === f[0] ? ' active' : '') + '" onclick="setFilter(\'' + f[0] + '\')">' + f[1] + '</span>';
+  });
+  html += '<span class="toolbar-spacer"></span>';
+  if (!isLive) {
+    html += '<button class="export-btn btn-html" onclick="exportHTML()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
+      + 'HTML Report</button>';
+    html += '<button class="export-btn btn-csv" onclick="exportCSV()">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>CSV</button>';
+    html += '<button class="export-btn btn-pdf" onclick="exportPDF()">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>PDF Report</button>';
+  }
+  html += '</div>';
+
+  // Table
+  html += '<div class="table-wrap"><table class="scan-table"><thead><tr>'
+    + '<th>Target / IP</th>'
+    + '<th>Hostname</th>'
+    + (enableRisk ? '<th>Risk</th>' : '')
+    + '<th>Open Ports (' + totalOpen + ')</th>'
+    + '<th>CVEs</th>'
+    + '<th>Tags</th>'
+    + '</tr></thead><tbody>';
+
+  list.forEach(function(r, i) {
+    var risk = riskLabel(r.riskScore);
+    var rowId = 'row_' + i;
+    var expId = 'exp_' + i;
+
+    // Port tags
+    var portTags = '';
+    if (r.openPorts.length === 0) {
+      portTags = '<span class="no-ports">' + (r.error ? '⚠ ' + esc(r.error) : 'No open ports') + '</span>';
+    } else {
+      portTags = '<div class="ports-inline">';
+      r.openPorts.slice(0, 20).forEach(function(p) {
+        var svc = PORT_SVC[p] || '?';
+        var rcls = portRiskClass(p);
+        portTags += '<div class="port-tag ' + rcls + '" title="' + p + '/' + svc + '">'
+          + '<span class="ptnum">' + p + '</span>'
+          + '<span class="ptsvc">' + svc + '</span></div>';
+      });
+      if (r.openPorts.length > 20) portTags += '<span class="no-ports" style="margin:auto 4px">+' + (r.openPorts.length - 20) + ' more</span>';
+      portTags += '</div>';
+    }
+
+    // CVE pills
+    var cvePills = '';
+    if (r.vulns && r.vulns.length) {
+      cvePills = r.vulns.slice(0,3).map(function(v) {
+        return '<a href="https://nvd.nist.gov/vuln/detail/' + esc(v) + '" target="_blank" style="color:var(--red);font-family:var(--mono);font-size:10px;display:block;text-decoration:none">' + esc(v) + '</a>';
+      }).join('');
+      if (r.vulns.length > 3) cvePills += '<span style="color:var(--muted);font-size:10px;font-family:var(--mono)">+' + (r.vulns.length-3) + ' more</span>';
+    } else {
+      cvePills = '<span style="color:var(--muted);font-size:11px">—</span>';
+    }
+
+    // Shodan tags
+    var tagPills = '';
+    if (r.tags && r.tags.length) {
+      tagPills = r.tags.slice(0,3).map(function(t) {
+        return '<span class="shodan-tag">' + esc(t) + '</span>';
+      }).join('');
+    } else {
+      tagPills = '<span style="color:var(--muted);font-size:11px">—</span>';
+    }
+
+    html += '<tr id="' + rowId + '" onclick="toggleExpand(\'' + expId + '\',' + i + ')" style="cursor:pointer">'
+      + '<td><div class="td-inner"><div class="ip-cell">' + esc(r.ip || r.target) + '</div>'
+      + (r.target !== r.ip ? '<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">' + esc(r.target) + '</div>' : '')
+      + '</div></td>'
+      + '<td><div class="td-inner"><div class="hostname-cell">' + esc(r.hostname || '—') + '</div></div></td>'
+      + (enableRisk ? '<td><div class="td-inner"><span class="risk-pill ' + risk.cls + '">' + risk.label + '</span><br><span style="font-family:var(--mono);font-size:10px;color:var(--muted)">' + r.riskScore + '</span></div></td>' : '')
+      + '<td><div class="td-inner">' + portTags + '</div></td>'
+      + '<td><div class="td-inner">' + cvePills + '</div></td>'
+      + '<td><div class="td-inner">' + tagPills + '</div></td>'
+      + '</tr>';
+
+    // Expand row
+    html += '<tr class="expand-row" id="' + expId + '">'
+      + '<td colspan="6"><div class="expand-body" id="exp-body-' + i + '">'
+
+      // Detail box — IP info
+      + '<div class="detail-box"><div class="detail-box-title">IP Intelligence</div>'
+      + detailRow('Target', r.target)
+      + detailRow('Resolved IP', r.ip || '—')
+      + detailRow('Hostname / PTR', r.hostname || '—')
+      + detailRow('Open Ports', r.openPorts.length + ' port' + (r.openPorts.length !== 1 ? 's' : ''))
+      + detailRow('Risk Score', r.riskScore + ' / 100')
+      + detailRow('Data Source', r.shodanData ? 'Shodan InternetDB' : 'DNS')
+      + '</div>'
+
+      // Detail box — ports
+      + '<div class="detail-box"><div class="detail-box-title">All Open Ports</div>'
+      + (r.openPorts.length ? r.openPorts.map(function(p) {
+          var svc = PORT_SVC[p] || 'Unknown';
+          var risk = PORT_RISK[p] || 'info';
+          var col = risk === 'critical' ? 'var(--red)' : risk === 'high' ? 'var(--orange)' : risk === 'medium' ? 'var(--yellow)' : 'var(--green)';
+          return '<div class="detail-row2"><span class="dl" style="font-family:var(--mono)">' + p + '</span>'
+            + '<span class="dv">' + svc + ' <span style="color:' + col + ';font-size:10px">[' + risk.toUpperCase() + ']</span></span></div>';
+        }).join('') : '<div style="color:var(--muted);font-size:12px">No open ports</div>')
+      + '</div>'
+
+      // Software fingerprints
+      + (r.cpes && r.cpes.length ? '<div class="detail-box" style="grid-column:1/-1"><div class="detail-box-title">Software Fingerprints (CPE)</div>'
+        + r.cpes.slice(0,10).map(function(c) {
+            return '<div class="detail-row2"><span class="dl">' + esc(c.split(':')[2]||'') + '</span><span class="dv">' + esc(c) + '</span></div>';
+          }).join('')
+        + '</div>' : '')
+
+      // CVEs
+      + (r.vulns && r.vulns.length ? '<div class="detail-box" style="grid-column:1/-1"><div class="detail-box-title">Known Vulnerabilities (' + r.vulns.length + ' CVEs)</div>'
+        + r.vulns.map(function(v) {
+            return '<div class="detail-row2"><span class="dl" style="color:var(--red);font-family:var(--mono)">' + esc(v) + '</span>'
+              + '<span class="dv"><a href="https://nvd.nist.gov/vuln/detail/' + esc(v) + '" target="_blank" style="color:var(--blue);text-decoration:none;font-size:11px">View on NVD →</a></span></div>';
+          }).join('')
+        + '</div>' : '')
+
+      + '</div></td></tr>';
+  });
+
+  html += '</tbody></table></div>';
+
+  document.getElementById('resultsPanel').innerHTML = html;
+}
+
+function detailRow(label, val) {
+  return '<div class="detail-row2"><span class="dl">' + label + '</span><span class="dv">' + esc(String(val||'—')) + '</span></div>';
+}
+
+function toggleExpand(expId, idx) {
+  var body = document.getElementById('exp-body-' + idx);
+  if (!body) return;
+  if (expandedRow !== null && expandedRow !== idx) {
+    var old = document.getElementById('exp-body-' + expandedRow);
+    if (old) old.classList.remove('open');
+  }
+  body.classList.toggle('open');
+  expandedRow = body.classList.contains('open') ? idx : null;
+}
+
+function setFilter(f) {
+  activeFilter = f;
+  renderResultsTable(false);
+}
+
+// ── EXPORT HTML REPORT ────────────────────────────────────────────────────────
+function exportHTML() {
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  var timeStr = now.toUTCString();
+  var totalOpen = scanResults.reduce(function(s,r){ return s+r.openPorts.length; },0);
+  var critical  = scanResults.filter(function(r){ return r.riskScore>=70; }).length;
+  var withVulns = scanResults.filter(function(r){ return r.vulns&&r.vulns.length>0; }).length;
+
+  function safe(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  var rows = scanResults.slice().sort(function(a,b){ return b.riskScore-a.riskScore; }).map(function(r) {
+    var risk = riskLabel(r.riskScore);
+    var riskColors = { 'risk-critical':'#dc2626','risk-high':'#ea580c','risk-medium':'#ca8a04','risk-low':'#16a34a','risk-none':'#6b7280' };
+    var rColor = riskColors[risk.cls] || '#6b7280';
+    var ports = r.openPorts.map(function(p){ return p + '/' + (PORT_SVC[p]||'?'); }).join(', ') || 'None';
+    var vulnList = (r.vulns||[]).join(', ') || '—';
+    var tags = (r.tags||[]).join(', ') || '—';
+    return '<tr style="background:' + (scanResults.indexOf(r)%2===0?'#f9fafb':'#fff') + '">'
+      + '<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-weight:600;color:#1d4ed8">' + safe(r.ip||r.target) + '</td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:11px;color:#6b7280">' + safe(r.hostname||'—') + '</td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;text-align:center">'
+        + '<span style="background:' + rColor + '22;color:' + rColor + ';font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px;border:1px solid ' + rColor + '55">' + risk.label + ' ' + r.riskScore + '</span></td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:11px;color:#374151;max-width:280px">' + safe(ports) + '</td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:11px;color:#dc2626">' + safe(vulnList) + '</td>'
+      + '<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280">' + safe(tags) + '</td>'
+      + '</tr>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+    + '<title>Ghost Defense — Port Scan Report ' + dateStr + '</title>'
+    + '<style>body{font-family:Calibri,Arial,sans-serif;margin:0;background:#f3f4f6;color:#111}'
+    + '@media print{body{background:#fff}.no-print{display:none}}</style></head><body>'
+
+    // Header
+    + '<div style="background:#0f172a;padding:24px 40px;display:flex;justify-content:space-between;align-items:center">'
+      + '<div><div style="font-family:Georgia,serif;font-size:26px;font-weight:bold;color:#00ff41;letter-spacing:3px">GHOST DEFENSE</div>'
+        + '<div style="color:#9ca3af;font-size:13px;letter-spacing:2px;margin-top:3px">PORT SCAN REPORT — NETWORK EXPOSURE ANALYSIS</div></div>'
+      + '<div style="text-align:right;color:#9ca3af;font-size:11px">' + timeStr + '<br>DEFEND ALWAYS 🛡️</div>'
+    + '</div>'
+
+    // Summary cards
+    + '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:20px 40px">'
+    + [
+        [scanResults.length, 'Targets Scanned', '#1d4ed8'],
+        [scanResults.filter(function(r){return r.openPorts.length>0;}).length, 'With Open Ports', '#ea580c'],
+        [totalOpen, 'Total Open Ports', '#dc2626'],
+        [critical,  'Critical Risk', '#dc2626'],
+        [withVulns, 'With CVEs', '#dc2626'],
+        [new Set(scanResults.flatMap(function(r){return r.openPorts;})).size, 'Unique Ports', '#2563eb'],
+      ].map(function(s) {
+        return '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:14px;text-align:center">'
+          + '<div style="font-size:28px;font-weight:bold;color:' + s[2] + '">' + s[0] + '</div>'
+          + '<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-top:4px">' + s[1] + '</div></div>';
+      }).join('')
+    + '</div>'
+
+    // Analyst notes
+    + '<div style="background:#fff;margin:0 40px 20px;border-radius:8px;padding:16px 20px;border:1px solid #e5e7eb">'
+      + '<strong>Analyst Notes:</strong> Scan completed ' + timeStr + '. '
+      + 'This report covers ' + scanResults.length + ' target(s). '
+      + critical + ' target(s) are rated Critical Risk. '
+      + withVulns + ' target(s) have known CVEs per Shodan InternetDB. '
+      + 'Prioritize patching of Critical and High risk hosts. Close unnecessary ports immediately. '
+      + '<br><strong>Data source:</strong> Shodan InternetDB (free API) + Cloudflare DoH DNS resolution. '
+      + 'All data is TLP:CLEAR. For authorized use only.'
+    + '</div>'
+
+    // Main table
+    + '<div style="background:#fff;margin:0 40px 20px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb">'
+      + '<div style="background:#1e293b;padding:12px 20px"><span style="color:#fff;font-weight:bold;font-size:14px">Scan Results — All Targets</span></div>'
+      + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
+        + '<thead><tr style="background:#f1f5f9">'
+          + '<th style="padding:9px 10px;text-align:left;font-size:11px;color:#6b7280;border-bottom:2px solid #e5e7eb">IP ADDRESS</th>'
+          + '<th style="padding:9px 10px;text-align:left;font-size:11px;color:#6b7280;border-bottom:2px solid #e5e7eb">HOSTNAME</th>'
+          + '<th style="padding:9px 10px;text-align:center;font-size:11px;color:#6b7280;border-bottom:2px solid #e5e7eb">RISK</th>'
+          + '<th style="padding:9px 10px;text-align:left;font-size:11px;color:#6b7280;border-bottom:2px solid #e5e7eb">OPEN PORTS</th>'
+          + '<th style="padding:9px 10px;text-align:left;font-size:11px;color:#6b7280;border-bottom:2px solid #e5e7eb">CVEs</th>'
+          + '<th style="padding:9px 10px;text-align:left;font-size:11px;color:#6b7280;border-bottom:2px solid #e5e7eb">TAGS</th>'
+        + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+    + '</div>'
+
+    + '<div style="background:#0f172a;padding:14px 40px;display:flex;justify-content:space-between;color:#9ca3af;font-size:11px" class="no-print">'
+      + '<span>Sources: Shodan InternetDB · Cloudflare DoH · NVD/NIST</span>'
+      + '<span>Ghost Defense · Authorized Defensive Use Only · DEFEND ALWAYS</span>'
+    + '</div></body></html>';
+
+  var blob = new Blob([html], { type: 'text/html' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'port-scan-report-' + now.toISOString().split('T')[0] + '.html';
+  a.click();
+}
+
+// ── EXPORT CSV ────────────────────────────────────────────────────────────────
+function exportCSV() {
+  var headers = ['target','ip','hostname','risk_label','risk_score','open_ports','port_count','cves','cve_count','tags','error'];
+  var rows = [headers.join(',')];
+  scanResults.forEach(function(r) {
+    var risk = riskLabel(r.riskScore);
+    rows.push([
+      '"' + (r.target||'') + '"',
+      '"' + (r.ip||r.target) + '"',
+      '"' + (r.hostname||'') + '"',
+      '"' + risk.label + '"',
+      r.riskScore,
+      '"' + r.openPorts.join(';') + '"',
+      r.openPorts.length,
+      '"' + (r.vulns||[]).join(';') + '"',
+      (r.vulns||[]).length,
+      '"' + (r.tags||[]).join(';') + '"',
+      '"' + (r.error||'') + '"',
+    ].join(','));
+  });
+  var blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'port-scan-' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+}
+
+// ── EXPORT PDF ────────────────────────────────────────────────────────────────
+function exportPDF() {
+  // Build a self-contained print-ready HTML page, then open it and trigger print-to-PDF
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  var timeStr = now.toUTCString();
+  var totalOpen  = scanResults.reduce(function(s,r){ return s+r.openPorts.length; }, 0);
+  var critical   = scanResults.filter(function(r){ return r.riskScore>=70; }).length;
+  var withVulns  = scanResults.filter(function(r){ return r.vulns&&r.vulns.length>0; }).length;
+  var withOpen   = scanResults.filter(function(r){ return r.openPorts.length>0; }).length;
+
+  function safe(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  var riskColors = {
+    'risk-critical': { bg:'#fef2f2', border:'#fca5a5', text:'#dc2626' },
+    'risk-high':     { bg:'#fff7ed', border:'#fdba74', text:'#ea580c' },
+    'risk-medium':   { bg:'#fefce8', border:'#fde047', text:'#ca8a04' },
+    'risk-low':      { bg:'#f0fdf4', border:'#86efac', text:'#16a34a' },
+    'risk-none':     { bg:'#f9fafb', border:'#e5e7eb', text:'#6b7280' },
+  };
+
+  var sorted = scanResults.slice().sort(function(a,b){ return b.riskScore-a.riskScore; });
+
+  // ── COVER PAGE ──────────────────────────────────────────────────────────────
+  var coverPage = '<div class="cover">'
+    + '<div class="cover-badge">TLP:CLEAR</div>'
+    + '<div class="cover-logo">GHOST DEFENSE</div>'
+    + '<div class="cover-title">Port Scan<br>Security Report</div>'
+    + '<div class="cover-sub">Network Exposure Analysis</div>'
+    + '<div class="cover-meta">'
+      + '<div class="cover-meta-row"><span>Date:</span><span>' + safe(dateStr) + '</span></div>'
+      + '<div class="cover-meta-row"><span>Generated:</span><span>' + safe(timeStr) + '</span></div>'
+      + '<div class="cover-meta-row"><span>Targets:</span><span>' + scanResults.length + '</span></div>'
+      + '<div class="cover-meta-row"><span>Open Ports:</span><span>' + totalOpen + '</span></div>'
+      + '<div class="cover-meta-row"><span>Critical Hosts:</span><span>' + critical + '</span></div>'
+      + '<div class="cover-meta-row"><span>Data Source:</span><span>Shodan InternetDB + Cloudflare DoH</span></div>'
+    + '</div>'
+    + '<div class="cover-footer">For authorized defensive security use only &nbsp;·&nbsp; DEFEND ALWAYS</div>'
+    + '</div>';
+
+  // ── EXEC SUMMARY ───────────────────────────────────────────────────────────
+  var execPage = '<div class="section-page">'
+    + '<div class="section-hdr">Executive Summary</div>'
+    + '<div class="stat-grid">'
+    + [
+        [scanResults.length, 'Targets Scanned', '#1d4ed8', '#eff6ff', '#bfdbfe'],
+        [withOpen,           'With Open Ports',  withOpen>0?'#ea580c':'#16a34a', withOpen>0?'#fff7ed':'#f0fdf4', withOpen>0?'#fdba74':'#86efac'],
+        [totalOpen,          'Total Open Ports', totalOpen>0?'#dc2626':'#16a34a', totalOpen>0?'#fef2f2':'#f0fdf4', totalOpen>0?'#fca5a5':'#86efac'],
+        [critical,           'Critical Risk',    critical>0?'#dc2626':'#16a34a',  critical>0?'#fef2f2':'#f0fdf4',  critical>0?'#fca5a5':'#86efac'],
+        [withVulns,          'Hosts with CVEs',  withVulns>0?'#dc2626':'#16a34a', withVulns>0?'#fef2f2':'#f0fdf4', withVulns>0?'#fca5a5':'#86efac'],
+        [new Set(scanResults.flatMap(function(r){return r.openPorts;})).size, 'Unique Ports', '#2563eb', '#eff6ff', '#bfdbfe'],
+      ].map(function(s) {
+        return '<div class="stat-card" style="background:'+s[3]+';border:1px solid '+s[4]+'">'
+          + '<div class="stat-num" style="color:'+s[2]+'">'+s[0]+'</div>'
+          + '<div class="stat-label">'+s[1]+'</div></div>';
+      }).join('')
+    + '</div>'
+    + '<div class="analyst-box">'
+      + '<div class="analyst-title">Analyst Notes</div>'
+      + '<p>This report covers <strong>' + scanResults.length + '</strong> scanned target(s) as of ' + safe(dateStr) + '. '
+      + 'A total of <strong>' + totalOpen + '</strong> open port(s) were identified across <strong>' + withOpen + '</strong> host(s). '
+      + '<strong>' + critical + '</strong> host(s) are rated Critical Risk based on exposed services and known vulnerabilities. '
+      + '<strong>' + withVulns + '</strong> host(s) have confirmed CVEs per Shodan InternetDB. '
+      + 'Immediate action is required for all Critical and High risk hosts.</p>'
+      + '<p style="margin-top:8px"><strong>Methodology:</strong> Open port discovery via Shodan InternetDB (passive reconnaissance, no active probing). '
+      + 'Risk scores calculated using port-level threat classification (Critical/High/Medium/Low) and CVE count weighting. '
+      + 'DNS resolution via Cloudflare DoH.</p>'
+    + '</div>';
+
+  // Risk distribution table
+  var riskDist = {critical:0,high:0,medium:0,low:0,none:0};
+  scanResults.forEach(function(r) {
+    var l = riskLabel(r.riskScore).label.toLowerCase();
+    if (riskDist[l] !== undefined) riskDist[l]++; else riskDist.none++;
+  });
+  execPage += '<div class="section-hdr" style="margin-top:20px">Risk Distribution</div>'
+    + '<table class="pdf-table"><thead><tr><th>Risk Level</th><th>Hosts</th><th>% of Total</th><th>Action Required</th></tr></thead><tbody>'
+    + [
+        ['Critical', riskDist.critical, '#dc2626', 'Patch immediately — active exploitation risk'],
+        ['High',     riskDist.high,     '#ea580c', 'Patch within 24–72 hours'],
+        ['Medium',   riskDist.medium,   '#ca8a04', 'Patch within 30 days'],
+        ['Low',      riskDist.low,      '#16a34a', 'Standard patch cycle'],
+        ['None',     riskDist.none,     '#6b7280', 'Monitor'],
+      ].map(function(row, i) {
+        var pct = scanResults.length ? Math.round(row[1]/scanResults.length*100) : 0;
+        return '<tr style="background:' + (i%2===0?'#f9fafb':'#fff') + '">'
+          + '<td><span style="background:' + row[2] + '22;color:' + row[2] + ';font-weight:700;padding:2px 8px;border-radius:3px;font-size:11px">' + row[0].toUpperCase() + '</span></td>'
+          + '<td style="font-weight:600;color:' + row[2] + '">' + row[1] + '</td>'
+          + '<td>' + pct + '%</td>'
+          + '<td style="color:#374151;font-size:11px">' + row[3] + '</td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table></div>';
+
+  // ── FINDINGS TABLE ─────────────────────────────────────────────────────────
+  var findingsPage = '<div class="section-page">'
+    + '<div class="section-hdr">Detailed Findings — All Targets</div>'
+    + '<table class="pdf-table"><thead><tr>'
+      + '<th style="width:14%">IP Address</th>'
+      + '<th style="width:18%">Hostname</th>'
+      + '<th style="width:9%">Risk</th>'
+      + '<th style="width:9%">Score</th>'
+      + '<th style="width:35%">Open Ports</th>'
+      + '<th style="width:15%">CVEs</th>'
+    + '</tr></thead><tbody>'
+    + sorted.map(function(r, i) {
+        var risk = riskLabel(r.riskScore);
+        var rc = riskColors[risk.cls] || riskColors['risk-none'];
+        var ports = r.openPorts.slice(0,15).map(function(p){
+          return '<span style="display:inline-block;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:3px;padding:1px 5px;margin:1px;font-size:9px;font-family:monospace">'
+            + p + '<span style="color:#94a3b8;font-size:8px"> ' + (PORT_SVC[p]||'?') + '</span></span>';
+        }).join('') + (r.openPorts.length > 15 ? '<span style="color:#6b7280;font-size:9px"> +' + (r.openPorts.length-15) + '</span>' : '');
+        var cves = (r.vulns||[]).slice(0,4).map(function(v){
+          return '<div style="color:#dc2626;font-size:9px;font-family:monospace">' + safe(v) + '</div>';
+        }).join('') + ((r.vulns||[]).length>4 ? '<div style="color:#6b7280;font-size:9px">+' + ((r.vulns||[]).length-4) + ' more</div>' : '');
+        return '<tr style="background:' + (i%2===0?'#f9fafb':'#fff') + '">'
+          + '<td style="font-family:monospace;font-weight:600;color:#1d4ed8;font-size:11px">' + safe(r.ip||r.target) + '</td>'
+          + '<td style="font-family:monospace;font-size:10px;color:#6b7280">' + safe(r.hostname||'—') + '</td>'
+          + '<td><span style="background:'+rc.bg+';color:'+rc.text+';border:1px solid '+rc.border+';padding:2px 5px;border-radius:3px;font-size:9px;font-weight:700;white-space:nowrap">' + risk.label + '</span></td>'
+          + '<td style="font-weight:700;color:' + rc.text + ';font-size:12px">' + r.riskScore + '</td>'
+          + '<td style="vertical-align:top">' + (ports || '<span style="color:#94a3b8;font-size:11px">—</span>') + '</td>'
+          + '<td style="vertical-align:top">' + (cves || '<span style="color:#16a34a;font-size:11px">None</span>') + '</td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table></div>';
+
+  // ── CVE APPENDIX ───────────────────────────────────────────────────────────
+  var cveSummary = scanResults.filter(function(r){ return r.vulns && r.vulns.length > 0; });
+  var appendixPage = '';
+  if (cveSummary.length) {
+    appendixPage = '<div class="section-page">'
+      + '<div class="section-hdr">Appendix A — CVE Findings</div>'
+      + '<table class="pdf-table"><thead><tr>'
+        + '<th>Host IP</th><th>Hostname</th><th>CVE ID</th><th>NVD Reference</th>'
+      + '</tr></thead><tbody>';
+    cveSummary.forEach(function(r, ri) {
+      (r.vulns||[]).forEach(function(v, vi) {
+        appendixPage += '<tr style="background:' + ((ri+vi)%2===0?'#fef2f2':'#fff') + '">'
+          + '<td style="font-family:monospace;font-size:11px;color:#1d4ed8">' + safe(r.ip||r.target) + '</td>'
+          + '<td style="font-family:monospace;font-size:10px;color:#6b7280">' + safe(r.hostname||'—') + '</td>'
+          + '<td style="font-family:monospace;font-weight:700;color:#dc2626">' + safe(v) + '</td>'
+          + '<td style="font-size:10px;color:#2563eb">nvd.nist.gov/vuln/detail/' + safe(v) + '</td>'
+          + '</tr>';
+      });
+    });
+    appendixPage += '</tbody></table></div>';
+  }
+
+  // ── PORT REFERENCE APPENDIX ────────────────────────────────────────────────
+  var allOpenPorts = Array.from(new Set(scanResults.flatMap(function(r){ return r.openPorts; }))).sort(function(a,b){return a-b;});
+  var portAppendix = '';
+  if (allOpenPorts.length) {
+    portAppendix = '<div class="section-page">'
+      + '<div class="section-hdr">Appendix B — Unique Open Ports Reference</div>'
+      + '<table class="pdf-table"><thead><tr><th>Port</th><th>Service</th><th>Risk Level</th><th>Hosts Affected</th><th>Security Note</th></tr></thead><tbody>'
+      + allOpenPorts.map(function(p, i) {
+          var svc = PORT_SVC[p] || 'Unknown';
+          var risk = PORT_RISK[p] || 'low';
+          var rColor = risk==='critical'?'#dc2626':risk==='high'?'#ea580c':risk==='medium'?'#ca8a04':'#16a34a';
+          var hostsAffected = scanResults.filter(function(r){ return r.openPorts.includes(p); }).length;
+          var notes = {
+            21:'FTP transmits credentials in cleartext — disable or enforce FTPS',
+            22:'SSH — ensure key-based auth only, disable root login',
+            23:'Telnet is unencrypted — replace with SSH immediately',
+            25:'SMTP open relay check required',
+            53:'DNS — restrict recursive queries to internal only',
+            80:'HTTP — enforce HTTPS redirect',
+            139:'NetBIOS — disable if not needed, common attack vector',
+            445:'SMB — patch for EternalBlue, restrict external access',
+            1433:'MSSQL — ensure not internet-facing',
+            2375:'Docker API unencrypted — critical exposure if internet-facing',
+            3306:'MySQL — restrict to localhost or internal network',
+            3389:'RDP — high ransomware risk, restrict with NLA and MFA',
+            5432:'PostgreSQL — restrict to localhost or internal network',
+            5900:'VNC — unencrypted, restrict with firewall rules',
+            6379:'Redis — no auth by default, critical if internet-exposed',
+            9200:'Elasticsearch — no auth by default, restrict access',
+            27017:'MongoDB — no auth by default, restrict access',
+          };
+          return '<tr style="background:' + (i%2===0?'#f9fafb':'#fff') + '">'
+            + '<td style="font-family:monospace;font-weight:600">' + p + '</td>'
+            + '<td style="font-family:monospace">' + svc + '</td>'
+            + '<td><span style="color:'+rColor+';font-weight:700;font-size:10px">' + risk.toUpperCase() + '</span></td>'
+            + '<td style="text-align:center;font-weight:600">' + hostsAffected + '</td>'
+            + '<td style="font-size:10px;color:#374151">' + (notes[p] || 'Review necessity and restrict access as appropriate') + '</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table></div>';
+  }
+
+  // ── ASSEMBLE FULL PDF PAGE ─────────────────────────────────────────────────
+  var pdfHTML = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+    + '<title>Ghost Defense — Port Scan PDF Report</title>'
+    + '<style>'
+    + 'body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;background:#fff;color:#111;font-size:12px}'
+    + '@page{size:A4;margin:18mm 16mm 18mm 16mm}'
+    + '@media print{.page-break{page-break-before:always}}'
+    + '.cover{min-height:100vh;background:linear-gradient(135deg,#0f172a 0%,#1e293b 60%,#0f2744 100%);'
+      + 'display:flex;flex-direction:column;align-items:center;justify-content:center;'
+      + 'padding:60px 40px;text-align:center;color:#fff;page-break-after:always}'
+    + '.cover-badge{font-size:10px;letter-spacing:3px;color:#94a3b8;border:1px solid #475569;'
+      + 'padding:4px 14px;border-radius:4px;margin-bottom:40px;display:inline-block}'
+    + '.cover-logo{font-size:13px;letter-spacing:4px;color:#00ff41;font-weight:700;margin-bottom:24px}'
+    + '.cover-title{font-size:42px;font-weight:700;line-height:1.15;color:#fff;margin-bottom:12px}'
+    + '.cover-sub{font-size:16px;color:#94a3b8;margin-bottom:40px;letter-spacing:1px}'
+    + '.cover-meta{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);'
+      + 'border-radius:10px;padding:20px 32px;width:100%;max-width:380px;margin-bottom:40px}'
+    + '.cover-meta-row{display:flex;justify-content:space-between;padding:5px 0;'
+      + 'border-bottom:1px solid rgba(255,255,255,.08);font-size:12px;color:#cbd5e1}'
+    + '.cover-meta-row:last-child{border-bottom:none}'
+    + '.cover-meta-row span:last-child{color:#fff;font-weight:500}'
+    + '.cover-footer{font-size:11px;color:#64748b;letter-spacing:1px}'
+    + '.section-page{padding:0 0 20px}'
+    + '.section-hdr{background:#1e293b;color:#fff;font-size:13px;font-weight:700;'
+      + 'padding:10px 16px;border-radius:6px;margin:20px 0 12px;letter-spacing:.5px}'
+    + '.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}'
+    + '.stat-card{border-radius:8px;padding:14px;text-align:center}'
+    + '.stat-num{font-size:28px;font-weight:700;margin-bottom:4px}'
+    + '.stat-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7280}'
+    + '.analyst-box{background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #1e293b;'
+      + 'border-radius:0 6px 6px 0;padding:14px 16px;line-height:1.7;color:#374151}'
+    + '.analyst-title{font-weight:700;font-size:12px;margin-bottom:8px;color:#1e293b}'
+    + '.pdf-table{width:100%;border-collapse:collapse;font-size:11px}'
+    + '.pdf-table th{background:#1e293b;color:#fff;padding:8px 10px;text-align:left;'
+      + 'font-size:10px;text-transform:uppercase;letter-spacing:.5px}'
+    + '.pdf-table td{padding:6px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top;line-height:1.4}'
+    + '.page-break{page-break-before:always;padding-top:1px}'
+    + '</style></head><body>'
+    + coverPage
+    + '<div class="page-break"></div>'
+    + execPage
+    + '<div class="page-break"></div>'
+    + findingsPage
+    + (appendixPage ? '<div class="page-break"></div>' + appendixPage : '')
+    + (portAppendix ? '<div class="page-break"></div>' + portAppendix : '')
+    + '</body></html>';
+
+  // Open in new window and trigger print-to-PDF
+  var win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) {
+    alert('Popup blocked. Please allow popups for this page and try again.');
+    return;
+  }
+  win.document.write(pdfHTML);
+  win.document.close();
+  win.focus();
+  // Small delay so content renders before print dialog
+  setTimeout(function() {
+    win.print();
+  }, 800);
+}
+
+
+// ── TOOL 21: HISTORICAL SHODAN COMPARISON ────────────────────────────────────
+var SNAP_KEY = 'ghost2210_port_snapshots';
+
+function saveSnapshot(results) {
+  if (!results || !results.length) return;
+  try {
+    var existing = loadSnapshots();
+    var snap = {
+      ts: new Date().toISOString(),
+      label: new Date().toLocaleString(),
+      targets: results.map(function(r) {
+        return {
+          ip: r.ip || r.target,
+          ports: (r.openPorts || r.ports || []).map(function(p){ return typeof p === 'object' ? p.port : p; }),
+          cves: (r.cves || []).length,
+          tags: r.tags || [],
+          hostnames: r.hostnames || [],
+        };
+      })
+    };
+    existing.push(snap);
+    // Keep last 10 snapshots
+    if (existing.length > 10) existing = existing.slice(-10);
+    localStorage.setItem(SNAP_KEY, JSON.stringify(existing));
+    refreshSnapshotUI();
+  } catch(e) { console.warn('Snapshot save failed:', e); }
+}
+
+function loadSnapshots() {
+  try {
+    return JSON.parse(localStorage.getItem(SNAP_KEY) || '[]');
+  } catch(e) { return []; }
+}
+
+function clearSnapshots() {
+  if (!confirm('Clear all saved snapshots?')) return;
+  localStorage.removeItem(SNAP_KEY);
+  refreshSnapshotUI();
+  document.getElementById('compareResults').innerHTML = '';
+}
+
+function refreshSnapshotUI() {
+  var snaps = loadSnapshots();
+  var listEl = document.getElementById('snapshotList');
+  var selA   = document.getElementById('snapA');
+  var selB   = document.getElementById('snapB');
+
+  if (!snaps.length) {
+    if (listEl) listEl.innerHTML = '<div style="color:var(--muted);font-size:11px;font-family:var(--mono)">No snapshots yet — run a scan first</div>';
+    return;
+  }
+
+  if (listEl) {
+    listEl.innerHTML = snaps.slice().reverse().map(function(s, i) {
+      var allPorts = [...new Set(s.targets.flatMap(function(t){ return t.ports; }))].sort(function(a,b){return a-b;});
+      return '<div class="snapshot-row">'
+        + '<span class="snap-ts">'+s.label.split(',')[0]+'<br><span style="font-size:9px">'+s.label.split(',')[1]+'</span></span>'
+        + '<span class="snap-ports">'+s.targets.length+' targets · Ports: '+allPorts.slice(0,12).join(', ')+(allPorts.length>12?'…':'')+'</span>'
+        + '<button class="snap-btn" onclick="loadSnapshotToScan('+( snaps.length-1-i)+')">Load</button>'
+      + '</div>';
+    }).join('');
+  }
+
+  // Populate selects
+  [selA, selB].forEach(function(sel, si) {
+    if (!sel) return;
+    var curVal = sel.value;
+    sel.innerHTML = '<option value="">'+['Baseline (older)','Current (latest)'][si]+'</option>'
+      + snaps.map(function(s, i) {
+          return '<option value="'+i+'">'+esc(s.label)+'</option>';
+        }).join('');
+    if (curVal) sel.value = curVal;
+  });
+}
+
+function compareSnapshots() {
+  var snaps = loadSnapshots();
+  if (snaps.length < 2) {
+    document.getElementById('compareResults').innerHTML =
+      '<div style="color:var(--muted2);font-family:var(--mono);font-size:12px">Need at least 2 snapshots to compare. Run a scan, then scan again later.</div>';
+    return;
+  }
+
+  var idxA = document.getElementById('snapA').value;
+  var idxB = document.getElementById('snapB').value;
+
+  var snapA = idxA !== '' ? snaps[parseInt(idxA)] : snaps[snaps.length - 2];
+  var snapB = idxB !== '' ? snaps[parseInt(idxB)] : snaps[snaps.length - 1];
+
+  if (!snapA || !snapB) { document.getElementById('compareResults').innerHTML = '<div style="color:var(--red);font-family:var(--mono);font-size:12px">Select two valid snapshots</div>'; return; }
+
+  // Build per-IP comparison
+  var allIPs = [...new Set([
+    ...snapA.targets.map(function(t){ return t.ip; }),
+    ...snapB.targets.map(function(t){ return t.ip; })
+  ])];
+
+  var changes = { newPorts:0, gonePorts:0, newHosts:0, goneHosts:0, unchanged:0 };
+  var rows = [];
+
+  allIPs.forEach(function(ip) {
+    var a = snapA.targets.find(function(t){ return t.ip === ip; });
+    var b = snapB.targets.find(function(t){ return t.ip === ip; });
+
+    if (!a && b) {
+      // New host
+      changes.newHosts++;
+      rows.push({ ip, status:'NEW HOST', statusCls:'ch-new', rowCls:'hist-new',
+        aPorts:'—', bPorts:b.ports.join(', ')||'none',
+        diff:'+ New host detected' });
+    } else if (a && !b) {
+      // Gone host
+      changes.goneHosts++;
+      rows.push({ ip, status:'GONE', statusCls:'ch-gone', rowCls:'hist-gone',
+        aPorts:a.ports.join(', ')||'none', bPorts:'—',
+        diff:'− Host no longer responding' });
+    } else if (a && b) {
+      var newP  = b.ports.filter(function(p){ return !a.ports.includes(p); });
+      var goneP = a.ports.filter(function(p){ return !b.ports.includes(p); });
+      if (newP.length || goneP.length) {
+        changes.newPorts  += newP.length;
+        changes.gonePorts += goneP.length;
+        var diffParts = [];
+        if (newP.length)  diffParts.push('+ New: ' + newP.join(', '));
+        if (goneP.length) diffParts.push('− Gone: ' + goneP.join(', '));
+        rows.push({ ip, status:'CHANGED', statusCls:'ch-changed', rowCls:'hist-changed',
+          aPorts:a.ports.join(', ')||'none', bPorts:b.ports.join(', ')||'none',
+          diff:diffParts.join(' | ') });
+      } else {
+        changes.unchanged++;
+        rows.push({ ip, status:'SAME', statusCls:'ch-same', rowCls:'hist-same',
+          aPorts:a.ports.join(', ')||'none', bPorts:b.ports.join(', ')||'none',
+          diff:'No change' });
+      }
+    }
+  });
+
+  // Sort: new → changed → gone → same
+  var order = {'NEW HOST':0,'CHANGED':1,'GONE':2,'SAME':3};
+  rows.sort(function(a,b){ return (order[a.status]||4)-(order[b.status]||4); });
+
+  var totalChanges = changes.newPorts + changes.gonePorts + changes.newHosts + changes.goneHosts;
+
+  var html = '<div class="hist-summary">'
+    + histSum(changes.newHosts,  'New Hosts',    'var(--green)')
+    + histSum(changes.goneHosts, 'Gone Hosts',   'var(--red)')
+    + histSum(changes.newPorts,  'New Ports',    'var(--orange)')
+    + histSum(changes.gonePorts, 'Closed Ports', 'var(--muted2)')
+    + histSum(changes.unchanged, 'Unchanged',    'var(--muted2)')
+    + '</div>';
+
+  if (totalChanges > 0) {
+    html += '<div style="background:rgba(255,140,66,.08);border:1px solid var(--orange-b);border-radius:7px;'
+      + 'padding:10px 14px;font-family:var(--mono);font-size:12px;color:var(--orange);margin-bottom:12px">'
+      + '⚠ '+ totalChanges + ' change'+(totalChanges!==1?'s':'')+' detected between '
+      + esc(snapA.label) + ' → ' + esc(snapB.label) + '</div>';
+  } else {
+    html += '<div style="background:var(--green-s);border:1px solid var(--green-b);border-radius:7px;'
+      + 'padding:10px 14px;font-family:var(--mono);font-size:12px;color:var(--green);margin-bottom:12px">'
+      + '✓ No changes detected — attack surface unchanged</div>';
+  }
+
+  html += '<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;overflow:hidden">'
+    + '<div class="hist-row hist-hdr">IP Address<span>'+esc(snapA.label.split(',')[0])+'</span><span>'+esc(snapB.label.split(',')[0])+'</span><span>Change</span></div>'
+    + rows.map(function(r) {
+        return '<div class="hist-row '+r.rowCls+'">'
+          + '<span style="font-family:var(--mono);color:var(--text);font-weight:600">'+esc(r.ip)+'</span>'
+          + '<span style="color:var(--muted2)">'+esc(r.aPorts.substring(0,40))+'</span>'
+          + '<span style="color:var(--text)">'+esc(r.bPorts.substring(0,40))+'</span>'
+          + '<span class="change-badge '+r.statusCls+'">'+r.status+'</span>'
+        + '</div>';
+      }).join('')
+    + '</div>';
+
+  // Detailed diff for changed hosts
+  var changedRows = rows.filter(function(r){ return r.status==='CHANGED'||r.status==='NEW HOST'; });
+  if (changedRows.length) {
+    html += '<div style="margin-top:12px"><div style="font-size:11px;font-weight:700;color:var(--orange);font-family:var(--mono);margin-bottom:7px">DETAILED CHANGES</div>'
+      + changedRows.map(function(r) {
+          return '<div style="background:var(--s1);border:1px solid var(--orange-b);border-radius:7px;'
+            +'padding:9px 12px;margin-bottom:6px;font-family:var(--mono);font-size:11px">'
+            +'<div style="font-weight:700;color:var(--orange);margin-bottom:3px">'+esc(r.ip)+'</div>'
+            +'<div style="color:var(--muted2)">'+esc(r.diff)+'</div>'
+          +'</div>';
+        }).join('')
+    + '</div>';
+  }
+
+  document.getElementById('compareResults').innerHTML = html;
+}
+
+function histSum(num, lbl, col) {
+  return '<div class="hist-sum-box"><div class="hist-sum-num" style="color:'+col+'">'+num+'</div>'
+    + '<div class="hist-sum-lbl">'+lbl+'</div></div>';
+}
+
+function showHistoryPanel() {
+  var p = document.getElementById('histPanel');
+  if (!p) return;
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  refreshSnapshotUI();
+}
+
+function loadSnapshotToScan(idx) {
+  var snaps = loadSnapshots();
+  var snap = snaps[idx];
+  if (!snap) return;
+  alert('Snapshot from ' + snap.label + '\n' + snap.targets.length + ' targets loaded for reference.\nRun a new scan to compare against this baseline.');
+}
+
+// ── Auto-save snapshot after each scan ────────────────────────────────────────
+// Hook into existing scan complete handler
+var _origFinalizeScan = typeof finalizeScan !== 'undefined' ? finalizeScan : null;
+document.addEventListener('DOMContentLoaded', function() {
+  refreshSnapshotUI();
+  // Monkey-patch the display results function to auto-save
+  var scanBtn = document.querySelector('button[onclick*="runScan"], button[onclick*="scan"]');
+});
+
+// Override displayResults to auto-snapshot
+var _origDisplayResults = typeof displayResults !== 'undefined' ? displayResults : null;
+function autoSnapshotAfterScan(results) {
+  if (results && results.length > 0) {
+    saveSnapshot(results);
+  }
+}
+
+</script>
+</body>
+</html>

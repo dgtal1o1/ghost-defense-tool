@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Threat Actor Profiles — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020507;
+  --s1:#060d0a;
+  --s2:#0a150f;
+  --s3:#0f1f16;
+  --s4:#162b1e;
+  --b1:rgba(0,255,65,0.07);
+  --b2:rgba(0,255,65,0.14);
+  --b3:rgba(0,255,65,0.24);
+  --ng:#00ff41;
+  --ng2:#39ff14;
+  --ng-d:rgba(0,255,65,0.10);
+  --ng-dd:rgba(0,255,65,0.05);
+  --red:#ff3737;
+  --red-g:rgba(255,55,55,0.13);
+  --red-b:rgba(255,55,55,0.28);
+  --orange:#ff8c00;
+  --orange-g:rgba(255,140,0,0.12);
+  --yellow:#ffe600;
+  --yellow-g:rgba(255,230,0,0.09);
+  --cyan:#00e5ff;
+  --cyan-g:rgba(0,229,255,0.09);
+  --purple:#c084fc;
+  --purple-g:rgba(192,132,252,0.10);
+  --muted:rgba(0,255,65,0.32);
+  --muted2:rgba(0,255,65,0.55);
+  --mono:'Share Tech Mono',monospace;
+  --display:'Orbitron',sans-serif;
+  --body:'Exo 2',sans-serif;
+}
+html{background:var(--bg);scroll-behavior:smooth}
+body{font-family:var(--body);color:var(--ng);min-height:100vh;overflow-x:hidden;
+  text-shadow:0 0 5px rgba(0,255,65,0.18)}
+
+/* scanlines */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:500;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.15) 2px,rgba(0,0,0,0.15) 4px)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:499;
+  background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,0.72) 100%)}
+
+/* grid bg */
+.grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(0,255,65,0.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,255,65,0.025) 1px,transparent 1px);
+  background-size:44px 44px}
+
+.wrap{position:relative;z-index:1;max-width:1360px;margin:0 auto;padding:0 18px 80px}
+
+/* ── TOP BAR ── */
+.topbar{
+  border-bottom:1px solid var(--b2);padding:13px 0;
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:28px;position:sticky;top:0;z-index:200;
+  background:rgba(2,5,7,0.96);backdrop-filter:blur(10px);
+}
+.tl{display:flex;align-items:center;gap:14px}
+.logo{font-family:var(--display);font-size:14px;font-weight:900;letter-spacing:.18em;
+  color:var(--ng);text-shadow:0 0 14px var(--ng),0 0 35px rgba(0,255,65,.4)}
+.logo span{color:var(--red);text-shadow:0 0 12px var(--red)}
+.tsep{color:var(--b3);font-family:var(--mono)}
+.tsub{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.14em}
+.tr{display:flex;gap:8px;align-items:center}
+.tb{font-size:10px;font-family:var(--mono);padding:4px 10px;border-radius:3px;
+  display:flex;align-items:center;gap:5px;letter-spacing:.08em}
+.tb-ng{background:var(--ng-d);border:1px solid var(--b2);color:var(--ng)}
+.tb-red{background:var(--red-g);border:1px solid rgba(255,55,55,.25);color:var(--red)}
+.blink{animation:blink 1.1s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+#clk{font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+/* ── HEADER ── */
+.page-header{text-align:center;padding:10px 0 32px;animation:fadeDown .6s ease both}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+.ph-label{font-size:10px;font-family:var(--mono);letter-spacing:.22em;color:var(--muted);margin-bottom:10px}
+.ph-title{font-family:var(--display);font-size:clamp(20px,3.5vw,32px);font-weight:900;
+  letter-spacing:.12em;margin-bottom:10px;line-height:1.2;
+  text-shadow:0 0 20px var(--ng),0 0 50px rgba(0,255,65,.3)}
+.ph-title span{color:var(--red);text-shadow:0 0 16px var(--red)}
+.ph-desc{font-size:13px;color:var(--muted2);max-width:680px;margin:0 auto 20px;line-height:1.7;font-weight:300}
+.ph-sources{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.src-chip{font-size:10px;font-family:var(--mono);padding:3px 10px;border-radius:2px;
+  border:1px solid var(--b1);color:var(--muted);letter-spacing:.08em}
+
+/* ── FILTERS ── */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;align-items:center}
+.fl{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;margin-right:4px}
+.fchip{font-size:11px;font-family:var(--mono);padding:5px 13px;border-radius:3px;
+  border:1px solid var(--b1);color:var(--muted);cursor:pointer;
+  transition:all .13s;-webkit-tap-highlight-color:transparent;letter-spacing:.06em}
+.fchip:hover,.fchip.active{background:var(--ng-d);border-color:var(--b2);color:var(--ng);
+  box-shadow:0 0 10px rgba(0,255,65,.1)}
+.search-bar{margin-left:auto;display:flex;gap:8px;align-items:center}
+.search-in{background:var(--s2);border:1px solid var(--b1);border-radius:3px;
+  color:var(--ng);font-family:var(--mono);font-size:12px;padding:6px 12px;outline:none;
+  width:220px;transition:border-color .15s}
+.search-in::placeholder{color:var(--muted)}
+.search-in:focus{border-color:var(--b2)}
+
+/* ── STATS ROW ── */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:24px;
+  animation:fadeUp .5s .1s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.sbox{background:var(--s1);border:1px solid var(--b1);border-radius:4px;padding:13px 15px;
+  position:relative;overflow:hidden}
+.sbox::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,currentColor,transparent);opacity:.45}
+.sn{font-family:var(--display);font-size:22px;font-weight:700;line-height:1;margin-bottom:5px}
+.sl{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+
+/* ── CARD GRID ── */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(370px,1fr));gap:14px}
+
+/* ── APT CARD ── */
+.fresh-row{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.05);font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;flex-wrap:wrap}
+.fresh-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 6px currentColor}
+.fresh-lbl{color:var(--muted)}
+.fresh-age{font-weight:700}
+.fresh-src{color:var(--muted2);opacity:.85}
+.fresh-base .fresh-age{color:var(--muted)}
+.apt-card{
+  background:var(--s1);border:1px solid var(--b1);border-radius:6px;
+  overflow:hidden;transition:border-color .15s,box-shadow .15s;
+  animation:fadeUp .5s ease both;cursor:pointer;
+}
+.apt-card:hover{border-color:var(--b2);box-shadow:0 0 20px rgba(0,255,65,.06)}
+.apt-card.expanded{border-color:var(--b2)}
+
+/* card top stripe */
+.card-stripe{height:3px;width:100%}
+
+/* card header */
+.card-hdr{padding:16px 18px 14px;border-bottom:1px solid var(--b1)}
+.ch-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.ch-flag{font-size:28px;flex-shrink:0;line-height:1}
+.ch-id{flex:1}
+.apt-name{font-family:var(--display);font-size:14px;font-weight:700;letter-spacing:.08em;
+  margin-bottom:3px;line-height:1.2}
+.apt-aliases{font-size:10px;font-family:var(--mono);color:var(--muted);line-height:1.5}
+.ch-badges{display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0}
+.cbadge{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 8px;border-radius:2px;
+  letter-spacing:.07em;white-space:nowrap}
+.cb-cn{background:rgba(255,140,0,.14);color:var(--orange);border:1px solid rgba(255,140,0,.28)}
+.cb-ru{background:rgba(255,55,55,.14);color:var(--red);border:1px solid rgba(255,55,55,.28)}
+.cb-kp{background:rgba(192,132,252,.12);color:var(--purple);border:1px solid rgba(192,132,252,.26)}
+.cb-ir{background:rgba(0,229,255,.10);color:var(--cyan);border:1px solid rgba(0,229,255,.24)}
+.cb-uk{background:var(--ng-d);color:var(--ng);border:1px solid var(--b2)}
+.cb-threat{font-size:10px;font-family:var(--mono);font-weight:700;padding:3px 10px;border-radius:12px}
+.thr-critical{background:var(--red-g);color:var(--red);border:1px solid var(--red-b)}
+.thr-high{background:var(--orange-g);color:var(--orange);border:1px solid rgba(255,140,0,.28)}
+.thr-medium{background:var(--yellow-g);color:var(--yellow);border:1px solid rgba(255,230,0,.25)}
+
+.ch-meta{display:flex;gap:10px;flex-wrap:wrap}
+.cm-item{font-size:11px;font-family:var(--mono);color:var(--muted);display:flex;align-items:center;gap:4px}
+.cm-item span{color:var(--muted2)}
+
+/* card summary */
+.card-summary{padding:14px 18px;font-size:12px;color:var(--muted2);line-height:1.7;
+  border-bottom:1px solid var(--b1)}
+
+/* card targets */
+.card-targets{padding:12px 18px;border-bottom:1px solid var(--b1)}
+.ct-label{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;
+  text-transform:uppercase;margin-bottom:8px}
+.target-chips{display:flex;gap:5px;flex-wrap:wrap}
+.tchip{font-size:10px;font-family:var(--mono);padding:3px 9px;border-radius:2px;
+  background:var(--s3);border:1px solid var(--b1);color:var(--muted2)}
+
+/* card TTP preview */
+.card-ttps{padding:12px 18px;border-bottom:1px solid var(--b1)}
+.ttp-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ttp-item{background:var(--s2);border:1px solid var(--b1);border-radius:3px;
+  padding:7px 9px;font-size:11px;font-family:var(--mono)}
+.tti-tactic{color:var(--muted);font-size:9px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
+.tti-tech{color:var(--ng);font-size:11px}
+.tti-id{color:var(--muted);font-size:9px;float:right}
+
+/* card footer row */
+.card-footer{padding:10px 18px;display:flex;align-items:center;justify-content:space-between}
+.expand-btn{font-size:10px;font-family:var(--mono);color:var(--muted);
+  display:flex;align-items:center;gap:5px;letter-spacing:.08em}
+.expand-icon{transition:transform .2s}
+.apt-card.expanded .expand-icon{transform:rotate(180deg)}
+.card-refs-row{display:flex;gap:6px}
+.cref{font-size:10px;font-family:var(--mono);color:var(--cyan);
+  background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.18);
+  border-radius:2px;padding:3px 8px;text-decoration:none;transition:all .12s}
+.cref:hover{background:rgba(0,229,255,.14)}
+
+/* expanded detail */
+.card-detail{display:none;border-top:1px solid var(--b1);background:var(--s2)}
+.apt-card.expanded .card-detail{display:block}
+.detail-section{padding:14px 18px;border-bottom:1px solid var(--b1)}
+.ds-title{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.14em;
+  text-transform:uppercase;margin-bottom:10px}
+.ttp-full{display:flex;flex-direction:column;gap:5px}
+.ttpf-item{background:var(--s3);border:1px solid var(--b1);border-radius:3px;
+  padding:9px 12px;display:flex;align-items:flex-start;gap:10px}
+.ttpf-id{font-family:var(--display);font-size:10px;color:var(--cyan);
+  min-width:80px;flex-shrink:0;letter-spacing:.05em}
+.ttpf-name{font-size:12px;color:var(--ng);font-weight:500;margin-bottom:2px}
+.ttpf-desc{font-size:11px;color:var(--muted2);line-height:1.5}
+.cve-row{display:flex;gap:6px;flex-wrap:wrap}
+.cve-chip{font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:3px;
+  background:var(--red-g);border:1px solid rgba(255,55,55,.25);color:var(--red)}
+.ioc-list{display:flex;flex-direction:column;gap:5px}
+.ioc-item{background:var(--s3);border:1px solid var(--b1);border-radius:3px;
+  padding:8px 11px;font-size:11px;font-family:var(--mono);
+  display:flex;gap:8px;align-items:flex-start;color:var(--muted2)}
+.ioc-type{font-size:9px;font-weight:700;padding:2px 6px;border-radius:2px;
+  flex-shrink:0;letter-spacing:.06em;margin-top:1px}
+.it-mal{background:var(--red-g);color:var(--red)}
+.it-infra{background:var(--orange-g);color:var(--orange)}
+.it-tool{background:var(--purple-g);color:var(--purple)}
+.it-net{background:var(--cyan-g);color:var(--cyan)}
+.defense-list{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.def-item{background:var(--s3);border:1px solid var(--b1);border-left:2px solid var(--ng);
+  border-radius:3px;padding:8px 11px;font-size:11px;color:var(--muted2);line-height:1.5}
+
+/* ── AI UPDATE PANEL ── */
+.ai-update-bar{
+  background:var(--s1);border:1px solid rgba(0,229,255,0.18);
+  border-radius:5px;padding:16px 20px;margin-bottom:22px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  position:relative;overflow:hidden;
+}
+.ai-update-bar::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(0,229,255,0.04),transparent 60%);
+  pointer-events:none;
+}
+.aib-left{display:flex;align-items:center;gap:12px;flex:1;min-width:200px}
+.aib-icon{
+  width:38px;height:38px;border-radius:9px;flex-shrink:0;
+  background:rgba(0,229,255,0.10);border:1px solid rgba(0,229,255,0.25);
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+}
+.aib-title{font-family:var(--display);font-size:11px;font-weight:700;
+  letter-spacing:.14em;color:var(--cyan);margin-bottom:3px}
+.aib-desc{font-size:11px;font-family:var(--mono);color:var(--muted);line-height:1.5}
+.aib-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ai-select{
+  background:var(--s2);border:1px solid rgba(0,229,255,0.2);border-radius:3px;
+  color:var(--ng);font-family:var(--mono);font-size:11px;
+  padding:8px 12px;outline:none;cursor:pointer;-webkit-appearance:none;
+  min-width:160px;
+}
+.ai-select option{background:var(--s2)}
+.ai-btn{
+  background:rgba(0,229,255,0.10);border:1px solid rgba(0,229,255,0.3);
+  border-radius:4px;color:var(--cyan);font-family:var(--display);
+  font-size:11px;font-weight:700;letter-spacing:.12em;
+  padding:9px 20px;cursor:pointer;white-space:nowrap;
+  transition:all .15s;text-shadow:0 0 8px rgba(0,229,255,0.4);
+  display:flex;align-items:center;gap:7px;
+}
+.ai-btn:hover{background:rgba(0,229,255,0.18);box-shadow:0 0 16px rgba(0,229,255,0.15)}
+.ai-btn:active{transform:scale(.97)}
+.ai-btn:disabled{opacity:.4;pointer-events:none}
+.ai-btn-all{
+  background:rgba(0,255,65,0.09);border:1px solid var(--b2);
+  border-radius:4px;color:var(--ng);font-family:var(--display);
+  font-size:11px;font-weight:700;letter-spacing:.12em;
+  padding:9px 20px;cursor:pointer;white-space:nowrap;
+  transition:all .15s;text-shadow:0 0 8px rgba(0,255,65,0.35);
+  display:flex;align-items:center;gap:7px;
+}
+.ai-btn-all:hover{background:rgba(0,255,65,0.16);box-shadow:0 0 14px rgba(0,255,65,0.12)}
+.ai-btn-all:active{transform:scale(.97)}
+.ai-btn-all:disabled{opacity:.4;pointer-events:none}
+.ai-status{
+  width:100%;margin-top:10px;padding:10px 14px;
+  background:var(--s2);border:1px solid var(--b1);border-radius:4px;
+  font-family:var(--mono);font-size:12px;color:var(--muted2);line-height:1.6;
+  display:none;
+}
+.ai-status.visible{display:block}
+.ai-status-line{display:flex;align-items:flex-start;gap:8px;margin-bottom:5px}
+.ai-status-line:last-child{margin-bottom:0}
+.ast-tag{font-size:9px;font-weight:700;padding:2px 6px;border-radius:2px;
+  flex-shrink:0;letter-spacing:.06em;margin-top:2px}
+.ast-new{background:rgba(0,229,255,.12);color:var(--cyan)}
+.ast-upd{background:rgba(0,255,65,.10);color:var(--ng)}
+.ast-err{background:var(--red-g);color:var(--red)}
+.ast-ok{background:rgba(0,255,65,.10);color:var(--ng)}
+.ai-progress{
+  height:2px;background:var(--s3);border-radius:1px;
+  overflow:hidden;margin-top:8px;display:none;
+}
+.ai-progress.visible{display:block}
+.ai-progress-bar{
+  height:100%;background:linear-gradient(90deg,var(--cyan),var(--ng));
+  border-radius:1px;width:0;transition:width 0.4s ease;
+}
+.updated-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:10px;font-family:var(--mono);padding:3px 9px;border-radius:3px;
+  background:rgba(0,229,255,.10);border:1px solid rgba(0,229,255,.22);
+  color:var(--cyan);margin-left:8px;vertical-align:middle;
+}
+.last-updated{
+  font-size:10px;font-family:var(--mono);color:var(--muted);
+  text-align:right;padding-top:6px;
+}
+
+/* footer */
+.ghost-footer{margin-top:48px;padding:22px 0 10px;border-top:1px solid var(--b1);
+  position:relative;overflow:hidden}
+.gf-rule{width:100%;height:1px;background:linear-gradient(90deg,transparent,var(--ng),transparent);
+  opacity:.35;margin-bottom:20px}
+.gf-main{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.ghost-icon{width:36px;height:36px;border-radius:9px;background:var(--ng-d);border:1px solid var(--b2);
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  animation:gf 4s ease-in-out infinite}
+@keyframes gf{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.ghost-by{font-family:var(--mono);font-size:10px;letter-spacing:.22em;color:var(--muted);
+  text-transform:uppercase;text-align:center;margin-bottom:5px}
+.ghost-name{font-family:var(--display);font-size:18px;font-weight:900;letter-spacing:.22em;
+  color:var(--ng);text-shadow:0 0 14px var(--ng),0 0 35px rgba(0,255,65,.5),0 0 60px rgba(0,255,65,.2)}
+.gf-sub{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted);
+  text-align:center;margin-top:6px}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+
+/* responsive */
+@media(max-width:800px){
+  .card-grid{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .defense-list{grid-template-columns:1fr}
+  .ttp-grid{grid-template-columns:1fr}
+  .search-bar{margin-left:0;width:100%}
+  .search-in{width:100%}
+  .filters{flex-direction:column;align-items:flex-start}
+}
+@media(max-width:500px){.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="wrap">
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="tl">
+    <div class="logo">THREAT<span>ACTOR</span></div>
+    <div class="tsep">|</div>
+    <div class="tsub">OSINT PROFILE CARDS — DEFENSIVE INTELLIGENCE</div>
+  </div>
+  <div class="tr">
+    <div class="tb tb-red"><span class="blink">●</span>ACTIVE THREATS</div>
+    <div class="tb tb-ng">MITRE ATT&CK ALIGNED</div>
+    <input id="apiKeyInput" type="password" placeholder="sk-ant-... API key"
+        style="background:var(--s2);border:1px solid var(--b2);border-radius:3px;
+               color:var(--ng);font-family:var(--mono);font-size:10px;
+               padding:5px 10px;outline:none;width:180px;text-shadow:none"
+        title="Paste your Anthropic API key">
+      <button id="testKeyBtn" onclick="testAPIKey()"
+        style="background:var(--ng-d);border:1px solid var(--b2);border-radius:3px;
+               color:var(--ng);font-family:var(--mono);font-size:10px;font-weight:700;
+               letter-spacing:.1em;padding:5px 12px;cursor:pointer;white-space:nowrap">
+        TEST KEY</button>
+    <div id="clk"></div>
+  </div>
+</div>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+  <div class="ph-label">// GHOST DEFENSE — BLUE TEAM INTELLIGENCE TOOLKIT</div>
+  <h1 class="ph-title">THREAT ACTOR<br><span>PROFILE CARDS</span></h1>
+  <p class="ph-desc">Defensive OSINT intelligence on nation-state Advanced Persistent Threat groups. All data sourced from public CISA advisories, MITRE ATT&CK, FBI, NSA, and Five Eyes intelligence bulletins. For threat hunting, detection engineering, and defensive posture planning.</p>
+  <div class="ph-sources">
+    <span class="src-chip">MITRE ATT&CK</span>
+    <span class="src-chip">CISA ADVISORIES</span>
+    <span class="src-chip">FBI / NSA</span>
+    <span class="src-chip">FIVE EYES INTEL</span>
+    <span class="src-chip">MANDIANT / CROWDSTRIKE</span>
+    <span class="src-chip">TLP:CLEAR</span>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="sbox" style="color:var(--red)">
+    <div class="sn" id="sTotal">0</div>
+    <div class="sl">Threat Actors</div>
+  </div>
+  <div class="sbox" style="color:var(--orange)">
+    <div class="sn" id="sCN">0</div>
+    <div class="sl">China-Nexus</div>
+  </div>
+  <div class="sbox" style="color:var(--red)">
+    <div class="sn" id="sRU">0</div>
+    <div class="sl">Russia-Nexus</div>
+  </div>
+  <div class="sbox" style="color:var(--purple)">
+    <div class="sn" id="sKP">0</div>
+    <div class="sl">DPRK-Nexus</div>
+  </div>
+  <div class="sbox" style="color:var(--cyan)">
+    <div class="sn" id="sIR">0</div>
+    <div class="sl">Iran-Nexus</div>
+  </div>
+</div>
+
+<!-- FILTERS -->
+<div class="filters">
+  <span class="fl">FILTER:</span>
+  <span class="fchip active" onclick="setFilter('all',this)">ALL ACTORS</span>
+  <span class="fchip" onclick="setFilter('china',this)">🇨🇳 CHINA</span>
+  <span class="fchip" onclick="setFilter('russia',this)">🇷🇺 RUSSIA</span>
+  <span class="fchip" onclick="setFilter('dprk',this)">🇰🇵 DPRK</span>
+  <span class="fchip" onclick="setFilter('iran',this)">🇮🇷 IRAN</span>
+  <span class="fchip" onclick="setFilter('critical',this)">⚠ CRITICAL THREAT</span>
+  <span class="fchip" onclick="setFilter('ransomware',this)">💀 RANSOMWARE</span>
+  <div class="search-bar">
+    <input class="search-in" id="searchIn" type="text" placeholder="Search actor, alias, target…" oninput="doSearch()">
+  </div>
+</div>
+
+<!-- AI UPDATE PANEL -->
+<div class="ai-update-bar" id="aiUpdateBar">
+  <div class="aib-left">
+    <div class="aib-icon">⚡</div>
+    <div>
+      <div class="aib-title">AI LIVE INTELLIGENCE UPDATE</div>
+      <div class="aib-desc">Query Claude AI for the latest publicly reported activity — new campaigns, CVEs, TTPs, and advisories from open-source intelligence.</div>
+    </div>
+  </div>
+  <div class="aib-right">
+    <select class="ai-select" id="aiTarget">
+      <option value="all">ALL ACTORS — Full Sweep</option>
+      <option value="Salt Typhoon">Salt Typhoon</option>
+      <option value="Volt Typhoon">Volt Typhoon</option>
+      <option value="APT41">APT41 / Winnti</option>
+      <option value="APT29">APT29 / Cozy Bear</option>
+      <option value="APT28">APT28 / Fancy Bear</option>
+      <option value="Sandworm">Sandworm / APT44</option>
+      <option value="Lazarus Group">Lazarus Group</option>
+      <option value="Kimsuky">Kimsuky</option>
+      <option value="APT33">APT33 / Refined Kitten</option>
+      <option value="Charming Kitten">Charming Kitten / APT35</option>
+      <option value="UNC5221">UNC5221</option>
+      <option value="APT40">APT40</option>
+    </select>
+    <button class="ai-btn" id="aiBtnSingle" onclick="runAIUpdate(false)">
+      <span id="aiBtnIcon">⚡</span> UPDATE SELECTED
+    </button>
+    <button class="ai-btn-all" id="aiBtnAll" onclick="runAIUpdate(true)">
+      🔄 SWEEP ALL
+    </button>
+  </div>
+  <div class="ai-progress" id="aiProgress">
+    <div class="ai-progress-bar" id="aiProgressBar"></div>
+  </div>
+  <div class="ai-status" id="aiStatus"></div>
+  <div class="last-updated" id="lastUpdated" style="display:none;width:100%"></div>
+</div>
+
+<!-- CARD GRID -->
+<div class="card-grid" id="cardGrid"></div>
+
+<!-- FOOTER -->
+<div class="ghost-footer">
+  <div class="gf-rule"></div>
+  <div class="gf-main">
+    <div class="ghost-icon">👻</div>
+    <div style="text-align:center">
+      <div class="ghost-by">DESIGNED BY</div>
+      <div class="ghost-name">GHOST DEFENSE</div>
+    </div>
+    <div class="ghost-icon">👻</div>
+  </div>
+  <div class="gf-sub">THREAT ACTOR PROFILES v1.0 &nbsp;·&nbsp; ALL INTEL FOR DEFENSIVE USE ONLY &nbsp;·&nbsp; DEFEND ALWAYS 🛡️</div>
+  <div class="gf-rule" style="margin-top:18px;margin-bottom:0"></div>
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+// ?????????????????????????????????????????????????????????????
+//  CLOCK
+// ?????????????????????????????????????????????????????????????
+setInterval(function(){
+  var n=new Date();
+  document.getElementById('clk').textContent=
+    n.toUTCString().replace('GMT','UTC').split(' ').slice(1,5).join(' ');
+},1000);
+
+// ?????????????????????????????????????????????????????????????
+//  THREAT ACTOR DATABASE
+//  Sources: MITRE ATT&CK, CISA, NSA, FBI, Five Eyes advisories
+//  All data is publicly available / TLP:CLEAR
+// ?????????????????????????????????????????????????????????????
+var ACTORS = [
+  {
+    id:'G1045', name:'SALT TYPHOON',
+    aliases:'Earth Estries · GhostEmperor · FamousSparrow · UNC2286',
+    nation:'china', flag:'??', sponsor:'PRC Ministry of State Security (MSS)',
+    active:'2019-Present', threatLevel:'critical',
+    summary:'Most consequential Chinese APT of 2024-2025. Breached 9+ major US telecom carriers (AT&T, Verizon, T-Mobile, Lumen) and 200+ organizations across 80 countries. Accessed lawful intercept systems used for wiretapping  -  a critical national security breach. FBI confirmed compromise in Aug 2025. Maintains access for months to years before detection.',
+    targets:['Telecommunications','Government','Defense Contractors','Technology','Critical Infrastructure'],
+    motivation:'Espionage · Pre-positioning for disruption · Signals intelligence collection',
+    ttps:[
+      {id:'T1190',tactic:'Initial Access',name:'Exploit Public-Facing App',desc:'Exploits VPN and edge device vulnerabilities (Ivanti, PAN-OS, BeyondTrust)'},
+      {id:'T1078',tactic:'Persistence',name:'Valid Accounts',desc:'Steals and abuses legitimate credentials to maintain persistent access'},
+      {id:'T1571',tactic:'C2',name:'Non-Standard Port',desc:'Custom GhostSpider backdoor uses encrypted comms on non-standard ports'},
+      {id:'T1560',tactic:'Collection',name:'Archive Collected Data',desc:'Stages and compresses data prior to exfiltration over extended periods'},
+      {id:'T1070',tactic:'Defense Evasion',name:'Indicator Removal',desc:'Clears logs and removes forensic artifacts; uses LOTL techniques'},
+      {id:'T1021',tactic:'Lateral Movement',name:'Remote Services',desc:'Pivots using legitimate remote management tools within telco infrastructure'},
+    ],
+    malware:['GhostSpider (custom backdoor)','SparrowDoor','Demodex rootkit','CrowDoor'],
+    cves:['CVE-2024-3400','CVE-2023-46805','CVE-2024-21887','CVE-2024-12356','CVE-2024-12686'],
+    ioc:[
+      {type:'mal',val:'GhostSpider backdoor  -  encrypted C2, multi-stage, modular architecture'},
+      {type:'infra',val:'Compromised SOHO routers used as relay nodes to obscure origin'},
+      {type:'net',val:'Long-dwell persistence  -  3+ year access documented in one telco case'},
+    ],
+    defenses:['Patch edge devices immediately (VPN, firewalls, load balancers)','Implement phishing-resistant MFA on all remote access','Monitor for unusual authentication from telecom infrastructure','Audit lawful intercept system access logs','Deploy NDR for east-west traffic anomaly detection','Segment critical systems from general IT networks'],
+    mitre:'https://attack.mitre.org/groups/G1045/',
+    cisa:'https://www.cisa.gov/news-events/news/strengthening-americas-resilience-against-prc-cyber-threats',
+  },
+  {
+    id:'G1017', name:'VOLT TYPHOON',
+    aliases:'Bronze Silhouette · Vanguard Panda · DEV-0391 · Insidious Taurus',
+    nation:'china', flag:'??', sponsor:'People\'s Liberation Army (PLA)',
+    active:'2021-Present', threatLevel:'critical',
+    summary:'PRC state-sponsored actor pre-positioning inside US critical infrastructure for potential wartime disruption  -  NOT intelligence collection. Targets water, power, communications, and transportation. FBI/CISA/NSA joint advisory confirmed extensive KV-Botnet use across SOHO devices. Guam was a primary target due to US military significance in Taiwan scenario planning.',
+    targets:['Water Systems','Power Grid','Communications','Transportation','Military Logistics','Emergency Services'],
+    motivation:'Pre-positioning for wartime disruption · Taiwan contingency operations',
+    ttps:[
+      {id:'T1190',tactic:'Initial Access',name:'Exploit Public-Facing App',desc:'Targets edge devices: Fortinet, Ivanti, Cisco, NETGEAR, Zyxel VPNs'},
+      {id:'T1036',tactic:'Defense Evasion',name:'Living Off The Land (LOTL)',desc:'Uses built-in OS tools only (certutil, netsh, wmic)  -  no custom malware'},
+      {id:'T1090',tactic:'C2',name:'Proxy via SOHO Botnet',desc:'KV-Botnet: hijacked Cisco, NETGEAR, and Fortinet SOHO routers as relay infrastructure'},
+      {id:'T1003',tactic:'Credential Access',name:'OS Credential Dumping',desc:'Dumps LSASS memory and Active Directory credentials for lateral movement'},
+      {id:'T1078',tactic:'Persistence',name:'Valid Accounts',desc:'Maintains access via stolen admin credentials, often for months before action'},
+      {id:'T1562',tactic:'Defense Evasion',name:'Impair Defenses',desc:'Disables logging, tampers with EDR, modifies router configs to hide presence'},
+    ],
+    malware:['No custom malware  -  LOTL only','KV-Botnet (SOHO router compromise)','Certutil abuse','PowerShell remoting'],
+    cves:['CVE-2022-40684','CVE-2024-21762','CVE-2023-27997'],
+    ioc:[
+      {type:'infra',val:'Compromised SOHO routers (Cisco RV series, NETGEAR ProSafe) as proxy nodes'},
+      {type:'tool',val:'Legitimate Windows binaries only  -  wmic, netsh, certutil, ntdsutil'},
+      {type:'net',val:'Long dwell  -  months of quiet reconnaissance before any visible action'},
+    ],
+    defenses:['Replace EOL SOHO routers immediately','Disable unused remote management interfaces','Monitor for LOTL tool abuse (certutil, wmic, netsh) by non-admin users','Segment OT/ICS networks from IT networks','Deploy OT-specific monitoring (Dragos, Claroty)','Audit all internet-facing devices quarterly'],
+    mitre:'https://attack.mitre.org/groups/G1017/',
+    cisa:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-038a',
+  },
+  {
+    id:'G0096', name:'APT41 / WINNTI',
+    aliases:'Double Dragon · Barium · Wicked Panda · Bronze Atlas · Brass Typhoon',
+    nation:'china', flag:'??', sponsor:'PRC MSS  -  dual espionage + financial crime',
+    active:'2012-Present', threatLevel:'critical',
+    summary:'Unique dual-mission actor: state-sponsored espionage AND financial cybercrime. Conducts IP theft for Chinese strategic interests while simultaneously running financially motivated operations (gaming, crypto). DOJ indicted 5 members in 2020. Heavily targets supply chains and software updates as initial access vectors.',
+    targets:['Healthcare / Pharma','Technology','Gaming','Telecommunications','Government','Finance','Supply Chain'],
+    motivation:'IP Theft · Financial gain · Strategic intelligence',
+    ttps:[
+      {id:'T1195',tactic:'Initial Access',name:'Supply Chain Compromise',desc:'Compromises software update mechanisms (CCleaner-style) to reach downstream targets'},
+      {id:'T1059',tactic:'Execution',name:'Command Scripting',desc:'PowerShell, Python, and VBScript for execution and payload delivery'},
+      {id:'T1055',tactic:'Defense Evasion',name:'Process Injection',desc:'Injects malicious code into legitimate Windows processes to evade EDR'},
+      {id:'T1486',tactic:'Impact',name:'Data Encrypted for Impact',desc:'Deploys ransomware (Encryptor RaaS) for financial extortion alongside espionage'},
+      {id:'T1566',tactic:'Initial Access',name:'Spearphishing',desc:'Highly targeted spearphishing with COVID-19, healthcare, and gaming lures'},
+      {id:'T1071',tactic:'C2',name:'App Layer Protocol',desc:'Uses HTTPS, DNS, and ICMP tunneling for covert C2 communications'},
+    ],
+    malware:['POISONPLUG','CROSSWALK','Cobalt Strike (modified)','PlugX','ShadowPad','MESSAGETAP','KeyBoy'],
+    cves:['CVE-2021-44207','CVE-2020-10189','CVE-2019-19781'],
+    ioc:[
+      {type:'mal',val:'POISONPLUG  -  custom rootkit with UEFI persistence capability'},
+      {type:'mal',val:'ShadowPad  -  modular RAT shared across multiple Chinese APT groups'},
+      {type:'infra',val:'Uses legitimate code-signing certificates stolen from gaming companies'},
+    ],
+    defenses:['Verify software update integrity (code signing + hash verification)','Monitor for process injection (LSASS, svchost anomalies)','Restrict PowerShell execution policy; enable ScriptBlock logging','Implement software composition analysis in CI/CD pipelines','Detect unusual DNS and ICMP traffic volumes'],
+    mitre:'https://attack.mitre.org/groups/G0096/',
+    cisa:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-174a',
+  },
+  {
+    id:'G0016', name:'APT29 / COZY BEAR',
+    aliases:'Midnight Blizzard · NOBELIUM · The Dukes · Dark Halo · SVR · UNC2452',
+    nation:'russia', flag:'??', sponsor:'Russian Foreign Intelligence Service (SVR)',
+    active:'2008-Present', threatLevel:'critical',
+    summary:'Russia\'s premier intelligence-gathering APT. Executed the SolarWinds SUNBURST supply chain attack (2020) compromising 18,000+ organizations including US Treasury, DOJ, and DHS. In 2024 breached Microsoft\'s corporate email and exfiltrated source code. Targets government, think tanks, and NATO-aligned organizations with persistent, stealthy operations.',
+    targets:['Government / Diplomacy','Think Tanks','Defense','NATO Members','Technology','Healthcare'],
+    motivation:'Strategic intelligence collection · Political espionage',
+    ttps:[
+      {id:'T1195',tactic:'Initial Access',name:'Supply Chain Compromise',desc:'SUNBURST: Trojanized SolarWinds Orion updates distributed to 18,000+ victims'},
+      {id:'T1550',tactic:'Defense Evasion',name:'Use Alternate Auth Material',desc:'Steals OAuth tokens, SAML assertions, and service account credentials'},
+      {id:'T1078',tactic:'Persistence',name:'Valid Accounts (Cloud)',desc:'Abuses cloud service principals and federated identity to maintain M365 access'},
+      {id:'T1090',tactic:'C2',name:'Multi-hop Proxy',desc:'Routes C2 through residential proxy networks and legitimate cloud services'},
+      {id:'T1567',tactic:'Exfiltration',name:'Exfil to Cloud Storage',desc:'Exfiltrates data via legitimate OneDrive, Dropbox, and Google Drive APIs'},
+      {id:'T1485',tactic:'Impact',name:'Data Destruction',desc:'Deploys SUNSPOT implant to destroy forensic evidence post-compromise'},
+    ],
+    malware:['SUNBURST','TEARDROP','SUNSPOT','GoldMax','GoldFinder','Sibot','MagicWeb','WellMess'],
+    cves:['CVE-2021-26855','CVE-2021-27065','CVE-2020-4022'],
+    ioc:[
+      {type:'mal',val:'SUNBURST DLL  -  avsvmcloud[.]com C2 domain (sinkholed)'},
+      {type:'infra',val:'Residential proxy networks to blend C2 traffic with legitimate traffic'},
+      {type:'tool',val:'Azure AD / M365 service principal abuse for persistent cloud access'},
+    ],
+    defenses:['Audit OAuth app permissions and service principals in Azure AD','Enable Conditional Access policies with device compliance','Monitor SAML token anomalies (unusual IP, time, service)','Implement software bill of materials (SBOM) for supply chain integrity','Restrict cloud storage app access; monitor for unusual upload volumes','Enable Microsoft Secure Score recommendations'],
+    mitre:'https://attack.mitre.org/groups/G0016/',
+    cisa:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-008a',
+  },
+  {
+    id:'G0007', name:'APT28 / FANCY BEAR',
+    aliases:'Forest Blizzard · Sofacy · Pawn Storm · STRONTIUM · Sednit · GruesomeLarch',
+    nation:'russia', flag:'??', sponsor:'Russian Military Intelligence (GRU Unit 26165)',
+    active:'2004-Present', threatLevel:'critical',
+    summary:'Russia\'s GRU military intelligence cyber unit. Responsible for 2016 US election interference (DNC/DCCC breach), 2022 Ukraine cyberattacks, and ongoing NATO targeting. Weaponized Wi-Fi networks (Nearest Neighbor Attack, 2024) to reach air-gapped targets. Known for aggressive credential harvesting and influence operations alongside espionage.',
+    targets:['Government / Elections','Military / Defense','NATO Infrastructure','Energy','Media / Think Tanks'],
+    motivation:'Military intelligence · Election interference · Influence operations',
+    ttps:[
+      {id:'T1566',tactic:'Initial Access',name:'Spearphishing Links',desc:'Credential harvesting via fake Outlook/M365 login portals targeting NATO officials'},
+      {id:'T1557',tactic:'Credential Access',name:'Adversary-in-the-Middle',desc:'Nearest Neighbor Attack: compromises nearby Wi-Fi to pivot to target network'},
+      {id:'T1059',tactic:'Execution',name:'PowerShell / cmd',desc:'Uses PowerShell droppers and cmd.exe scripts for payload execution and persistence'},
+      {id:'T1003',tactic:'Credential Access',name:'NTDS Dump',desc:'Extracts Active Directory database to obtain all domain credentials'},
+      {id:'T1486',tactic:'Impact',name:'Destructive Wiper',desc:'NotPetya (co-attributed) caused $10B+ in global damage targeting Ukraine and supply chain'},
+      {id:'T1588',tactic:'Resource Dev',name:'Obtain Capabilities',desc:'Registers lookalike domains and obtains code-signing certs for credential phishing'},
+    ],
+    malware:['X-Agent (Sofacy)','Zebrocy','LoJax (UEFI rootkit)','CHOPSTICK','CORESHELL','HeadLace','Mockbin'],
+    cves:['CVE-2024-1212','CVE-2023-23397','CVE-2022-30190'],
+    ioc:[
+      {type:'mal',val:'X-Agent RAT  -  modular, cross-platform (Windows/Android/iOS/Linux)'},
+      {type:'mal',val:'LoJax  -  first UEFI rootkit attributed to a nation-state; survives OS reinstall'},
+      {type:'infra',val:'Lookalike domains spoofing NATO, Microsoft, Google login portals'},
+    ],
+    defenses:['Enforce FIDO2/hardware token MFA  -  defeats credential phishing','Audit and harden Wi-Fi network segmentation near sensitive facilities','Patch Outlook and Office immediately (especially CVE-2023-23397)','Enable Protected Users security group in Active Directory','Monitor for NTDS.dit access and unusual DC replication requests','Deploy UEFI Secure Boot and TPM-based attestation'],
+    mitre:'https://attack.mitre.org/groups/G0007/',
+    cisa:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-069a',
+  },
+  {
+    id:'G0034', name:'SANDWORM / APT44',
+    aliases:'Voodoo Bear · BlackEnergy · Telebots · ELECTRUM · Seashell Blizzard',
+    nation:'russia', flag:'??', sponsor:'GRU Unit 74455  -  Cyberwarfare',
+    active:'2009-Present', threatLevel:'critical',
+    summary:'Russia\'s dedicated cyberwarfare unit. Caused the first confirmed power grid blackouts via cyberattack (Ukraine 2015/2016). Deployed NotPetya ($10B+ global damage, 2017). In 2025 deployed ZEROLOT wiper against energy and logistics infrastructure. Blends espionage with physically destructive operations targeting critical infrastructure across NATO countries.',
+    targets:['Power Grid / Energy','Industrial Control Systems','Government','Logistics / Transport','Media'],
+    motivation:'Destructive sabotage · Cyberwarfare · Influence operations',
+    ttps:[
+      {id:'T1489',tactic:'Impact',name:'Service Stop (Wiper)',desc:'CrashOverride/Industroyer targets ICS protocols (IEC 104, IEC 101, GOOSE) to kill power'},
+      {id:'T1485',tactic:'Impact',name:'Data Destruction',desc:'NotPetya and ZEROLOT wipers destroy MBR and file systems beyond recovery'},
+      {id:'T1133',tactic:'Initial Access',name:'External Remote Services',desc:'Exploits VPN and remote desktop services for initial network access'},
+      {id:'T1053',tactic:'Execution',name:'Scheduled Tasks',desc:'Uses Windows Task Scheduler for persistent wiper deployment across networks'},
+      {id:'T1071',tactic:'C2',name:'Web Protocols',desc:'Abuses legitimate HTTP/HTTPS traffic to blend C2 with normal web traffic'},
+      {id:'T1561',tactic:'Impact',name:'Disk Wipe',desc:'Targets MBR/VBR and overwrites files to render systems unrecoverable'},
+    ],
+    malware:['BlackEnergy 3','CrashOverride / Industroyer','NotPetya','Exaramel','Cyclops Blink','ZEROLOT (2025)','Kapeka'],
+    cves:['CVE-2017-0144','CVE-2022-1040','CVE-2024-24919'],
+    ioc:[
+      {type:'mal',val:'Industroyer2  -  ICS-specific malware targeting power grid protocols'},
+      {type:'mal',val:'ZEROLOT  -  2025 wiper targeting energy/logistics; uses AD GPO for deployment'},
+      {type:'infra',val:'Compromised legitimate infrastructure (hosting providers, VPNs) as staging'},
+    ],
+    defenses:['Air-gap OT/ICS networks from corporate IT  -  no exceptions','Implement ICS-specific monitoring (Dragos, Claroty, Nozomi)','Maintain offline, tested backups for all critical systems','Disable unnecessary remote access to ICS/SCADA environments','Monitor GPO changes for unauthorized wiper deployment patterns','Run tabletop exercises for grid/OT recovery scenarios'],
+    mitre:'https://attack.mitre.org/groups/G0034/',
+    cisa:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-110a',
+  },
+  {
+    id:'G0082', name:'LAZARUS GROUP',
+    aliases:'Hidden Cobra · ZINC · Labyrinth Chollima · TraderTraitor · APT38',
+    nation:'dprk', flag:'??', sponsor:'DPRK Reconnaissance General Bureau (RGB)',
+    active:'2009-Present', threatLevel:'critical',
+    summary:'North Korea\'s primary cyber unit  -  unique in combining espionage with direct revenue generation for the regime. Stole $1.5B from Bybit in Feb 2025 (largest crypto heist ever). Total crypto theft exceeds $3B since 2017. Also responsible for WannaCry ransomware ($4-8B damage). Operates TraderTraitor sub-cluster targeting crypto/DeFi via fake job offers and malicious npm packages.',
+    targets:['Cryptocurrency / DeFi','Banks / SWIFT','Defense Contractors','Government','Exchanges / Fintech'],
+    motivation:'Revenue generation for DPRK regime · Sanctions evasion · Espionage',
+    ttps:[
+      {id:'T1566',tactic:'Initial Access',name:'Spearphishing (Job Offers)',desc:'Fake LinkedIn/Indeed recruiter personas send malicious PDF job applications to crypto devs'},
+      {id:'T1195',tactic:'Initial Access',name:'Supply Chain via npm',desc:'Publishes malicious npm packages targeting crypto developer environments'},
+      {id:'T1041',tactic:'Exfil',name:'Crypto Theft via Smart Contract',desc:'Drains wallets via compromised private keys and malicious transaction approval'},
+      {id:'T1059',tactic:'Execution',name:'Scripting / Macro',desc:'Malicious Office macros and JavaScript droppers in fake job application documents'},
+      {id:'T1486',tactic:'Impact',name:'Ransomware Deployment',desc:'WannaCry EternalBlue ransomware  -  $4-8B global damage in 2017'},
+      {id:'T1090',tactic:'C2',name:'Multi-layer Proxy',desc:'Routes funds and C2 through Tornado Cash, mixers, and multi-hop blockchain transactions'},
+    ],
+    malware:['BLINDINGCAN','COPPERHEDGE','ELECTRICFISH','AppleJeus','WannaCry','MATA framework','RustBucket (macOS)'],
+    cves:['CVE-2017-0144','CVE-2022-47966','CVE-2021-44228'],
+    ioc:[
+      {type:'mal',val:'AppleJeus  -  fake crypto trading app targeting macOS and Windows users'},
+      {type:'infra',val:'Fake LinkedIn recruiter profiles with real profile histories and connections'},
+      {type:'net',val:'Bybit attack: $1.5B drained via compromised Safe{Wallet} frontend injection'},
+    ],
+    defenses:['Verify all npm packages before install; audit package.json dependencies','Never open unsolicited job offer attachments  -  verify via official channels','Hardware wallet for all crypto asset custody; multi-sig for large amounts','Monitor for unusual transaction approvals or smart contract interactions','Isolate crypto development environments from production systems','Enable SWIFT customer security programme (CSP) controls'],
+    mitre:'https://attack.mitre.org/groups/G0082/',
+    cisa:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-108a',
+  },
+  {
+    id:'G0094', name:'KIMSUKY',
+    aliases:'Thallium · Velvet Chollima · Black Banshee · APT43 · Emerald Sleet',
+    nation:'dprk', flag:'??', sponsor:'DPRK Reconnaissance General Bureau (RGB)',
+    active:'2012-Present', threatLevel:'high',
+    summary:'North Korean intelligence collection unit targeting nuclear policy experts, government officials, think tanks, and journalists. In 2025 used QR-code phishing to hijack cloud identities and Microsoft 365 accounts. Conducts detailed long-term reconnaissance on targets before contact, often posing as journalists or researchers to elicit sensitive information.',
+    targets:['Think Tanks / Academia','Government Officials','Journalists / Media','Nuclear Policy Experts','Cryptocurrency'],
+    motivation:'Intelligence collection · Policy intelligence · Cryptocurrency theft',
+    ttps:[
+      {id:'T1566',tactic:'Initial Access',name:'Spearphishing / Social Eng',desc:'Poses as journalists, researchers, and policy experts to build rapport before attacks'},
+      {id:'T1539',tactic:'Credential Access',name:'Steal Browser Cookies',desc:'Harvests session cookies and OAuth tokens from browser credential stores'},
+      {id:'T1598',tactic:'Reconnaissance',name:'Phishing for Information',desc:'2025: QR-code phishing campaigns to steal Microsoft 365 credentials and MFA bypass'},
+      {id:'T1059',tactic:'Execution',name:'VBScript / PowerShell',desc:'Deploys BabyShark VBScript via spearphishing for persistent C2'},
+      {id:'T1114',tactic:'Collection',name:'Email Collection',desc:'Accesses and exfiltrates full email archives from compromised accounts'},
+      {id:'T1567',tactic:'Exfiltration',name:'Cloud Storage Exfil',desc:'Exfiltrates data via Google Drive and Dropbox to blend with normal traffic'},
+    ],
+    malware:['BabyShark','PowerShell RAT','Gold Dragon','FlowerPower','RandomQuery'],
+    cves:['CVE-2024-21412','CVE-2022-30190'],
+    ioc:[
+      {type:'infra',val:'QR-code phishing pages mimicking Microsoft and Google authentication portals'},
+      {type:'mal',val:'BabyShark  -  VBScript-based RAT with keylogging and file exfil capability'},
+      {type:'net',val:'Reconnaissance via LinkedIn, email, and social media months before attack'},
+    ],
+    defenses:['Never scan unsolicited QR codes  -  verify destination URL independently','Implement phishing-resistant MFA (FIDO2, not SMS/TOTP)','Brief policy and research staff on persona-based social engineering','Protect browser credential stores with device binding','Monitor M365 sign-ins for anomalous location / device changes','Use email authentication (DMARC, DKIM, SPF) to reduce spoofing'],
+    mitre:'https://attack.mitre.org/groups/G0094/',
+    cisa:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-059a',
+  },
+  {
+    id:'G0059', name:'APT33 / REFINED KITTEN',
+    aliases:'Holmium · Elfin · Peach Sandstorm · MAGNALLIUM',
+    nation:'iran', flag:'??', sponsor:'Iranian Islamic Revolutionary Guard Corps (IRGC)',
+    active:'2013-Present', threatLevel:'high',
+    summary:'Iran\'s aviation and energy-focused APT. Targets Saudi Arabia, US, and South Korean aviation, petrochemical, and defense sectors. In 2023-2024 escalated to password spray attacks on US defense contractors and critical infrastructure. Deploys HOLMIUM custom malware alongside commodity tools. Known for destructive wiper payloads (Shamoon partnership) targeting Gulf state energy infrastructure.',
+    targets:['Aviation / Aerospace','Petrochemical / Energy','Defense','Government (Gulf States)','US Critical Infrastructure'],
+    motivation:'Espionage · Sabotage · IP theft for Iranian industrial development',
+    ttps:[
+      {id:'T1110',tactic:'Credential Access',name:'Password Spraying',desc:'Mass password spray campaigns against M365, targeting defense contractors 2023-2024'},
+      {id:'T1133',tactic:'Initial Access',name:'External Remote Services',desc:'Exploits internet-facing VPN and remote desktop services for initial access'},
+      {id:'T1071',tactic:'C2',name:'DNS Tunneling',desc:'Uses DNS tunneling for covert command-and-control communications'},
+      {id:'T1485',tactic:'Impact',name:'Data Destruction',desc:'Coordinates with Shamoon operators to deploy wipers against energy sector targets'},
+      {id:'T1566',tactic:'Initial Access',name:'Spearphishing Attachment',desc:'Sends weaponized Excel/PDF files with HOLMIUM downloader to aviation targets'},
+      {id:'T1547',tactic:'Persistence',name:'Boot/Logon Autostart',desc:'Establishes persistence via Registry Run keys and scheduled tasks'},
+    ],
+    malware:['HOLMIUM downloader','NANOCORE RAT','NETWIRE RAT','Ruler','PowerShell Empire','AutoIt backdoor'],
+    cves:['CVE-2021-40539','CVE-2021-26084','CVE-2022-1388'],
+    ioc:[
+      {type:'mal',val:'HOLMIUM  -  custom downloader disguised as legitimate software packages'},
+      {type:'infra',val:'Free hosting providers (GitHub Pages, Blogger) used for staging'},
+      {type:'net',val:'Password spray from Azure and AWS IPs  -  monitor for distributed auth failures'},
+    ],
+    defenses:['Enforce MFA on all externally accessible systems immediately','Block or monitor access from anonymizing services (VPNs, Tor)','Set account lockout thresholds for password spray detection','Monitor DNS for high-volume query patterns (tunneling indicators)','Deploy honeypot accounts to detect spray campaigns early','Patch Atlassian, Zoho, and remote access products immediately'],
+    mitre:'https://attack.mitre.org/groups/G0059/',
+    cisa:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-241a',
+  },
+  {
+    id:'G1027', name:'UNC5221 / SALT WIND',
+    aliases:'UNC5221 · China Chopper operators · F5-targeted group',
+    nation:'china', flag:'??', sponsor:'PRC (attributed with high confidence)',
+    active:'2024-Present', threatLevel:'critical',
+    summary:'Nation-state group responsible for breaching F5\'s internal engineering systems in 2024, obtaining BIG-IP source code and a roadmap of undisclosed vulnerabilities. Reclassified CVE-2025-53521 from DoS to critical RCE after active exploitation. Deployed Brickstorm backdoor on F5 customer systems. Tampered with sys-eicheck system integrity checker to produce false health reports.',
+    targets:['Network Infrastructure Vendors','Enterprise Edge Devices','F5 Customers','Critical Infrastructure'],
+    motivation:'Supply chain intelligence · Long-term persistent access · Pre-positioning',
+    ttps:[
+      {id:'T1195',tactic:'Initial Access',name:'Supply Chain / Vendor Breach',desc:'Breached F5 internal systems to obtain source code and undisclosed vulnerability roadmap'},
+      {id:'T1059',tactic:'Execution',name:'OS Command Execution',desc:'CVE-2025-53521: crafted traffic to BIG-IP APM virtual servers yields root RCE'},
+      {id:'T1014',tactic:'Defense Evasion',name:'Rootkit / Integrity Tampering',desc:'Modified sys-eicheck to produce false health reports on compromised BIG-IP systems'},
+      {id:'T1542',tactic:'Persistence',name:'Pre-OS Boot',desc:'Brickstorm backdoor survives upgrades by targeting specific partition configurations'},
+      {id:'T1078',tactic:'Persistence',name:'Valid Accounts',desc:'Leverages compromised admin credentials to maintain persistent access post-patch'},
+    ],
+    malware:['Brickstorm backdoor','China Chopper webshell','Custom BIG-IP implant'],
+    cves:['CVE-2025-53521'],
+    ioc:[
+      {type:'mal',val:'Brickstorm  -  persistent backdoor surviving BIG-IP partition upgrades'},
+      {type:'infra',val:'Modifications to sys-eicheck producing false integrity check results'},
+      {type:'net',val:'Specific malicious traffic patterns to BIG-IP APM virtual server listeners'},
+    ],
+    defenses:['Upgrade BIG-IP to fixed versions immediately','Run sys-eicheck validation and compare both partitions','Inspect BIG-IP for Brickstorm IOCs (K000156741)','Assume compromise if running vulnerable BIG-IP APM version','Monitor network traffic patterns to APM virtual servers','Segment BIG-IP management from production networks'],
+    mitre:'https://attack.mitre.org/groups/G1045/',
+    cisa:'https://www.cisa.gov/known-exploited-vulnerabilities-catalog',
+  },
+  {
+    id:'G0049', name:'APT40 / BRONZE MOHAWK',
+    aliases:'Leviathan · TEMP.Periscope · MUDCARP · Kryptonite Panda · GreenCrash',
+    nation:'china', flag:'??', sponsor:'PRC MSS Hainan State Security Department',
+    active:'2009-Present', threatLevel:'high',
+    summary:'China-nexus APT focused on maritime, naval, defense, and aviation espionage aligned with PRC military modernization objectives. CISA, ACSC, and Five Eyes issued joint advisory in 2024. DOJ indicted 4 MSS officers. Operates in Pacific region heavily  -  major threat to US Navy, maritime shipping, and Indo-Pacific allies. Recently targeted Pacific island governments.',
+    targets:['Maritime / Naval','Defense Contractors','Aviation','Government (Indo-Pacific)','Technology / Research'],
+    motivation:'Military technology acquisition · Naval intelligence · Pacific strategy',
+    ttps:[
+      {id:'T1190',tactic:'Initial Access',name:'Exploit Public-Facing App',desc:'Targets web applications and VPN concentrators at defense and maritime organizations'},
+      {id:'T1566',tactic:'Initial Access',name:'Spearphishing',desc:'Sends maritime and defense-themed lure documents to naval and shipping sector targets'},
+      {id:'T1078',tactic:'Persistence',name:'Valid Accounts',desc:'Maintains persistent access via stolen VPN credentials for months before discovery'},
+      {id:'T1005',tactic:'Collection',name:'Data from Local System',desc:'Targets CAD files, naval designs, and maritime research data for exfiltration'},
+      {id:'T1119',tactic:'Collection',name:'Automated Collection',desc:'Scripts automate collection of files matching defense/maritime keyword patterns'},
+    ],
+    malware:['BADFLICK','PHOTO','HOMEFRY','AIRBREAK','LUNCHMONEY','ScanBox'],
+    cves:['CVE-2021-26855','CVE-2021-40539','CVE-2021-22205'],
+    ioc:[
+      {type:'mal',val:'BADFLICK backdoor  -  used in long-term maritime espionage campaigns'},
+      {type:'infra',val:'Compromised Australian web hosting used as C2 relay infrastructure'},
+      {type:'net',val:'ScanBox JavaScript framework injected into maritime/defense news sites'},
+    ],
+    defenses:['Patch web-facing systems immediately  -  prioritize VPN and collaboration tools','Monitor for web shells in Apache/IIS/Nginx web directories','Apply network segmentation around CAD and engineering file systems','Implement strict egress filtering on networks containing sensitive designs','Brief staff on maritime-themed spearphishing lures'],
+    mitre:'https://attack.mitre.org/groups/G0049/',
+    cisa:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-190a',
+  },
+  {
+    id:'G0035', name:'CHARMING KITTEN / APT35',
+    aliases:'Phosphorus · Mint Sandstorm · TA453 · ITG18 · Yellow Garuda',
+    nation:'iran', flag:'??', sponsor:'Islamic Revolutionary Guard Corps (IRGC)',
+    active:'2014-Present', threatLevel:'high',
+    summary:'Iran\'s most active social engineering and espionage APT. Targets journalists, academics, human rights activists, dissidents, and policy researchers globally. Executed Operation SpoofedScholars  -  impersonating real academics to harvest credentials. In 2023-2024 targeted US presidential campaign staff. Conducts phone and WhatsApp-based social engineering alongside technical attacks.',
+    targets:['Journalists / Activists','Academic Researchers','Think Tanks','Dissidents / NGOs','Government Officials','Political Campaigns'],
+    motivation:'Surveillance of dissidents · Political intelligence · Influence operations',
+    ttps:[
+      {id:'T1598',tactic:'Recon',name:'Phishing for Information',desc:'SpoofedScholars: impersonates academics via email and WhatsApp over months before attack'},
+      {id:'T1539',tactic:'Credential Access',name:'Steal Session Cookies',desc:'Custom malware harvests Google, Gmail, and cloud service session cookies'},
+      {id:'T1566',tactic:'Initial Access',name:'Phone / WhatsApp Phishing',desc:'Initiates contact via WhatsApp/phone posing as journalists for credential harvesting'},
+      {id:'T1059',tactic:'Execution',name:'PowerShell',desc:'CharmPower PowerShell-based backdoor for post-compromise collection and persistence'},
+      {id:'T1113',tactic:'Collection',name:'Screen Capture',desc:'Continuously captures screenshots on compromised dissident and activist devices'},
+    ],
+    malware:['CharmPower','HYPERSCRAPE (Gmail harvester)','NokNok (macOS)','GorjolEcho','BASICSTAR'],
+    cves:['CVE-2022-30190','CVE-2021-40444'],
+    ioc:[
+      {type:'mal',val:'HYPERSCRAPE  -  tool to download and delete emails from Gmail/Outlook/Yahoo'},
+      {type:'infra',val:'Fake academic conference invitations and book review request emails'},
+      {type:'mal',val:'NokNok  -  macOS backdoor delivered via fake VPN apps to researchers'},
+    ],
+    defenses:['Never click links in unsolicited emails or WhatsApp from unknown contacts','Verify academic/journalist identities through independent institutional channels','Use Google Advanced Protection Program for high-risk individuals','Enable Advanced Phishing Protection in Gmail and M365','Train at-risk staff (journalists, activists) on persona-based social engineering','Use hardware security keys  -  defeats credential phishing completely'],
+    mitre:'https://attack.mitre.org/groups/G0059/',
+    cisa:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-055a',
+  },
+];
+
+// ?????????????????????????????????????????????????????????????
+//  STATE
+// ?????????????????????????????????????????????????????????????
+var activeFilter='all';
+var searchQuery='';
+
+// ?????????????????????????????????????????????????????????????
+//  STATS
+// ?????????????????????????????????????????????????????????????
+function updateStats(actors){
+  animN('sTotal',actors.length);
+  animN('sCN',actors.filter(function(a){return a.nation==='china';}).length);
+  animN('sRU',actors.filter(function(a){return a.nation==='russia';}).length);
+  animN('sKP',actors.filter(function(a){return a.nation==='dprk';}).length);
+  animN('sIR',actors.filter(function(a){return a.nation==='iran';}).length);
+}
+function animN(id,target){
+  var el=document.getElementById(id),cur=0,step=Math.max(1,Math.ceil(target/16));
+  var t=setInterval(function(){cur=Math.min(cur+step,target);el.textContent=cur;if(cur>=target)clearInterval(t);},40);
+}
+
+// ?????????????????????????????????????????????????????????????
+//  FILTER & SEARCH
+// ?????????????????????????????????????????????????????????????
+function setFilter(f,el){
+  activeFilter=f;
+  document.querySelectorAll('.fchip').forEach(function(c){c.classList.remove('active');});
+  el.classList.add('active');
+  render();
+}
+function doSearch(){searchQuery=document.getElementById('searchIn').value.toLowerCase();render();}
+
+function filtered(){
+  return ACTORS.filter(function(a){
+    var mf=true;
+    if(activeFilter==='china') mf=a.nation==='china';
+    else if(activeFilter==='russia') mf=a.nation==='russia';
+    else if(activeFilter==='dprk') mf=a.nation==='dprk';
+    else if(activeFilter==='iran') mf=a.nation==='iran';
+    else if(activeFilter==='critical') mf=a.threatLevel==='critical';
+    else if(activeFilter==='ransomware') mf=/wannacry|notpetya|ransomware/i.test(a.summary+a.malware.join(''));
+    if(!mf) return false;
+    if(!searchQuery) return true;
+    return (a.name+a.aliases+a.summary+a.targets.join('')).toLowerCase().includes(searchQuery);
+  });
+}
+
+// ?????????????????????????????????????????????????????????????
+//  NATION COLOR HELPERS
+// ?????????????????????????????????????????????????????????????
+function nationColor(n){
+  return n==='china'?'var(--orange)':n==='russia'?'var(--red)':n==='dprk'?'var(--purple)':'var(--cyan)';
+}
+function nationBadgeClass(n){
+  return n==='china'?'cb-cn':n==='russia'?'cb-ru':n==='dprk'?'cb-kp':'cb-ir';
+}
+function nationLabel(n){
+  return n==='china'?'CHINA-NEXUS':n==='russia'?'RUSSIA-NEXUS':n==='dprk'?'DPRK-NEXUS':'IRAN-NEXUS';
+}
+function thrClass(t){return t==='critical'?'thr-critical':t==='high'?'thr-high':'thr-medium';}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ?????????????????????????????????????????????????????????????
+//  RENDER
+// ?????????????????????????????????????????????????????????????
+function render(){
+  var list=filtered();
+  updateStats(list);
+  var col=nationColor;
+  var grid=document.getElementById('cardGrid');
+
+  if(!list.length){
+    grid.innerHTML='<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:13px">NO ACTORS MATCH QUERY</div>';
+    return;
+  }
+
+  grid.innerHTML=list.map(function(a,i){
+    var nc=nationColor(a.nation);
+    var ttpPreview=a.ttps.slice(0,4);
+
+    return '<div class="apt-card" id="card'+i+'" onclick="toggleCard('+i+')" style="animation-delay:'+(i*0.04)+'s">'
+      // stripe
+      +'<div class="card-stripe" style="background:linear-gradient(90deg,'+nc+',transparent)"></div>'
+      // header
+      +'<div class="card-hdr">'
+        +'<div class="ch-top">'
+          +'<div class="ch-flag">'+a.flag+'</div>'
+          +'<div class="ch-id">'
+            +'<div class="apt-name" style="color:'+nc+';text-shadow:0 0 10px '+nc+'55">'+esc(a.name)+'</div>'
+            +'<div class="apt-aliases">'+esc(a.aliases)+'</div>'
+          +'</div>'
+          +'<div class="ch-badges">'
+            +'<span class="cbadge '+nationBadgeClass(a.nation)+'">'+nationLabel(a.nation)+'</span>'
+            +'<span class="cbadge cb-threat '+thrClass(a.threatLevel)+'">'+a.threatLevel.toUpperCase()+' THREAT</span>'
+          +'</div>'
+        +'</div>'
+        +'<div class="ch-meta">'
+          +'<div class="cm-item">ACTIVE: <span>'+esc(a.active)+'</span></div>'
+          +'<div class="cm-item">SPONSOR: <span>'+esc(a.sponsor.slice(0,40))+'</span></div>'
+        +'</div>'
+        +'<div class="fresh-row" data-actor="'+esc(a.name)+'">'+freshChipHtml(a.name)+'</div>' 
+      +'</div>'
+      // summary
+      +'<div class="card-summary">'+esc(a.summary.slice(0,220))+(a.summary.length>220?'...':'')+'</div>'
+      // targets
+      +'<div class="card-targets">'
+        +'<div class="ct-label">PRIMARY TARGETS</div>'
+        +'<div class="target-chips">'+a.targets.map(function(t){return'<span class="tchip">'+esc(t)+'</span>';}).join('')+'</div>'
+      +'</div>'
+      // TTP preview
+      +'<div class="card-ttps">'
+        +'<div class="ct-label">KEY TTPs (MITRE ATT&amp;CK)</div>'
+        +'<div class="ttp-grid">'+ttpPreview.map(function(t){
+          return'<div class="ttp-item">'
+            +'<div class="tti-tactic">'+esc(t.tactic)+'<span class="tti-id">'+t.id+'</span></div>'
+            +'<div class="tti-tech">'+esc(t.name)+'</div>'
+          +'</div>';
+        }).join('')+'</div>'
+      +'</div>'
+      // footer
+      +'<div class="card-footer">'
+        +'<div class="expand-btn"><span class="expand-icon">v</span> FULL PROFILE</div>'
+        +'<div class="card-refs-row">'
+          +(a.mitre?'<a class="cref" href="'+a.mitre+'" target="_blank" onclick="event.stopPropagation()">MITRE</a>':'')
+          +(a.cisa?'<a class="cref" href="'+a.cisa+'" target="_blank" onclick="event.stopPropagation()">CISA</a>':'')
+        +'</div>'
+      +'</div>'
+      // expanded detail
+      +'<div class="card-detail">'
+        // full TTPs
+        +'<div class="detail-section">'
+          +'<div class="ds-title">FULL TTP MATRIX (MITRE ATT&amp;CK)</div>'
+          +'<div class="ttp-full">'+a.ttps.map(function(t){
+            return'<div class="ttpf-item">'
+              +'<div class="ttpf-id">'+t.id+'</div>'
+              +'<div><div class="ttpf-name">'+esc(t.name)+'</div><div class="ttpf-desc">'+esc(t.desc)+'</div></div>'
+            +'</div>';
+          }).join('')+'</div>'
+        +'</div>'
+        // CVEs
+        +'<div class="detail-section">'
+          +'<div class="ds-title">ASSOCIATED CVEs</div>'
+          +'<div class="cve-row">'+a.cves.map(function(c){
+            return'<a class="cve-chip" href="https://nvd.nist.gov/vuln/detail/'+esc(c)+'" target="_blank" onclick="event.stopPropagation()">'+esc(c)+'</a>';
+          }).join('')+'</div>'
+        +'</div>'
+        // Malware
+        +'<div class="detail-section">'
+          +'<div class="ds-title">KNOWN MALWARE / TOOLS</div>'
+          +'<div class="target-chips">'+a.malware.map(function(m){
+            return'<span class="tchip" style="color:var(--red);border-color:rgba(255,55,55,.2)">'+esc(m)+'</span>';
+          }).join('')+'</div>'
+        +'</div>'
+        // IOCs
+        +'<div class="detail-section">'
+          +'<div class="ds-title">INDICATORS / TRADECRAFT</div>'
+          +'<div class="ioc-list">'+a.ioc.map(function(ioc){
+            return'<div class="ioc-item"><span class="ioc-type it-'+ioc.type+'">'+ioc.type.toUpperCase()+'</span><span>'+esc(ioc.val)+'</span></div>';
+          }).join('')+'</div>'
+        +'</div>'
+        // Motivation
+        +'<div class="detail-section">'
+          +'<div class="ds-title">MOTIVATION</div>'
+          +'<div style="font-size:12px;color:var(--muted2);font-family:var(--mono)">'+esc(a.motivation)+'</div>'
+        +'</div>'
+        // Defenses
+        +'<div class="detail-section" style="border-bottom:none">'
+          +'<div class="ds-title">?? DEFENSIVE COUNTERMEASURES</div>'
+          +'<div class="defense-list">'+a.defenses.map(function(d){
+            return'<div class="def-item">'+esc(d)+'</div>';
+          }).join('')+'</div>'
+        +'</div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function toggleCard(i){
+  var card=document.getElementById('card'+i);
+  if(card) card.classList.toggle('expanded');
+  // close others
+  document.querySelectorAll('.apt-card').forEach(function(c,j){
+    if(j!==i) c.classList.remove('expanded');
+  });
+}
+
+// ?????????????????????????????????????????????????????????????
+//  AI LIVE INTELLIGENCE UPDATE ENGINE
+// ?????????????????????????????????????????????????????????????
+
+// Tracks which actors have been AI-updated this session
+var aiUpdates = {};
+
+function setProgress(pct){
+  var bar = document.getElementById('aiProgress');
+  var fill = document.getElementById('aiProgressBar');
+  bar.classList.add('visible');
+  fill.style.width = pct + '%';
+  if(pct >= 100) setTimeout(function(){ bar.classList.remove('visible'); fill.style.width='0'; }, 800);
+}
+
+function setStatusMsg(lines){
+  var el = document.getElementById('aiStatus');
+  el.classList.add('visible');
+  el.innerHTML = lines.map(function(l){
+    return '<div class="ai-status-line"><span class="ast-tag '+l.cls+'">'+l.tag+'</span><span>'+esc(l.msg)+'</span></div>';
+  }).join('');
+}
+
+function clearStatus(){
+  var el = document.getElementById('aiStatus');
+  el.classList.remove('visible');
+  el.innerHTML = '';
+}
+
+async function queryActorUpdate(actorName){
+  var prompt = 'You are a defensive cybersecurity threat intelligence analyst. Today\'s date is June 6, 2026.\n\nProvide the LATEST publicly known threat intelligence update for: "'+actorName+'"\n\nSearch your knowledge for anything reported in 2025-2026. Return ONLY a valid JSON object (no markdown, no backticks) with these exact fields:\n{\n  "actor": "'+actorName+'",\n  "last_seen": "YYYY-MM or Recent",\n  "new_campaigns": ["short description of recent campaign 1", "campaign 2"],\n  "new_cves": ["CVE-XXXX-XXXXX"],\n  "new_malware": ["tool or malware name"],\n  "new_ttps": ["T1XXX: technique description"],\n  "new_targets": ["sector or region"],\n  "key_update": "2-3 sentence summary of the most important recent development",\n  "threat_delta": "escalating|stable|declining",\n  "sources": ["CISA advisory URL or MITRE or public report name"]\n}\n\nOnly include confirmed, publicly reported intelligence from open sources. Be specific and accurate.';
+
+  var resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-4-6',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  if(!resp.ok){
+    var errBody = await resp.json().catch(function(){return{};});
+    throw new Error('API '+resp.status+': '+(errBody.error&&errBody.error.message?errBody.error.message:resp.statusText));
+  }
+  var data = await resp.json();
+  if(!data.content||!data.content.length) throw new Error('Empty API response');
+  var raw = data.content.map(function(b){ return b.type==='text'?b.text:''; }).join('').trim();
+  var match = raw.replace(/```json|```/gi,'').trim();
+  var jsonMatch = match.match(/\{[\s\S]*\}/);
+  if(!jsonMatch) throw new Error('No JSON object in response');
+  return JSON.parse(jsonMatch[0]);
+}
+
+// ---- PER-ACTOR FRESHNESS ----
+// Honest freshness: tracks when this actor was last PULLED and from WHICH source.
+// SLA for threat-actor intel: green < 7d, amber < 30d, red > 30d. "BASELINE" = static profile, never pulled.
+var FRESH_SLA_DAYS = { green:7, amber:30 };
+function freshStore(){ try{ return JSON.parse(localStorage.getItem('ghost2210_apt_fresh')||'{}'); }catch(e){ return {}; } }
+function freshSave(o){ try{ localStorage.setItem('ghost2210_apt_fresh', JSON.stringify(o)); }catch(e){} }
+function markActorFresh(actorName, source){
+  var o=freshStore(); o[actorName.toUpperCase()]={ ts:new Date().toISOString(), src:source||'AI' }; freshSave(o);
+}
+function ageParts(iso){
+  if(!iso) return null;
+  var ms=Date.now()-new Date(iso).getTime(); if(isNaN(ms)) return null;
+  var mins=ms/60000, hrs=mins/60, days=hrs/24;
+  var label = mins<1?'just now' : mins<60?Math.round(mins)+'m ago' : hrs<48?Math.round(hrs)+'h ago' : Math.round(days)+'d ago';
+  var level = days<=FRESH_SLA_DAYS.green?'green' : days<=FRESH_SLA_DAYS.amber?'amber' : 'red';
+  return { label:label, level:level, days:days };
+}
+function freshColor(level){ return level==='green'?'#00e5a0' : level==='amber'?'#ffb020' : '#ff4d4d'; }
+function freshChipHtml(actorName){
+  var rec = freshStore()[actorName.toUpperCase()];
+  if(!rec){
+    return '<span class="fresh-base" style="display:flex;align-items:center;gap:8px">'
+      +'<span class="fresh-dot" style="color:#5a6b5e"></span>'
+      +'<span class="fresh-lbl">DATA FRESHNESS:</span>'
+      +'<span class="fresh-age">BASELINE</span>'
+      +'<span class="fresh-src">· static profile — not yet updated from a live source</span>'
+      +'</span>';
+  }
+  var a=ageParts(rec.ts); var col=freshColor(a.level);
+  var srcLabel = rec.src==='AI' ? 'AI-generated · knowledge-cutoff limited — verify' : 'via '+esc(rec.src);
+  return '<span style="display:flex;align-items:center;gap:8px">'
+    +'<span class="fresh-dot" style="color:'+col+'"></span>'
+    +'<span class="fresh-lbl">UPDATED:</span>'
+    +'<span class="fresh-age" style="color:'+col+'">'+a.label+'</span>'
+    +'<span class="fresh-src">· '+srcLabel+'</span>'
+    +'</span>';
+}
+function refreshAllFreshChips(){
+  document.querySelectorAll('.fresh-row').forEach(function(row){
+    var name=row.getAttribute('data-actor'); if(name) row.innerHTML=freshChipHtml(name);
+  });
+}
+// live tick so ages count up without a reload
+setInterval(refreshAllFreshChips, 60000);
+
+function injectUpdateBadge(actorName, update){
+  markActorFresh(actorName, 'AI');
+  setTimeout(refreshAllFreshChips, 0);
+  // Find card by actor name and inject the AI update section
+  var cards = document.querySelectorAll('.apt-card');
+  cards.forEach(function(card){
+    var nameEl = card.querySelector('.apt-name');
+    if(!nameEl) return;
+    var cardName = nameEl.textContent.toUpperCase();
+    var searchName = actorName.toUpperCase();
+    if(cardName.indexOf(searchName) === -1 && searchName.indexOf(cardName.split('/')[0].trim()) === -1) return;
+
+    // Remove old update section if exists
+    var old = card.querySelector('.ai-update-section');
+    if(old) old.remove();
+
+    // Build update section
+    var deltaColor = update.threat_delta==='escalating'?'var(--red)':update.threat_delta==='stable'?'var(--yellow)':'var(--ng)';
+    var deltaIcon = update.threat_delta==='escalating'?'^ ESCALATING':update.threat_delta==='stable'?'> STABLE':'v DECLINING';
+
+    var section = document.createElement('div');
+    section.className = 'ai-update-section';
+    section.style.cssText = 'border-top:1px solid rgba(0,229,255,0.2);background:rgba(0,229,255,0.04);';
+
+    var html = '<div class="detail-section" style="border-bottom:none">'
+      +'<div class="ds-title" style="color:var(--cyan)">! AI INTELLIGENCE UPDATE &nbsp;<span style="font-size:9px;color:var(--muted)">'+new Date().toUTCString().split(' ').slice(1,5).join(' ')+'</span></div>'
+      // Threat delta
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+        +'<span style="font-family:var(--display);font-size:11px;font-weight:700;color:'+deltaColor+';text-shadow:0 0 8px '+deltaColor+'55">'+deltaIcon+'</span>'
+        +(update.last_seen?'<span style="font-size:10px;font-family:var(--mono);color:var(--muted)">LAST SEEN: '+esc(update.last_seen)+'</span>':'')
+      +'</div>'
+      // Key update
+      +(update.key_update?'<div style="font-size:12px;color:var(--muted2);line-height:1.7;margin-bottom:12px;padding:10px 12px;background:var(--s3);border:1px solid var(--b1);border-left:2px solid var(--cyan);border-radius:3px">'+esc(update.key_update)+'</div>':'');
+
+    // New campaigns
+    if(update.new_campaigns && update.new_campaigns.length){
+      html += '<div class="ct-label" style="margin-bottom:6px">NEW CAMPAIGNS</div>'
+        +'<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px">'
+        +update.new_campaigns.map(function(c){
+          return '<div style="font-size:11px;font-family:var(--mono);color:var(--ng);padding:5px 9px;background:var(--s3);border:1px solid var(--b1);border-radius:3px">> '+esc(c)+'</div>';
+        }).join('')+'</div>';
+    }
+
+    // New CVEs
+    if(update.new_cves && update.new_cves.length){
+      html += '<div class="ct-label" style="margin-bottom:6px">NEW CVEs</div>'
+        +'<div class="cve-row" style="margin-bottom:12px">'
+        +update.new_cves.map(function(c){
+          return '<a class="cve-chip" href="https://nvd.nist.gov/vuln/detail/'+esc(c)+'" target="_blank" onclick="event.stopPropagation()">'+esc(c)+'</a>';
+        }).join('')+'</div>';
+    }
+
+    // New malware
+    if(update.new_malware && update.new_malware.length){
+      html += '<div class="ct-label" style="margin-bottom:6px">NEW MALWARE / TOOLS</div>'
+        +'<div class="target-chips" style="margin-bottom:12px">'
+        +update.new_malware.map(function(m){
+          return '<span class="tchip" style="color:var(--red);border-color:rgba(255,55,55,.2)">'+esc(m)+'</span>';
+        }).join('')+'</div>';
+    }
+
+    // New TTPs
+    if(update.new_ttps && update.new_ttps.length){
+      html += '<div class="ct-label" style="margin-bottom:6px">UPDATED TTPs</div>'
+        +'<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px">'
+        +update.new_ttps.map(function(t){
+          return '<div style="font-size:11px;font-family:var(--mono);color:var(--muted2);padding:5px 9px;background:var(--s3);border:1px solid var(--b1);border-radius:3px">'+esc(t)+'</div>';
+        }).join('')+'</div>';
+    }
+
+    // New targets
+    if(update.new_targets && update.new_targets.length){
+      html += '<div class="ct-label" style="margin-bottom:6px">NEW TARGET SECTORS</div>'
+        +'<div class="target-chips" style="margin-bottom:10px">'
+        +update.new_targets.map(function(t){
+          return '<span class="tchip" style="color:var(--cyan);border-color:rgba(0,229,255,.2)">'+esc(t)+'</span>';
+        }).join('')+'</div>';
+    }
+
+    html += '</div>';
+    section.innerHTML = html;
+
+    // Inject into card detail, or append to card
+    var detail = card.querySelector('.card-detail');
+    if(detail){ detail.appendChild(section); }
+
+    // Add updated badge to card header
+    var existBadge = card.querySelector('.updated-badge');
+    if(existBadge) existBadge.remove();
+    var badge = document.createElement('span');
+    badge.className = 'updated-badge';
+    badge.innerHTML = '! AI UPDATED';
+    var nameParent = nameEl.parentNode;
+    nameEl.after(badge);
+
+    aiUpdates[actorName] = update;
+  });
+}
+
+async function runAIUpdate(sweepAll){
+  var btnSingle = document.getElementById('aiBtnSingle');
+  var btnAll = document.getElementById('aiBtnAll');
+  btnSingle.disabled = true; btnAll.disabled = true;
+
+  var targets = [];
+  if(sweepAll){
+    targets = ACTORS.map(function(a){ return a.name; });
+  } else {
+    var sel = document.getElementById('aiTarget').value;
+    targets = sel === 'all' ? ACTORS.map(function(a){ return a.name; }) : [sel];
+  }
+
+  clearStatus();
+  setProgress(5);
+  var statusLines = [];
+
+  for(var i=0; i<targets.length; i++){
+    var name = targets[i];
+    var pct = Math.round(5 + ((i+1)/targets.length)*90);
+
+    statusLines = [{ cls:'ast-upd', tag:'QUERYING', msg:'Fetching latest intel for '+name+'...' }];
+    if(i>0) statusLines.unshift({ cls:'ast-ok', tag:'DONE', msg:(i)+' actor'+(i>1?'s':'')+' updated successfully' });
+    setStatusMsg(statusLines);
+    setProgress(pct);
+
+    try {
+      var update = await queryActorUpdate(name);
+      injectUpdateBadge(name, update);
+    } catch(e) {
+      console.warn('AI update failed for '+name+':', e);
+      statusLines.push({ cls:'ast-err', tag:'WARN', msg: name+'  -  could not fetch update' });
+      setStatusMsg(statusLines);
+    }
+
+    // Small delay between calls to avoid rate limiting
+    if(i < targets.length - 1) await new Promise(function(r){ setTimeout(r, 600); });
+  }
+
+  setProgress(100);
+  var finalLines = [
+    { cls:'ast-ok', tag:'COMPLETE', msg: targets.length+' actor profile'+(targets.length>1?'s':'')+' updated with latest AI intelligence' },
+    { cls:'ast-upd', tag:'SOURCE', msg: 'Claude AI · Knowledge cutoff Aug 2025 · Public OSINT sources only' }
+  ];
+  setStatusMsg(finalLines);
+
+  var lu = document.getElementById('lastUpdated');
+  lu.style.display = 'block';
+  lu.innerHTML = '! Last AI sweep: '+new Date().toUTCString().replace('GMT','UTC')+' &nbsp;·&nbsp; '+targets.length+' actor'+(targets.length>1?'s':'')+' updated';
+
+  btnSingle.disabled = false; btnAll.disabled = false;
+}
+
+// ?????????????????????????????????????????????????????????????
+//  INIT
+// ?????????????????????????????????????????????????????????????
+render();
+
+// -- API KEY TESTER --
+async function testAPIKey() {
+  var keyEl = document.getElementById('apiKeyInput') || document.getElementById('apiKey');
+  var apiKey = keyEl ? keyEl.value.trim() : '';
+  if (!apiKey) { alert('Paste your API key first.'); return; }
+  var btn = document.getElementById('testKeyBtn');
+  if (btn) { btn.textContent = 'TESTING...'; btn.disabled = true; }
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: 'Say OK.' }]
+      })
+    });
+    var data = await resp.json();
+    if (resp.ok) {
+      alert('SUCCESS - API key is valid!\nYou are ready to use all AI features.');
+      if (btn) { btn.textContent = 'KEY OK'; btn.style.color = 'var(--ng,#00ff41)'; }
+    } else {
+      var msg = (data.error && data.error.message) ? data.error.message : JSON.stringify(data);
+      if (resp.status === 401) msg = 'Invalid key - copy fresh from console.anthropic.com/settings/keys';
+      if (resp.status === 429) msg = 'Rate limited - wait 30s and retry';
+      if (resp.status === 403) msg = 'Key disabled or lacks permissions';
+      alert('ERROR ' + resp.status + ':\n\n' + msg);
+      if (btn) { btn.textContent = 'FAILED'; btn.style.color = 'var(--red,#ff3737)'; }
+    }
+  } catch (err) {
+    alert('NETWORK ERROR:\n\n' + err.message);
+    if (btn) { btn.textContent = 'NET ERR'; btn.style.color = 'var(--red,#ff3737)'; }
+  }
+  setTimeout(function() {
+    if (btn) { btn.textContent = 'TEST KEY'; btn.disabled = false; btn.style.color = ''; }
+  }, 4000);
+}
+
+</script>
+</body>
+</html>

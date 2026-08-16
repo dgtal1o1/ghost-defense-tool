@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Photo Identity Analyzer — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020507;--s1:#060d0a;--s2:#0a150f;--s3:#0f1f16;--s4:#162b1e;
+  --b1:rgba(0,255,65,0.07);--b2:rgba(0,255,65,0.14);--b3:rgba(0,255,65,0.25);
+  --ng:#00ff41;--ng2:#39ff14;--ng-d:rgba(0,255,65,0.10);--ng-dd:rgba(0,255,65,0.05);
+  --red:#ff3737;--red-g:rgba(255,55,55,0.13);--red-b:rgba(255,55,55,0.26);
+  --orange:#ff8c00;--orange-g:rgba(255,140,0,0.12);
+  --yellow:#ffe600;--yellow-g:rgba(255,230,0,0.09);
+  --cyan:#00e5ff;--cyan-g:rgba(0,229,255,0.09);
+  --muted:rgba(0,255,65,0.32);--muted2:rgba(0,255,65,0.58);
+  --mono:'Share Tech Mono',monospace;
+  --display:'Orbitron',sans-serif;
+  --body:'Exo 2',sans-serif;
+}
+html{background:var(--bg);scroll-behavior:smooth}
+body{font-family:var(--body);color:var(--ng);min-height:100vh;overflow-x:hidden;
+  text-shadow:0 0 5px rgba(0,255,65,0.15)}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:500;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.13) 2px,rgba(0,0,0,0.13) 4px)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:499;
+  background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,0.7) 100%)}
+.grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(0,255,65,0.025) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(0,255,65,0.025) 1px,transparent 1px);
+  background-size:44px 44px}
+
+.wrap{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:0 16px 60px}
+
+/* TOP BAR */
+.topbar{border-bottom:1px solid var(--b2);padding:12px 0;
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;
+  position:sticky;top:0;z-index:200;background:rgba(2,5,7,0.96);backdrop-filter:blur(10px)}
+.tl{display:flex;align-items:center;gap:12px}
+.logo{font-family:var(--display);font-size:14px;font-weight:900;letter-spacing:.18em;
+  color:var(--ng);text-shadow:0 0 14px var(--ng),0 0 30px rgba(0,255,65,.35)}
+.logo span{color:var(--cyan);text-shadow:0 0 12px var(--cyan)}
+.tsep{color:var(--b3);font-family:var(--mono)}
+.tsub{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.12em}
+.tr{display:flex;gap:8px;align-items:center}
+.tb{font-size:10px;font-family:var(--mono);padding:4px 10px;border-radius:3px;
+  display:flex;align-items:center;gap:5px;letter-spacing:.07em}
+.tb-ng{background:var(--ng-d);border:1px solid var(--b2);color:var(--ng)}
+.tb-cy{background:var(--cyan-g);border:1px solid rgba(0,229,255,.25);color:var(--cyan)}
+#clk{font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+/* HEADER */
+.page-hdr{text-align:center;padding:10px 0 28px;animation:fadeDown .6s ease both}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.ph-label{font-size:10px;font-family:var(--mono);letter-spacing:.22em;color:var(--muted);margin-bottom:8px}
+.ph-title{font-family:var(--display);font-size:clamp(20px,3.5vw,30px);font-weight:900;
+  letter-spacing:.1em;margin-bottom:8px;line-height:1.2;
+  text-shadow:0 0 18px var(--ng),0 0 45px rgba(0,255,65,.25)}
+.ph-title span{color:var(--cyan);text-shadow:0 0 14px var(--cyan)}
+.ph-desc{font-size:13px;color:var(--muted2);max-width:620px;margin:0 auto 16px;line-height:1.7;font-weight:300}
+.ph-tags{display:flex;gap:7px;justify-content:center;flex-wrap:wrap}
+.ph-tag{font-size:10px;font-family:var(--mono);padding:3px 10px;border-radius:2px;
+  border:1px solid var(--b1);color:var(--muted);letter-spacing:.08em}
+
+/* API KEY BAR */
+
+
+/* MAIN LAYOUT */
+.main-layout{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+
+/* UPLOAD PANEL */
+.upload-panel{background:var(--s1);border:1px solid var(--b1);border-radius:6px;overflow:hidden}
+.panel-hdr{padding:10px 14px;border-bottom:1px solid var(--b1);
+  font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:.18em;
+  color:var(--ng);text-transform:uppercase;display:flex;align-items:center;justify-content:space-between}
+.upload-zone{
+  padding:28px 20px;text-align:center;cursor:pointer;
+  border:2px dashed var(--b2);border-radius:4px;margin:14px;
+  transition:all .2s;position:relative;
+}
+.upload-zone:hover,.upload-zone.drag{
+  border-color:var(--ng);background:var(--ng-dd);
+  box-shadow:0 0 20px rgba(0,255,65,0.08);
+}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.uz-icon{font-size:36px;margin-bottom:10px;opacity:.6}
+.uz-title{font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:.1em;margin-bottom:5px}
+.uz-sub{font-size:11px;font-family:var(--mono);color:var(--muted);line-height:1.6}
+.uz-formats{font-size:10px;font-family:var(--mono);color:var(--muted);margin-top:8px}
+
+/* IMAGE PREVIEW */
+.preview-wrap{padding:14px;display:none}
+.preview-wrap.show{display:block}
+.preview-img{width:100%;max-height:260px;object-fit:contain;border-radius:4px;
+  border:1px solid var(--b1);background:var(--bg);display:block}
+.preview-meta{margin-top:10px;display:flex;flex-direction:column;gap:4px}
+.pm-row{display:flex;justify-content:space-between;font-size:11px;font-family:var(--mono);
+  padding:5px 8px;background:var(--s2);border:1px solid var(--b1);border-radius:2px}
+.pm-key{color:var(--muted)}
+.pm-val{color:var(--ng)}
+
+/* ANALYZE BUTTON */
+.analyze-btn{
+  margin:0 14px 14px;width:calc(100% - 28px);
+  background:var(--ng-d);border:1px solid var(--b2);border-radius:4px;
+  color:var(--ng);font-family:var(--display);font-size:11px;font-weight:700;
+  letter-spacing:.14em;padding:12px;cursor:pointer;
+  transition:all .15s;text-shadow:0 0 8px rgba(0,255,65,.4);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.analyze-btn:hover{background:rgba(0,255,65,.18);box-shadow:0 0 16px rgba(0,255,65,.12)}
+.analyze-btn:active{transform:scale(.98)}
+.analyze-btn:disabled{opacity:.35;pointer-events:none}
+
+/* REVERSE SEARCH LINKS */
+.search-links{padding:0 14px 14px;display:none}
+.search-links.show{display:block}
+.sl-title{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.12em;
+  text-transform:uppercase;margin-bottom:8px}
+.sl-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.sl-btn{display:flex;align-items:center;gap:7px;padding:9px 11px;
+  background:var(--s2);border:1px solid var(--b1);border-radius:3px;
+  font-size:11px;font-family:var(--mono);color:var(--muted2);
+  text-decoration:none;transition:all .12s;cursor:pointer}
+.sl-btn:hover{background:var(--s3);border-color:var(--b2);color:var(--ng)}
+.sl-icon{font-size:14px;flex-shrink:0}
+
+/* RESULTS PANEL */
+.result-panel{background:var(--s1);border:1px solid var(--b1);border-radius:6px;
+  overflow:hidden;display:flex;flex-direction:column}
+.result-empty{padding:40px 20px;text-align:center;color:var(--muted);
+  font-family:var(--mono);font-size:12px;flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px}
+.re-icon{font-size:36px;opacity:.3}
+
+/* RISK METER */
+.risk-meter{padding:16px 16px 12px;border-bottom:1px solid var(--b1)}
+.rm-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.rm-label{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--muted2)}
+.risk-score{font-family:var(--display);font-size:32px;font-weight:900;line-height:1}
+.risk-level{font-size:11px;font-family:var(--mono);font-weight:700;padding:3px 10px;
+  border-radius:2px;letter-spacing:.08em;text-transform:uppercase}
+.rl-high{background:var(--red-g);color:var(--red);border:1px solid var(--red-b)}
+.rl-medium{background:var(--orange-g);color:var(--orange);border:1px solid rgba(255,140,0,.28)}
+.rl-low{background:var(--ng-d);color:var(--ng);border:1px solid var(--b2)}
+.risk-bar-wrap{height:8px;background:var(--s3);border-radius:4px;overflow:hidden;margin-bottom:6px}
+.risk-bar{height:100%;border-radius:4px;transition:width 1s ease}
+.rm-sub{font-size:10px;font-family:var(--mono);color:var(--muted)}
+
+/* FINDINGS */
+.findings{padding:14px 16px;border-bottom:1px solid var(--b1);flex:1;overflow-y:auto}
+.find-title{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.12em;
+  text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--b1)}
+.find-list{display:flex;flex-direction:column;gap:7px}
+.find-item{background:var(--s2);border:1px solid var(--b1);border-radius:3px;
+  padding:10px 12px;display:flex;align-items:flex-start;gap:10px}
+.fi-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.fi-body{flex:1}
+.fi-title{font-size:12px;font-weight:600;margin-bottom:3px;color:var(--ng)}
+.fi-desc{font-size:11px;color:var(--muted2);line-height:1.6;font-family:var(--mono)}
+.fi-sev{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 7px;
+  border-radius:2px;margin-left:6px;letter-spacing:.05em;float:right}
+.sev-high{background:var(--red-g);color:var(--red);border:1px solid var(--red-b)}
+.sev-med{background:var(--orange-g);color:var(--orange);border:1px solid rgba(255,140,0,.25)}
+.sev-low{background:var(--ng-d);color:var(--ng);border:1px solid var(--b2)}
+.sev-info{background:var(--cyan-g);color:var(--cyan);border:1px solid rgba(0,229,255,.22)}
+
+/* METADATA TABLE */
+.meta-section{padding:12px 16px;border-bottom:1px solid var(--b1)}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.meta-cell{background:var(--s2);border:1px solid var(--b1);border-radius:2px;padding:7px 9px}
+.mc-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.08em;
+  text-transform:uppercase;margin-bottom:3px}
+.mc-val{font-size:11px;font-family:var(--mono);color:var(--ng);word-break:break-word;line-height:1.4}
+
+/* RECOMMENDATIONS */
+.recs-section{padding:12px 16px}
+.rec-list{display:flex;flex-direction:column;gap:5px}
+.rec-item{background:var(--s2);border:1px solid var(--b1);border-left:2px solid var(--ng);
+  border-radius:3px;padding:8px 11px;font-size:11px;color:var(--muted2);line-height:1.55;font-family:var(--mono)}
+
+/* LOADING */
+.loading-state{padding:40px 20px;text-align:center;display:flex;flex-direction:column;
+  align-items:center;gap:12px}
+.spinner{width:36px;height:36px;border:3px solid var(--s3);border-top-color:var(--ng);
+  border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-text{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.load-step{font-family:var(--mono);font-size:11px;color:var(--ng);animation:pulse 1.5s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* REVERSE SEARCH SECTION */
+.rsearch-section{background:var(--s1);border:1px solid var(--b1);border-radius:6px;
+  overflow:hidden;margin-bottom:14px;animation:fadeUp .5s ease both}
+.rs-body{padding:14px 16px}
+.rs-desc{font-size:12px;color:var(--muted2);line-height:1.7;margin-bottom:14px;font-family:var(--mono)}
+.rs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rs-card{background:var(--s2);border:1px solid var(--b1);border-radius:4px;
+  padding:12px;text-align:center;text-decoration:none;
+  transition:all .15s;cursor:pointer;display:block}
+.rs-card:hover{background:var(--s3);border-color:var(--b2)}
+.rs-card-icon{font-size:24px;margin-bottom:6px}
+.rs-card-name{font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:.1em;
+  color:var(--ng);margin-bottom:3px}
+.rs-card-desc{font-size:10px;font-family:var(--mono);color:var(--muted);line-height:1.4}
+
+/* FOOTER */
+.ghost-footer{margin-top:28px;padding:18px 0 8px;border-top:1px solid var(--b1);text-align:center}
+.gf-rule{height:1px;background:linear-gradient(90deg,transparent,var(--ng),transparent);
+  opacity:.3;margin-bottom:16px}
+.ghost-by{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--muted);margin-bottom:4px}
+.ghost-name{font-family:var(--display);font-size:16px;font-weight:900;letter-spacing:.2em;
+  color:var(--ng);text-shadow:0 0 12px var(--ng),0 0 30px rgba(0,255,65,.45)}
+.gf-sub{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--muted);margin-top:5px}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+
+@media(max-width:750px){
+  .main-layout{grid-template-columns:1fr}
+  .rs-grid{grid-template-columns:1fr 1fr}
+  .sl-grid{grid-template-columns:1fr}
+  .meta-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="wrap">
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="tl">
+    <div class="logo">PHOTO<span>ANALYZER</span></div>
+    <div class="tsep">|</div>
+    <div class="tsub">IDENTITY THEFT DETECTION TOOL</div>
+  </div>
+  <div class="tr">
+    <div class="tb tb-cy">&#x1F6E1; DEFENSIVE OSINT</div>
+    <div class="tb tb-ng">AI POWERED</div>
+    <input id="apiKey" type="password" placeholder="sk-ant-... API key"
+      style="background:var(--s2);border:1px solid var(--b2);border-radius:3px;
+             color:var(--ng);font-family:var(--mono);font-size:10px;
+             padding:5px 10px;outline:none;width:190px;text-shadow:none"
+      title="Paste your Anthropic API key from console.anthropic.com/settings/keys">
+    <button id="testKeyBtn" onclick="testAPIKey()"
+      style="background:var(--ng-d);border:1px solid var(--b2);border-radius:3px;
+             color:var(--ng);font-family:var(--mono);font-size:10px;font-weight:700;
+             padding:5px 12px;cursor:pointer;white-space:nowrap;letter-spacing:.1em">
+      TEST KEY
+    </button>
+    <div id="clk"></div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="page-hdr">
+  <div class="ph-label">// GHOST DEFENSE — IDENTITY FRAUD DEFENSE</div>
+  <h1 class="ph-title">PHOTO IDENTITY<br><span>ANALYZER</span></h1>
+  <p class="ph-desc">Upload any photo to detect signs of identity theft, AI generation, metadata anomalies, and find where else the image may be used online. Built for fraud investigators, HR teams, and individuals protecting their identity.</p>
+  <div class="ph-tags">
+    <span class="ph-tag">AI DETECTION</span>
+    <span class="ph-tag">METADATA ANALYSIS</span>
+    <span class="ph-tag">REVERSE IMAGE SEARCH</span>
+    <span class="ph-tag">DEEPFAKE INDICATORS</span>
+    <span class="ph-tag">FRAUD INVESTIGATION</span>
+  </div>
+</div>
+
+
+
+<!-- MAIN LAYOUT -->
+<div class="main-layout">
+
+  <!-- UPLOAD PANEL -->
+  <div class="upload-panel">
+    <div class="panel-hdr">
+      <span>// IMAGE INPUT</span>
+      <span id="fileStatus" style="font-size:9px;color:var(--muted)">NO FILE LOADED</span>
+    </div>
+
+    <!-- Drop zone -->
+    <div class="upload-zone" id="dropZone">
+      <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])">
+      <div class="uz-icon">📁</div>
+      <div class="uz-title">DROP IMAGE HERE</div>
+      <div class="uz-sub">or click to browse<br>Drag &amp; drop supported</div>
+      <div class="uz-formats">JPEG · PNG · WEBP · GIF · BMP · TIFF</div>
+    </div>
+
+    <!-- Preview -->
+    <div class="preview-wrap" id="previewWrap">
+      <img id="previewImg" class="preview-img" alt="Uploaded image preview">
+      <div class="preview-meta" id="previewMeta"></div>
+    </div>
+
+    <!-- Analyze button -->
+    <button class="analyze-btn" id="analyzeBtn" onclick="runAnalysis()" disabled>
+      <span>🔍</span> ANALYZE IMAGE
+    </button>
+
+    <!-- Reverse search links -->
+    <div class="search-links" id="searchLinks">
+      <div class="sl-title">Manual Reverse Image Search</div>
+      <div class="sl-grid">
+        <a class="sl-btn" href="https://lens.google.com" target="_blank" rel="noopener">
+          <span class="sl-icon">🔍</span>Google Lens
+        </a>
+        <a class="sl-btn" href="https://tineye.com" target="_blank" rel="noopener">
+          <span class="sl-icon">👁️</span>TinEye
+        </a>
+        <a class="sl-btn" href="https://yandex.com/images/" target="_blank" rel="noopener">
+          <span class="sl-icon">🌐</span>Yandex Images
+        </a>
+        <a class="sl-btn" href="https://www.bing.com/visualsearch" target="_blank" rel="noopener">
+          <span class="sl-icon">🔎</span>Bing Visual
+        </a>
+        <a class="sl-btn" href="https://pimeyes.com" target="_blank" rel="noopener">
+          <span class="sl-icon">👤</span>PimEyes (Face)
+        </a>
+        <a class="sl-btn" href="https://socialcatfish.com" target="_blank" rel="noopener">
+          <span class="sl-icon">🎣</span>Social Catfish
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT PANEL -->
+  <div class="result-panel" id="resultPanel">
+    <div class="panel-hdr">
+      <span>// ANALYSIS RESULTS</span>
+      <span id="resultStatus" style="font-size:9px;color:var(--muted)">AWAITING IMAGE</span>
+    </div>
+    <div class="result-empty" id="resultEmpty">
+      <div class="re-icon">🛡️</div>
+      <div>Upload an image and click<br>ANALYZE IMAGE to begin</div>
+    </div>
+    <div id="resultContent" style="display:none;flex:1;overflow-y:auto"></div>
+  </div>
+
+</div><!-- /main-layout -->
+
+<!-- REVERSE SEARCH GUIDE -->
+<div class="rsearch-section">
+  <div class="panel-hdr">// REVERSE IMAGE SEARCH ENGINES — HOW TO DETECT STOLEN PHOTOS</div>
+  <div class="rs-body">
+    <div class="rs-desc">After the AI analysis, use these search engines to find where the image appears online. Upload the photo directly to each service. Multiple hits across platforms = strong indicator of identity theft or stolen photo.</div>
+    <div class="rs-grid">
+      <a class="rs-card" href="https://lens.google.com" target="_blank" rel="noopener">
+        <div class="rs-card-icon">🔍</div>
+        <div class="rs-card-name">GOOGLE LENS</div>
+        <div class="rs-card-desc">Best overall coverage. Finds exact matches and visually similar images across the web.</div>
+      </a>
+      <a class="rs-card" href="https://tineye.com" target="_blank" rel="noopener">
+        <div class="rs-card-icon">👁️</div>
+        <div class="rs-card-name">TINEYE</div>
+        <div class="rs-card-desc">Specialized reverse image search. Tracks where a specific image has been used over time.</div>
+      </a>
+      <a class="rs-card" href="https://yandex.com/images/" target="_blank" rel="noopener">
+        <div class="rs-card-icon">🌐</div>
+        <div class="rs-card-name">YANDEX</div>
+        <div class="rs-card-desc">Excellent for finding face matches, especially on Russian and Eastern European platforms.</div>
+      </a>
+      <a class="rs-card" href="https://pimeyes.com" target="_blank" rel="noopener">
+        <div class="rs-card-icon">👤</div>
+        <div class="rs-card-name">PIMEYES</div>
+        <div class="rs-card-desc">Face-specific search engine. Finds where a face appears online — powerful for ID theft.</div>
+      </a>
+      <a class="rs-card" href="https://socialcatfish.com" target="_blank" rel="noopener">
+        <div class="rs-card-icon">🎣</div>
+        <div class="rs-card-name">SOCIAL CATFISH</div>
+        <div class="rs-card-desc">Designed for romance scam and catfish detection. Cross-references social media profiles.</div>
+      </a>
+      <a class="rs-card" href="https://www.bing.com/visualsearch" target="_blank" rel="noopener">
+        <div class="rs-card-icon">🔎</div>
+        <div class="rs-card-name">BING VISUAL</div>
+        <div class="rs-card-desc">Microsoft visual search. Good for finding product images and stock photo reuse.</div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="ghost-footer">
+  <div class="gf-rule"></div>
+  <div class="ghost-by">BUILT BY</div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px">
+    <span style="font-size:20px">👻</span>
+    <div class="ghost-name">GHOST DEFENSE</div>
+    <span style="font-size:20px">👻</span>
+  </div>
+  <div class="gf-sub">PHOTO ANALYZER v1.0 &nbsp;·&nbsp; BUILT BY GHOST DEFENSE &nbsp;·&nbsp; FOR DEFENSIVE &amp; FRAUD INVESTIGATION USE ONLY &nbsp;·&nbsp; DEFEND ALWAYS 🛡️</div>
+</div>
+
+</div><!-- /wrap -->
+<script>
+// ?? CLOCK ??????????????????????????????????????????????????????
+setInterval(function(){
+  document.getElementById('clk').textContent =
+    new Date().toUTCString().replace('GMT','UTC').split(' ').slice(1,5).join(' ');
+},1000);
+
+// ?? STATE ??????????????????????????????????????????????????????
+var currentFile = null;
+var currentDataURL = null;
+var currentBase64 = null;
+var currentMime = null;
+
+// ?? FILE HANDLING ???????????????????????????????????????????????
+var dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', function(e){
+  e.preventDefault(); dropZone.classList.add('drag');
+});
+dropZone.addEventListener('dragleave', function(){
+  dropZone.classList.remove('drag');
+});
+dropZone.addEventListener('drop', function(e){
+  e.preventDefault(); dropZone.classList.remove('drag');
+  var f = e.dataTransfer.files[0];
+  if(f && f.type.startsWith('image/')) handleFile(f);
+});
+
+function handleFile(file){
+  if(!file || !file.type.startsWith('image/')) return;
+  currentFile = file;
+
+  var reader = new FileReader();
+  reader.onload = function(e){
+    currentDataURL = e.target.result;
+    // Extract base64 and mime
+    var parts = currentDataURL.split(',');
+    currentBase64 = parts[1];
+    currentMime = file.type;
+
+    // Show preview
+    document.getElementById('previewImg').src = currentDataURL;
+    document.getElementById('previewWrap').classList.add('show');
+    document.getElementById('searchLinks').classList.add('show');
+    document.getElementById('analyzeBtn').disabled = false;
+    document.getElementById('fileStatus').textContent = file.name.slice(0,24)+(file.name.length>24?'...':'');
+
+    // Show file metadata
+    showFileMeta(file);
+
+    // Reset results
+    document.getElementById('resultEmpty').style.display = 'flex';
+    document.getElementById('resultContent').style.display = 'none';
+    document.getElementById('resultStatus').textContent = 'IMAGE LOADED  -  READY';
+  };
+  reader.readAsDataURL(file);
+}
+
+function showFileMeta(file){
+  var meta = document.getElementById('previewMeta');
+  var sizeKB = (file.size/1024).toFixed(1);
+  var sizeMB = (file.size/1024/1024).toFixed(2);
+  var sizeStr = file.size > 1048576 ? sizeMB+' MB' : sizeKB+' KB';
+
+  var img = new Image();
+  img.onload = function(){
+    meta.innerHTML =
+      row('Filename', file.name)+
+      row('File Type', file.type)+
+      row('File Size', sizeStr)+
+      row('Dimensions', img.naturalWidth+' × '+img.naturalHeight+' px')+
+      row('Last Modified', new Date(file.lastModified).toLocaleString());
+  };
+  img.src = currentDataURL;
+}
+
+function row(k,v){
+  return '<div class="pm-row"><span class="pm-key">'+k+'</span><span class="pm-val">'+safeStr(v)+'</span></div>';
+}
+
+function safeStr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ?? ANALYSIS ????????????????????????????????????????????????????
+async function runAnalysis(){
+  var apiKey = (document.getElementById('apiKey')||{}).value||'';
+  apiKey = apiKey.trim();
+  if(!apiKey){
+    showError('API key required  -  paste your Anthropic API key (sk-ant-...) into the field in the top-right corner.\n\nGet a free key at: console.anthropic.com/settings/keys');
+    return;
+  }
+  if(!currentBase64){
+    showError('No image loaded  -  please upload an image first.');
+    return;
+  }
+
+  // Show loading
+  document.getElementById('resultEmpty').style.display = 'none';
+  document.getElementById('resultContent').style.display = 'block';
+  document.getElementById('resultContent').innerHTML =
+    '<div class="loading-state">'
+    +'<div class="spinner"></div>'
+    +'<div class="load-text">AI ANALYZING IMAGE</div>'
+    +'<div class="load-step" id="loadStep">Examining visual characteristics...</div>'
+    +'</div>';
+  document.getElementById('resultStatus').textContent = 'ANALYZING...';
+  document.getElementById('analyzeBtn').disabled = true;
+
+  var steps = [
+    'Examining visual characteristics...',
+    'Checking for AI generation artifacts...',
+    'Analyzing metadata consistency...',
+    'Detecting deepfake indicators...',
+    'Assessing identity theft risk...',
+    'Generating recommendations...'
+  ];
+  var si = 0;
+  var stepInterval = setInterval(function(){
+    si = (si+1) % steps.length;
+    var el = document.getElementById('loadStep');
+    if(el) el.textContent = steps[si];
+  }, 1800);
+
+  var prompt = 'You are a professional digital forensics analyst specializing in identity theft detection and image authentication. Analyze this image for signs of identity fraud, AI generation, and misuse.\n\n'
+    + 'Examine the following and provide a detailed assessment:\n\n'
+    + '1. AI/DEEPFAKE DETECTION: Look for signs the image was AI-generated (GAN artifacts, unnatural skin texture, hair inconsistencies, background bleeding, asymmetric features, unnatural reflections in eyes, weird ears/teeth/hands/fingers).\n\n'
+    + '2. IDENTITY THEFT INDICATORS: Signs the photo may be stolen or misused (stock photo characteristics, professional studio lighting in suspicious context, watermark removal artifacts, compression artifacts from re-saving).\n\n'
+    + '3. METADATA CONSISTENCY: Assess if the visible image characteristics match what you would expect (lighting, shadows, color profile, compression).\n\n'
+    + '4. MANIPULATION DETECTION: Signs of photo editing (clone stamp artifacts, liquify distortion, splice lines, inconsistent lighting/shadows, color grading mismatches).\n\n'
+    + '5. CONTEXTUAL RED FLAGS: Anything that seems unusual or suspicious about the image.\n\n'
+    + 'Return ONLY raw JSON  -  no markdown, no backticks:\n'
+    + '{"risk_score":75,"risk_level":"HIGH","summary":"2-3 sentence overall assessment","findings":['
+    + '{"icon":"?","title":"Finding title","description":"Detailed finding","severity":"HIGH|MEDIUM|LOW|INFO"}],'
+    + '"metadata_analysis":{"apparent_source":"Camera/Stock/AI/Unknown","lighting":"Natural/Studio/Artificial","compression":"Original/Re-saved/Heavy","estimated_age":"Recent/Old/Unknown","face_present":true},'
+    + '"ai_probability":85,"manipulation_probability":60,'
+    + '"recommendations":["Specific action to take","Another action"],'
+    + '"verdict":"LIKELY_STOLEN|POSSIBLY_STOLEN|AI_GENERATED|MANIPULATED|APPEARS_AUTHENTIC|INCONCLUSIVE"}';
+
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 2000,
+        messages: [{
+          role: 'user',
+          content: [{
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: currentMime,
+              data: currentBase64
+            }
+          },{
+            type: 'text',
+            text: prompt
+          }]
+        }]
+      })
+    });
+
+    clearInterval(stepInterval);
+
+    if(!resp.ok){
+      var et = ''; try{et = await resp.text();}catch(e){}
+      var ej = {}; try{ej = JSON.parse(et);}catch(e){}
+      var em = (ej.error&&ej.error.message)?ej.error.message:et.slice(0,120);
+      if(resp.status===401) em='Invalid API key  -  check console.anthropic.com/settings/keys';
+      if(resp.status===429) em='Rate limited  -  wait 30 seconds and retry';
+      throw new Error('API '+resp.status+': '+em);
+    }
+
+    var data = await resp.json();
+    var raw = (data.content||[]).filter(function(b){return b.type==='text';})
+      .map(function(b){return b.text;}).join('').trim();
+    raw = raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```\s*$/i,'').trim();
+    var hit = raw.match(/\{[\s\S]*\}/);
+    if(!hit) throw new Error('No JSON in response');
+    var result = JSON.parse(hit[0]);
+
+    renderResults(result);
+    document.getElementById('resultStatus').textContent = 'ANALYSIS COMPLETE';
+
+  } catch(err) {
+    clearInterval(stepInterval);
+    console.error('Analysis error:', err);
+    showError(err.message || String(err));
+    document.getElementById('resultStatus').textContent = 'ERROR';
+  }
+
+  document.getElementById('analyzeBtn').disabled = false;
+}
+
+// ?? RENDER RESULTS ?????????????????????????????????????????????
+function renderResults(r){
+  var score = Math.min(100, Math.max(0, r.risk_score||0));
+  var level = r.risk_level||'MEDIUM';
+  var barColor = score>=70?'var(--red)':score>=40?'var(--orange)':'var(--ng)';
+  var levelClass = score>=70?'rl-high':score>=40?'rl-medium':'rl-low';
+  var verdictIcon = {
+    'LIKELY_STOLEN':'?','POSSIBLY_STOLEN':'??','AI_GENERATED':'?',
+    'MANIPULATED':'??','APPEARS_AUTHENTIC':'?','INCONCLUSIVE':'?'
+  }[r.verdict||'INCONCLUSIVE']||'?';
+
+  var sevClass = function(s){
+    return s==='HIGH'?'sev-high':s==='MEDIUM'?'sev-med':s==='LOW'?'sev-low':'sev-info';
+  };
+
+  var html = '';
+
+  // Risk meter
+  html += '<div class="risk-meter">';
+  html += '<div class="rm-top">';
+  html += '<div class="rm-label">IDENTITY THEFT RISK SCORE</div>';
+  html += '<div style="display:flex;align-items:center;gap:10px">';
+  html += '<div class="risk-score" style="color:'+barColor+';text-shadow:0 0 12px '+barColor+'55">'+score+'</div>';
+  html += '<span class="risk-level '+levelClass+'">'+level+'</span>';
+  html += '</div></div>';
+  html += '<div class="risk-bar-wrap"><div class="risk-bar" id="riskBar" style="width:0;background:'+barColor+'"></div></div>';
+  html += '<div class="rm-sub">'+verdictIcon+' VERDICT: <strong style="color:'+barColor+'">'+(r.verdict||'INCONCLUSIVE')+'</strong>';
+  if(r.ai_probability !== undefined) html += ' &nbsp;·&nbsp; AI PROBABILITY: <strong style="color:var(--cyan)">'+r.ai_probability+'%</strong>';
+  if(r.manipulation_probability !== undefined) html += ' &nbsp;·&nbsp; MANIPULATION: <strong style="color:var(--orange)">'+r.manipulation_probability+'%</strong>';
+  html += '</div>';
+  if(r.summary) html += '<div style="font-size:12px;color:var(--muted2);margin-top:10px;line-height:1.7;padding:9px 11px;background:var(--s2);border:1px solid var(--b1);border-left:2px solid '+barColor+';border-radius:3px">'+safeStr(r.summary)+'</div>';
+  html += '</div>';
+
+  // Findings
+  if(r.findings && r.findings.length){
+    html += '<div class="findings">';
+    html += '<div class="find-title">FORENSIC FINDINGS ('+r.findings.length+')</div>';
+    html += '<div class="find-list">';
+    r.findings.forEach(function(f){
+      html += '<div class="find-item">';
+      html += '<div class="fi-icon">'+(f.icon||'?')+'</div>';
+      html += '<div class="fi-body">';
+      html += '<div class="fi-title">'+safeStr(f.title||'')+'<span class="fi-sev '+sevClass(f.severity)+'">'+safeStr(f.severity||'INFO')+'</span></div>';
+      html += '<div class="fi-desc">'+safeStr(f.description||'')+'</div>';
+      html += '</div></div>';
+    });
+    html += '</div></div>';
+  }
+
+  // Metadata
+  if(r.metadata_analysis){
+    var m = r.metadata_analysis;
+    html += '<div class="meta-section">';
+    html += '<div class="find-title">IMAGE METADATA ANALYSIS</div>';
+    html += '<div class="meta-grid">';
+    if(m.apparent_source) html += metaCell('Apparent Source', m.apparent_source);
+    if(m.lighting) html += metaCell('Lighting Type', m.lighting);
+    if(m.compression) html += metaCell('Compression', m.compression);
+    if(m.estimated_age) html += metaCell('Estimated Age', m.estimated_age);
+    html += metaCell('Face Detected', m.face_present ? '? YES' : '? NO');
+    html += '</div></div>';
+  }
+
+  // Recommendations
+  if(r.recommendations && r.recommendations.length){
+    html += '<div class="recs-section">';
+    html += '<div class="find-title">RECOMMENDED ACTIONS</div>';
+    html += '<div class="rec-list">';
+    r.recommendations.forEach(function(rec){
+      html += '<div class="rec-item">&#9656; '+safeStr(rec)+'</div>';
+    });
+    html += '</div></div>';
+  }
+
+  document.getElementById('resultContent').innerHTML = html;
+
+  // Animate risk bar
+  setTimeout(function(){
+    var bar = document.getElementById('riskBar');
+    if(bar) bar.style.width = score + '%';
+  }, 100);
+}
+
+function metaCell(label, val){
+  return '<div class="meta-cell"><div class="mc-label">'+label+'</div><div class="mc-val">'+safeStr(val)+'</div></div>';
+}
+
+function showError(msg){
+  document.getElementById('resultContent').innerHTML =
+    '<div class="loading-state">'
+    +'<div style="font-size:32px">??</div>'
+    +'<div class="load-text" style="color:var(--red)">ANALYSIS FAILED</div>'
+    +'<div style="font-size:11px;font-family:var(--mono);color:var(--muted2);max-width:300px;text-align:center;line-height:1.6">'+safeStr(msg)+'</div>'
+    +'</div>';
+  document.getElementById('resultContent').style.display = 'block';
+  document.getElementById('resultEmpty').style.display = 'none';
+}
+
+// ?? TEST CONNECTION ?????????????????????????????????????????????
+async function testConnection(){
+  var apiKey = (document.getElementById('apiKey')||{}).value||'';
+  apiKey = apiKey.trim();
+  if(!apiKey){
+    alert('Paste your API key first.');
+    return;
+  }
+
+  var btn = event.target;
+  btn.textContent = 'TESTING...';
+  btn.disabled = true;
+
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 20,
+        messages: [{ role: 'user', content: 'Reply with OK only.' }]
+      })
+    });
+
+    var data = await resp.json();
+
+    if(resp.ok){
+      var reply = (data.content||[]).map(function(b){return b.text||'';}).join('');
+      alert('SUCCESS! API key works.\nResponse: ' + reply + '\n\nYou are good to go  -  upload a photo and analyze.');
+      btn.textContent = '\u2713 KEY OK';
+      btn.style.color = 'var(--ng)';
+    } else {
+      var msg = (data.error && data.error.message) ? data.error.message : JSON.stringify(data);
+      alert('API ERROR ' + resp.status + ':\n\n' + msg + '\n\nCheck your key at console.anthropic.com/settings/keys');
+      btn.textContent = '\u2717 FAILED';
+      btn.style.color = 'var(--red)';
+    }
+  } catch(err) {
+    alert('NETWORK ERROR:\n\n' + err.message + '\n\nCheck your internet connection.');
+    btn.textContent = '\u2717 ERROR';
+    btn.style.color = 'var(--red)';
+  }
+
+  setTimeout(function(){ btn.textContent = '\u25ba TEST KEY'; btn.disabled = false; btn.style.color = ''; }, 3000);
+}
+
+// -- API KEY TESTER --
+async function testAPIKey() {
+  var keyEl = document.getElementById('apiKeyInput') || document.getElementById('apiKey');
+  var apiKey = keyEl ? keyEl.value.trim() : '';
+  if (!apiKey) { alert('Paste your API key first.'); return; }
+  var btn = document.getElementById('testKeyBtn');
+  if (btn) { btn.textContent = 'TESTING...'; btn.disabled = true; }
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: 'Say OK.' }]
+      })
+    });
+    var data = await resp.json();
+    if (resp.ok) {
+      alert('SUCCESS - API key is valid!\nYou are ready to analyze photos.');
+      if (btn) { btn.textContent = 'KEY OK'; btn.style.color = 'var(--ng,#00ff41)'; }
+    } else {
+      var msg = (data.error && data.error.message) ? data.error.message : JSON.stringify(data);
+      if (resp.status === 401) msg = 'Invalid key - copy fresh from console.anthropic.com/settings/keys';
+      if (resp.status === 429) msg = 'Rate limited - wait 30s and retry';
+      if (resp.status === 403) msg = 'Key disabled or lacks permissions';
+      alert('ERROR ' + resp.status + ':\n\n' + msg);
+      if (btn) { btn.textContent = 'FAILED'; btn.style.color = 'var(--red,#ff3737)'; }
+    }
+  } catch (err) {
+    alert('NETWORK ERROR:\n\n' + err.message);
+    if (btn) { btn.textContent = 'NET ERR'; btn.style.color = 'var(--red,#ff3737)'; }
+  }
+  setTimeout(function() {
+    if (btn) { btn.textContent = 'TEST KEY'; btn.disabled = false; btn.style.color = ''; }
+  }, 4000);
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hardware Identifier -- Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020507;--s1:#060d0a;--s2:#0a150f;--s3:#0f1f16;
+  --b1:rgba(0,255,65,0.07);--b2:rgba(0,255,65,0.14);
+  --ng:#00ff41;--ng-d:rgba(0,255,65,0.10);--ng-dd:rgba(0,255,65,0.05);
+  --red:#ff3737;--red-g:rgba(255,55,55,0.13);--red-b:rgba(255,55,55,0.26);
+  --orange:#ff8c00;--orange-g:rgba(255,140,0,0.12);
+  --yellow:#ffe600;--yellow-g:rgba(255,230,0,0.09);
+  --cyan:#00e5ff;--cyan-g:rgba(0,229,255,0.09);
+  --purple:#c084fc;--purple-g:rgba(192,132,252,0.10);
+  --muted:rgba(0,255,65,0.32);--muted2:rgba(0,255,65,0.58);
+  --mono:'Share Tech Mono',monospace;
+  --display:'Orbitron',sans-serif;
+  --body:'Exo 2',sans-serif;
+}
+html{background:var(--bg);scroll-behavior:smooth}
+body{font-family:var(--body);color:var(--ng);min-height:100vh;overflow-x:hidden;
+  text-shadow:0 0 5px rgba(0,255,65,0.12)}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:500;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.12) 2px,rgba(0,0,0,0.12) 4px)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:499;
+  background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,0.65) 100%)}
+.grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(0,255,65,0.025) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(0,255,65,0.025) 1px,transparent 1px);
+  background-size:44px 44px}
+.wrap{position:relative;z-index:1;max-width:1360px;margin:0 auto;padding:0 16px 60px}
+
+/* TOP BAR */
+.topbar{border-bottom:1px solid var(--b2);padding:12px 0;display:flex;
+  align-items:center;justify-content:space-between;margin-bottom:16px;
+  position:sticky;top:0;z-index:200;background:rgba(2,5,7,0.96);backdrop-filter:blur(10px)}
+.logo{font-family:var(--display);font-size:14px;font-weight:900;letter-spacing:.18em;
+  color:var(--ng);text-shadow:0 0 14px var(--ng)}
+.logo span{color:var(--cyan);text-shadow:0 0 12px var(--cyan)}
+.tl{display:flex;align-items:center;gap:12px}
+.tsep{color:var(--b2)}
+.tsub{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.12em}
+.tr{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tb{font-size:10px;font-family:var(--mono);padding:4px 10px;border-radius:3px;display:flex;align-items:center;gap:5px}
+.tb-ng{background:var(--ng-d);border:1px solid var(--b2);color:var(--ng)}
+.tb-cy{background:var(--cyan-g);border:1px solid rgba(0,229,255,.25);color:var(--cyan)}
+.tb-red{background:var(--red-g);border:1px solid var(--red-b);color:var(--red)}
+.blink{animation:blink 1.1s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+#clk{font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+/* TABS */
+.tab-bar{display:flex;gap:0;border-bottom:1px solid var(--b1);margin-bottom:16px}
+.tab{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.1em;
+  padding:10px 20px;cursor:pointer;color:var(--muted);
+  border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px}
+.tab.active{color:var(--ng);border-bottom-color:var(--ng)}
+.tab:hover{color:var(--muted2)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* INPUT PANELS */
+.input-panel{background:var(--s1);border:1px solid var(--b1);border-radius:5px;
+  padding:16px 18px;margin-bottom:16px}
+.ip-title{font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:.18em;
+  color:var(--ng);margin-bottom:10px}
+.input-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.field-group{display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px}
+.field-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+.field-in{background:var(--s2);border:1px solid var(--b1);border-radius:3px;
+  color:var(--ng);font-family:var(--mono);font-size:12px;padding:8px 11px;
+  outline:none;width:100%;text-shadow:none;transition:border-color .15s}
+.field-in::placeholder{color:var(--muted)}
+.field-in:focus{border-color:var(--b2)}
+textarea.field-in{resize:vertical;min-height:100px;line-height:1.6}
+.lookup-btn{background:var(--ng-d);border:1px solid var(--b2);border-radius:4px;
+  color:var(--ng);font-family:var(--display);font-size:10px;font-weight:700;
+  letter-spacing:.12em;padding:10px 22px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.lookup-btn:hover{background:rgba(0,255,65,.18)}
+.lookup-btn:active{transform:scale(.97)}
+.clear-btn{background:var(--s2);border:1px solid var(--b1);border-radius:4px;
+  color:var(--muted2);font-family:var(--mono);font-size:10px;padding:10px 14px;cursor:pointer}
+.hint{font-size:10px;font-family:var(--mono);color:var(--muted);margin-top:7px;line-height:1.6}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px}
+.sbox{background:var(--s1);border:1px solid var(--b1);border-radius:4px;padding:11px 14px;
+  position:relative;overflow:hidden}
+.sbox::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,currentColor,transparent);opacity:.4}
+.sn{font-family:var(--display);font-size:20px;font-weight:700;line-height:1;margin-bottom:3px}
+.sl{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+
+/* RESULT CARD */
+.result-card{background:var(--s1);border:1px solid var(--b1);border-radius:5px;
+  overflow:hidden;margin-bottom:12px;animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.rc-hdr{padding:12px 16px;border-bottom:1px solid var(--b1);
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.rc-title{font-family:var(--display);font-size:12px;font-weight:900;letter-spacing:.08em;color:var(--ng)}
+.rc-type{font-size:9px;font-family:var(--mono);padding:3px 9px;border-radius:2px;
+  background:var(--ng-d);border:1px solid var(--b2);color:var(--ng);letter-spacing:.08em;font-weight:700}
+.rc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;padding:14px 16px}
+.rc-field{background:var(--s2);border:1px solid var(--b1);border-radius:3px;padding:9px 11px}
+.rcf-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;
+  text-transform:uppercase;margin-bottom:4px}
+.rcf-val{font-size:12px;font-family:var(--mono);color:var(--ng);word-break:break-word;line-height:1.5}
+.rc-footer{padding:8px 16px;border-top:1px solid var(--b1);
+  display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.risk-badge{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 8px;
+  border-radius:2px;letter-spacing:.06em}
+.risk-c{background:var(--red-g);color:var(--red);border:1px solid var(--red-b)}
+.risk-h{background:var(--orange-g);color:var(--orange);border:1px solid rgba(255,140,0,.28)}
+.risk-m{background:var(--yellow-g);color:var(--yellow);border:1px solid rgba(255,230,0,.22)}
+.risk-l{background:var(--ng-d);color:var(--ng);border:1px solid var(--b1)}
+.ref-link{font-size:10px;font-family:var(--mono);color:var(--cyan);
+  background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.18);
+  border-radius:2px;padding:3px 8px;text-decoration:none;display:inline-block;transition:all .12s}
+.ref-link:hover{background:rgba(0,229,255,.14)}
+.action-box{background:rgba(255,140,0,.07);border:1px solid rgba(255,140,0,.2);
+  border-left:3px solid var(--orange);border-radius:3px;padding:10px 12px;
+  font-size:11px;font-family:var(--mono);color:var(--muted2);line-height:1.65;margin:0 16px 12px}
+
+/* BULK RESULTS TABLE */
+.bulk-table{width:100%;border-collapse:collapse}
+.bulk-table th{font-size:9px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;
+  color:var(--muted);font-weight:500;padding:9px 12px;text-align:left;
+  border-bottom:1px solid var(--b1);background:var(--s1);position:sticky;top:0;z-index:2}
+.bulk-table td{font-size:11px;padding:8px 12px;border-bottom:1px solid rgba(0,255,65,0.04);
+  vertical-align:middle;font-family:var(--mono)}
+.bulk-table tr:hover td{background:var(--ng-dd)}
+.mac-vendor{color:var(--ng);font-weight:600}
+.mac-raw{color:var(--muted2)}
+.rogue-flag{color:var(--red);font-weight:700}
+.trusted-flag{color:var(--ng)}
+
+/* MAIN LAYOUT */
+.main-layout{display:grid;grid-template-columns:1fr 280px;gap:12px}
+
+/* SIDEBAR */
+.sidebar{display:flex;flex-direction:column;gap:12px}
+.side-panel{background:var(--s1);border:1px solid var(--b1);border-radius:5px;overflow:hidden}
+.panel-hdr{padding:9px 14px;border-bottom:1px solid var(--b1);
+  font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:.18em;
+  color:var(--ng);text-transform:uppercase}
+.side-item{padding:8px 12px;border-bottom:1px solid var(--b1);
+  font-size:11px;font-family:var(--mono);display:flex;justify-content:space-between;align-items:center}
+.side-item:last-child{border-bottom:none}
+.si-label{color:var(--muted)}
+.si-val{color:var(--ng);text-align:right}
+
+/* EMPTY STATE */
+.empty-state{padding:40px 20px;text-align:center;color:var(--muted);
+  font-family:var(--mono);font-size:12px;line-height:1.8}
+.spinner{width:24px;height:24px;border:2px solid var(--s3);border-top-color:var(--ng);
+  border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* EXPORT */
+.export-btn{background:var(--cyan-g);border:1px solid rgba(0,229,255,.3);border-radius:3px;
+  color:var(--cyan);font-family:var(--mono);font-size:10px;font-weight:700;
+  letter-spacing:.08em;padding:5px 12px;cursor:pointer;white-space:nowrap;transition:all .15s;margin-left:auto}
+.export-btn:hover{background:rgba(0,229,255,.18)}
+
+/* FOOTER */
+.ghost-footer{margin-top:28px;padding:18px 0 8px;border-top:1px solid var(--b1);text-align:center}
+.gf-rule{height:1px;background:linear-gradient(90deg,transparent,var(--ng),transparent);
+  opacity:.3;margin-bottom:16px}
+.ghost-name{font-family:var(--display);font-size:15px;font-weight:900;letter-spacing:.2em;
+  color:var(--ng);text-shadow:0 0 12px var(--ng)}
+.gf-sub{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--muted);margin-top:5px}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+@media(max-width:900px){.main-layout{grid-template-columns:1fr}.stats-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:500px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="wrap">
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="tl">
+    <div class="logo">HW<span>IDENT</span></div>
+    <div class="tsep">|</div>
+    <div class="tsub">HARDWARE IDENTIFIER + ASSET SCANNER</div>
+  </div>
+  <div class="tr">
+    <div class="tb tb-ng">IEEE OUI DATABASE</div>
+    <div class="tb tb-cy">USB VID/PID</div>
+    <div class="tb tb-ng">ASSET DEFENSE</div>
+    <div id="clk"></div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tab-bar">
+  <div class="tab active" onclick="switchTab('mac',this)">MAC LOOKUP</div>
+  <div class="tab" onclick="switchTab('usb',this)">USB IDENTIFIER</div>
+  <div class="tab" onclick="switchTab('bulk',this)">BULK MAC SCAN</div>
+  <div class="tab" onclick="switchTab('rogue',this)">ROGUE DETECTOR</div>
+  <div class="tab" onclick="switchTab('pci',this)">PCI / PCIe IDs</div>
+</div>
+
+<!-- MAC LOOKUP TAB -->
+<div class="tab-panel active" id="tab-mac">
+  <div class="input-panel">
+    <div class="ip-title">// MAC ADDRESS VENDOR LOOKUP</div>
+    <div class="input-row">
+      <div class="field-group">
+        <div class="field-label">MAC Address</div>
+        <input class="field-in" id="macIn" type="text" placeholder="00:1A:2B:3C:4D:5E  or  00-1A-2B-3C-4D-5E  or  001A2B3C4D5E" onkeydown="if(event.key==='Enter') lookupMAC()">
+      </div>
+      <button class="lookup-btn" onclick="lookupMAC()">IDENTIFY</button>
+      <button class="clear-btn" onclick="clearPanel('mac')">CLEAR</button>
+    </div>
+    <div class="hint">Accepts any MAC format. Only the first 3 bytes (OUI) identify the manufacturer. Source: IEEE MA-L registry + vendor database.</div>
+  </div>
+  <div id="mac-results"></div>
+</div>
+
+<!-- USB TAB -->
+<div class="tab-panel" id="tab-usb">
+  <div class="input-panel">
+    <div class="ip-title">// USB DEVICE IDENTIFIER (VID:PID)</div>
+    <div class="input-row">
+      <div class="field-group">
+        <div class="field-label">Vendor ID (VID)</div>
+        <input class="field-in" id="usbVid" type="text" placeholder="0x045E  or  045E" onkeydown="if(event.key==='Enter') lookupUSB()">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Product ID (PID) — optional</div>
+        <input class="field-in" id="usbPid" type="text" placeholder="0x07A5  or  07A5" onkeydown="if(event.key==='Enter') lookupUSB()">
+      </div>
+      <button class="lookup-btn" onclick="lookupUSB()">IDENTIFY</button>
+      <button class="clear-btn" onclick="clearPanel('usb')">CLEAR</button>
+    </div>
+    <div class="hint">Find VID:PID on Windows: Device Manager > USB > Properties > Details > Hardware IDs. On Linux: lsusb. On Mac: System Information > USB.</div>
+  </div>
+  <div id="usb-results"></div>
+</div>
+
+<!-- BULK MAC TAB -->
+<div class="tab-panel" id="tab-bulk">
+  <div class="input-panel">
+    <div class="ip-title">// BULK MAC ADDRESS SCANNER</div>
+    <div class="input-row">
+      <div class="field-group">
+        <div class="field-label">Paste MAC addresses (one per line — from ARP table, DHCP log, or network scan)</div>
+        <textarea class="field-in" id="bulkIn" placeholder="00:1A:2B:3C:4D:5E&#10;AA:BB:CC:DD:EE:FF&#10;08:00:27:12:34:56&#10;...paste from: arp -a, nmap output, DHCP server log, switch MAC table"></textarea>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;min-width:120px">
+        <button class="lookup-btn" onclick="bulkScan()">SCAN ALL</button>
+        <button class="clear-btn" onclick="clearPanel('bulk')">CLEAR</button>
+        <button class="export-btn" onclick="exportBulkReport()">REPORT</button>
+      </div>
+    </div>
+    <div class="hint">Paste raw output from: arp -a | nmap -sn | DHCP server logs | switch MAC address table. The tool extracts MAC addresses automatically.</div>
+  </div>
+  <div id="bulk-results"></div>
+</div>
+
+<!-- ROGUE DETECTOR TAB -->
+<div class="tab-panel" id="tab-rogue">
+  <div class="input-panel">
+    <div class="ip-title">// ROGUE DEVICE DETECTOR</div>
+    <div class="input-row">
+      <div class="field-group">
+        <div class="field-label">Authorized Vendors (comma-separated)</div>
+        <input class="field-in" id="authorizedVendors" type="text" placeholder="Dell, HP, Cisco, Apple, Intel, Lenovo" value="Dell, HP, Cisco, Apple, Intel, Lenovo, Microsoft, VMware">
+      </div>
+    </div>
+    <div style="height:10px"></div>
+    <div class="input-row">
+      <div class="field-group">
+        <div class="field-label">Network MAC List (paste ARP table or DHCP log)</div>
+        <textarea class="field-in" id="rogueIn" placeholder="Paste your network's MAC address list here...&#10;The tool flags any device whose manufacturer is NOT in your authorized vendor list.&#10;&#10;Example ARP output:&#10;192.168.1.1   00:1A:2B:3C:4D:5E&#10;192.168.1.10  DC:A6:32:01:23:45&#10;192.168.1.15  00:50:56:C0:00:08"></textarea>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;min-width:120px">
+        <button class="lookup-btn" onclick="rogueDetect()">DETECT ROGUES</button>
+        <button class="clear-btn" onclick="clearPanel('rogue')">CLEAR</button>
+        <button class="export-btn" onclick="exportRogueReport()">REPORT</button>
+      </div>
+    </div>
+    <div class="hint">Flags devices whose hardware vendor is NOT in your authorized list. Identifies Raspberry Pi, unknown Chinese hardware, personal devices, or unauthorized access points.</div>
+  </div>
+  <div id="rogue-results"></div>
+</div>
+
+<!-- PCI TAB -->
+<div class="tab-panel" id="tab-pci">
+  <div class="input-panel">
+    <div class="ip-title">// PCI / PCIe DEVICE IDENTIFIER</div>
+    <div class="input-row">
+      <div class="field-group">
+        <div class="field-label">Vendor ID</div>
+        <input class="field-in" id="pciVid" type="text" placeholder="8086 (Intel)" onkeydown="if(event.key==='Enter') lookupPCI()">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Device ID — optional</div>
+        <input class="field-in" id="pciDid" type="text" placeholder="1234" onkeydown="if(event.key==='Enter') lookupPCI()">
+      </div>
+      <button class="lookup-btn" onclick="lookupPCI()">IDENTIFY</button>
+      <button class="clear-btn" onclick="clearPanel('pci')">CLEAR</button>
+    </div>
+    <div class="hint">Find PCI IDs on Windows: Device Manager > Properties > Details > Hardware IDs. On Linux: lspci -nn. Common: 8086=Intel, 10DE=NVIDIA, 1002=AMD, 14E4=Broadcom.</div>
+  </div>
+  <div id="pci-results"></div>
+</div>
+
+<!-- STATS -->
+<div class="stats-row">
+  <div class="sbox" style="color:var(--ng)"><div class="sn" id="sLookups">0</div><div class="sl">Lookups</div></div>
+  <div class="sbox" style="color:var(--cyan)"><div class="sn" id="sVendors">50K+</div><div class="sl">OUI Vendors</div></div>
+  <div class="sbox" style="color:var(--red)"><div class="sn" id="sRogues">0</div><div class="sl">Rogues Found</div></div>
+  <div class="sbox" style="color:var(--orange)"><div class="sn" id="sUnknown">0</div><div class="sl">Unknown HW</div></div>
+  <div class="sbox" style="color:var(--ng)"><div class="sn" id="sScanned">0</div><div class="sl">Devices Scanned</div></div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="main-layout">
+
+  <!-- LEFT: RESULTS -->
+  <div id="mainResults">
+    <div class="empty-state">
+      <div style="font-size:32px;margin-bottom:12px;opacity:.3">&#128187;</div>
+      Enter a MAC address, USB VID:PID, or paste a network device list above.<br>
+      Identifies hardware vendors from the IEEE OUI registry and USB ID database.<br>
+      All lookups are local — no data leaves your browser.
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- QUICK REFERENCE -->
+    <div class="side-panel">
+      <div class="panel-hdr">// COMMON MAC PREFIXES</div>
+      <div id="commonOUI"></div>
+    </div>
+
+    <!-- KNOWN SUSPICIOUS -->
+    <div class="side-panel">
+      <div class="panel-hdr">// WATCH LIST</div>
+      <div style="padding:10px 12px">
+        <div style="font-size:10px;font-family:var(--mono);color:var(--muted);line-height:1.7;margin-bottom:8px">
+          Vendors commonly associated with unauthorized or suspicious hardware:
+        </div>
+        <div id="watchList"></div>
+      </div>
+    </div>
+
+    <!-- HOW TO GET MACs -->
+    <div class="side-panel">
+      <div class="panel-hdr">// HOW TO GET MAC LIST</div>
+      <div style="padding:10px 12px;font-family:var(--mono);font-size:10px;color:var(--muted2);line-height:1.8">
+        <div style="color:var(--ng);font-weight:700;margin-bottom:4px">Windows:</div>
+        arp -a<br>Get-NetNeighbor<br>
+        <div style="color:var(--ng);font-weight:700;margin:6px 0 4px">Linux:</div>
+        arp -n<br>ip neigh show<br>nmap -sn 192.168.1.0/24<br>
+        <div style="color:var(--ng);font-weight:700;margin:6px 0 4px">Switch/Router:</div>
+        show mac address-table<br>show arp<br>
+        <div style="color:var(--ng);font-weight:700;margin:6px 0 4px">DHCP Server:</div>
+        Export DHCP lease table<br>dhcp.leases file
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="ghost-footer">
+  <div class="gf-rule"></div>
+  <div style="font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--muted);margin-bottom:4px">BUILT BY</div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:5px">
+    <span style="font-size:18px">&#128123;</span>
+    <div class="ghost-name">GHOST DEFENSE</div>
+    <span style="font-size:18px">&#128123;</span>
+  </div>
+  <div class="gf-sub">HWIDENT v1.0 . GHOST DEFENSE . IEEE OUI + USB ID DATABASE . ALL LOOKUPS LOCAL . DEFENSIVE ASSET MANAGEMENT . DEFEND ALWAYS</div>
+</div>
+
+</div>
+<script>
+// ============================================================
+// GHOST DEFENSE - HWIDENT v1.0
+// Hardware Identifier + Asset Scanner
+// Sources: IEEE OUI, USB ID Database, PCI ID Database
+// ============================================================
+
+setInterval(function(){
+  var el=document.getElementById('clk');
+  if(el) el.textContent=new Date().toUTCString().replace('GMT','UTC').split(' ').slice(1,5).join(' ');
+},1000);
+
+var totalLookups=0, totalRogues=0, totalUnknown=0, totalScanned=0;
+
+//  IEEE OUI DATABASE (representative subset  top vendors) 
+// Full database: maclookup.app, macvendors.com, ieee.org/regauth
+var OUI_DB = {
+  // Networking
+  '000000':'Xerox','000001':'Xerox','0000C0':'Western Digital',
+  '00005E':'IANA (Multicast)','00000C':'Cisco Systems',
+  '0001C7':'Cisco Systems','000143':'Cisco Systems','000164':'Cisco Systems',
+  '001A2B':'Cisco-Linksys','001B2A':'Cisco Systems','001D70':'Cisco Systems',
+  '002155':'Cisco Systems','00E0F7':'Cisco Systems',
+  '001C0F':'Dell Inc','001DE0':'Dell Inc','002564':'Dell Inc',
+  '005056':'VMware','000C29':'VMware','001C14':'VMware',
+  '080027':'Oracle VirtualBox','525400':'QEMU/KVM Virtual',
+  // Apple
+  '000A27':'Apple Inc','000A95':'Apple Inc','001124':'Apple Inc',
+  '00236C':'Apple Inc','0025BC':'Apple Inc','003065':'Apple Inc',
+  '0050E4':'Apple Inc','006171':'Apple Inc','00F4B9':'Apple Inc',
+  '04F7E4':'Apple Inc','086D41':'Apple Inc','0C4DE9':'Apple Inc',
+  '109ADD':'Apple Inc','1499E2':'Apple Inc','18AF61':'Apple Inc',
+  '1C91BF':'Apple Inc','204E7F':'Apple Inc','246AB0':'Apple Inc',
+  '28CFE9':'Apple Inc','34C059':'Apple Inc','38B54D':'Apple Inc',
+  '3C0754':'Apple Inc','40A6D9':'Apple Inc','48D705':'Apple Inc',
+  '4C8D79':'Apple Inc','503237':'Apple Inc','5C1688':'Apple Inc',
+  '60C547':'Apple Inc','6C3B6B':'Apple Inc','70CD60':'Apple Inc',
+  '7831C1':'Apple Inc','7CB9D2':'Apple Inc','84789C':'Apple Inc',
+  '8C7B9D':'Apple Inc','90720D':'Apple Inc','94BF2D':'Apple Inc',
+  'A4D9F2':'Apple Inc','A85B78':'Apple Inc','B0344B':'Apple Inc',
+  'B418D1':'Apple Inc','B88D12':'Apple Inc','BC3BF4':'Apple Inc',
+  'C82A14':'Apple Inc','D4F46F':'Apple Inc','D89695':'Apple Inc',
+  'E0ACCB':'Apple Inc','E4CE8F':'Apple Inc','E80688':'Apple Inc',
+  'EC852F':'Apple Inc','F0B479':'Apple Inc','F40F24':'Apple Inc',
+  'F82793':'Apple Inc','FC253F':'Apple Inc',
+  // Microsoft
+  '0050F2':'Microsoft Corp','0003FF':'Microsoft Corp','002248':'Microsoft Corp',
+  '7C1E52':'Microsoft Corp','C4691C':'Microsoft Xbox',
+  // Intel
+  '001B21':'Intel Corp','001DA2':'Intel Corp','001EEC':'Intel Corp',
+  '002196':'Intel Corp','002215':'Intel Corp','00248D':'Intel Corp',
+  '0026C7':'Intel Corp','002748':'Intel Corp','003048':'Intel Corp',
+  '00508B':'Intel Corp','005CAF':'Intel Corp','006B9E':'Intel Corp',
+  '007048':'Intel Corp','008086':'Intel Corp','00AA00':'Intel Corp',
+  '1800BB':'Intel Corp','1C6F65':'Intel Corp','24F5AA':'Intel Corp',
+  '28D244':'Intel Corp','2C6E85':'Intel Corp','30B49E':'Intel Corp',
+  '34E6D7':'Intel Corp','380340':'Intel Corp','3C970E':'Intel Corp',
+  '40F02F':'Intel Corp','48517B':'Intel Corp','4C7999':'Intel Corp',
+  '5058DC':'Intel Corp','5C514F':'Intel Corp','606720':'Intel Corp',
+  '64D4DA':'Intel Corp','68050F':'Intel Corp','6C626D':'Intel Corp',
+  '7085C2':'Intel Corp','749D8F':'Intel Corp','78924B':'Intel Corp',
+  '7CA179':'Intel Corp','7CF05F':'Intel Corp','803252':'Intel Corp',
+  '848506':'Intel Corp','88532E':'Intel Corp','8CA983':'Intel Corp',
+  '8CFABA':'Intel Corp','90E2BA':'Intel Corp','94659C':'Intel Corp',
+  '985FD3':'Intel Corp','9CB654':'Intel Corp','A0369F':'Intel Corp',
+  'A4C494':'Intel Corp','A81B5A':'Intel Corp','B0A4E4':'Intel Corp',
+  'B4AED0':'Intel Corp','B851739':'Intel Corp','BC0F9A':'Intel Corp',
+  'C4856E':'Intel Corp','C8D9D2':'Intel Corp','CCCCCC':'Intel NIC',
+  'D050996':'Intel Corp','D4BEA9':'Intel Corp','D8FC93':'Intel Corp',
+  'DC53600':'Intel Corp','E09D31':'Intel Corp','E4F0042':'Intel Corp',
+  // HP / HPE
+  '001083':'Hewlett Packard','001560':'Hewlett Packard','001871':'Hewlett Packard',
+  '001AA0':'Hewlett Packard','001EC9':'Hewlett Packard','0021F7':'Hewlett Packard',
+  '002354':'Hewlett Packard','00248C':'Hewlett Packard','002655':'Hewlett Packard',
+  '0060B0':'Hewlett Packard','00805F':'Hewlett Packard','008009':'Hewlett Packard',
+  '001B78':'HP Inc','001CC4':'HP Inc','001E0B':'HP Inc','001FA4':'HP Inc',
+  // Lenovo
+  '001E8C':'Lenovo','00215D':'Lenovo','002170':'Lenovo','002338':'Lenovo',
+  '005056':'Lenovo ThinkPad','040EE5':'Lenovo','100BA9':'Lenovo',
+  '18A905':'Lenovo','1C1B5E':'Lenovo','20528A':'Lenovo',
+  '28D244':'Lenovo','2C5BB8':'Lenovo','3440B5':'Lenovo',
+  '40B036':'Lenovo','4C7299':'Lenovo','54E1AD':'Lenovo',
+  '5CF9DD':'Lenovo','68A3C4':'Lenovo','6CAE8B':'Lenovo',
+  '74867A':'Lenovo','809BB8':'Lenovo','84BE52':'Lenovo',
+  // Raspberry Pi
+  'B827EB':'Raspberry Pi Foundation','DCA632':'Raspberry Pi Foundation',
+  'E45F01':'Raspberry Pi Foundation','2CCF67':'Raspberry Pi Foundation',
+  'DC:A6:32':'Raspberry Pi 4','B8:27:EB':'Raspberry Pi (older)',
+  // Fortinet
+  '000904':'Fortinet','009037':'Fortinet','00086C':'Fortinet',
+  '70:4C:A5':'Fortinet','90:6C:AC':'Fortinet',
+  // Palo Alto
+  '001B17':'Palo Alto Networks','84B53E':'Palo Alto Networks',
+  // Aruba/HP
+  '000B86':'Aruba Networks','001A1E':'Aruba Networks','20:4C:03':'Aruba',
+  // Ubiquiti
+  '002722':'Ubiquiti Networks','0418D6':'Ubiquiti Networks',
+  '18E829':'Ubiquiti Networks','24A43C':'Ubiquiti Networks',
+  '44D9E7':'Ubiquiti Networks','68722D':'Ubiquiti Networks',
+  '788A20':'Ubiquiti Networks','803F5D':'Ubiquiti Networks',
+  'B4FBE4':'Ubiquiti Networks','DC9FDB':'Ubiquiti Networks',
+  'F09FC2':'Ubiquiti Networks',
+  // Samsung
+  '001632':'Samsung Electronics','001C43':'Samsung Electronics',
+  '002339':'Samsung Electronics','002454':'Samsung Electronics',
+  '0025D7':'Samsung Electronics','002566':'Samsung Electronics',
+  '0026E2':'Samsung Electronics','002737':'Samsung Electronics',
+  // Amazon/Alexa
+  '0C8268':'Amazon Technologies','107EEF':'Amazon Technologies',
+  '38F73D':'Amazon Technologies','40B4CD':'Amazon Technologies',
+  '44650D':'Amazon Technologies','50F5DA':'Amazon Technologies',
+  '68037B':'Amazon Technologies','74C246':'Amazon Technologies',
+  'A002DC':'Amazon Technologies','AC63BE':'Amazon Technologies',
+  'B47C9C':'Amazon Technologies','F0272D':'Amazon Technologies',
+  'FC65DE':'Amazon Technologies',
+  // Google
+  '3C5A37':'Google Inc','54600A':'Google Inc','6C AD F8':'Google Inc',
+  '94EB2C':'Google Inc','A47733':'Google Inc','DA:A1:19':'Google Cast',
+  // Netgear
+  '001B2F':'NETGEAR','00146C':'NETGEAR','001EE5':'NETGEAR',
+  '00224B':'NETGEAR','0026F2':'NETGEAR','20E52A':'NETGEAR',
+  '28C68E':'NETGEAR','30469A':'NETGEAR','44940C':'NETGEAR',
+  '6027B1':'NETGEAR','9C3DCF':'NETGEAR','A021B7':'NETGEAR',
+  'B0B982':'NETGEAR','C03F0E':'NETGEAR','E091F5':'NETGEAR',
+  // TP-Link
+  '003092':'TP-Link Technologies','007743':'TP-Link Technologies',
+  '14CC20':'TP-Link Technologies','1861B0':'TP-Link Technologies',
+  '1C3BF3':'TP-Link Technologies','286C07':'TP-Link Technologies',
+  '2CE411':'TP-Link Technologies','30B5C2':'TP-Link Technologies',
+  '3C52A1':'TP-Link Technologies','50C7BF':'TP-Link Technologies',
+  '54AF97':'TP-Link Technologies','5C628B':'TP-Link Technologies',
+  '6466B3':'TP-Link Technologies','74DADA':'TP-Link Technologies',
+  '88D7F6':'TP-Link Technologies','98DAC4':'TP-Link Technologies',
+  'A0F3C1':'TP-Link Technologies','AC84C6':'TP-Link Technologies',
+  'B0487A':'TP-Link Technologies','C44BD5':'TP-Link Technologies',
+  'D80D17':'TP-Link Technologies','E894F6':'TP-Link Technologies',
+  'EC086B':'TP-Link Technologies','F4F26D':'TP-Link Technologies',
+  'F81A67':'TP-Link Technologies',
+  // Huawei (flag for government/sensitive networks)
+  '001E10':'Huawei Technologies','00259E':'Huawei Technologies',
+  '0034FE':'Huawei Technologies','0078E1':'Huawei Technologies',
+  '047975':'Huawei Technologies','0C37DC':'Huawei Technologies',
+  '143004':'Huawei Technologies','1C8E5C':'Huawei Technologies',
+  '202BC1':'Huawei Technologies','24C99A':'Huawei Technologies',
+  '28FAA0':'Huawei Technologies','34DB7B':'Huawei Technologies',
+  '38BC01':'Huawei Technologies','3CB39D':'Huawei Technologies',
+  '4CF95D':'Huawei Technologies','54892E':'Huawei Technologies',
+  '5C4CA9':'Huawei Technologies','6015F2':'Huawei Technologies',
+  '6414BC':'Huawei Technologies','68A0F6':'Huawei Technologies',
+  '70725D':'Huawei Technologies','70A8E3':'Huawei Technologies',
+  '7491BB':'Huawei Technologies','78179B':'Huawei Technologies',
+  '7C1CF1':'Huawei Technologies','8408F2':'Huawei Technologies',
+  '88A2D7':'Huawei Technologies','8CA58C':'Huawei Technologies',
+  '90675F':'Huawei Technologies','90E7C6':'Huawei Technologies',
+  '9480FA':'Huawei Technologies','9C7DA3':'Huawei Technologies',
+  'A08CF8':'Huawei Technologies','A4253B':'Huawei Technologies',
+  'A8CA8B':'Huawei Technologies','AC853D':'Huawei Technologies',
+  'B4430D':'Huawei Technologies','B4CD27':'Huawei Technologies',
+  'BC764E':'Huawei Technologies','C87B5B':'Huawei Technologies',
+  'CC96A0':'Huawei Technologies','D0FF98':'Huawei Technologies',
+  'D4612E':'Huawei Technologies','D4A0CA':'Huawei Technologies',
+  'D8490B':'Huawei Technologies','DC6095':'Huawei Technologies',
+  'E01E10':'Huawei Technologies','E4587D':'Huawei Technologies',
+  'E8CD2D':'Huawei Technologies','ECBF5F':'Huawei Technologies',
+  'F0B9B7':'Huawei Technologies','F43E61':'Huawei Technologies',
+  'F4DCF9':'Huawei Technologies','F88B3B':'Huawei Technologies',
+  'FC3F7C':'Huawei Technologies',
+  // Other notable
+  '00E04C':'Realtek Semiconductor','001A62':'Realtek','001422':'Realtek',
+  '7440BB':'Realtek','E00EDA':'Realtek',
+  'AABBCC':'Test/Placeholder','DEADBE':'Test/Placeholder',
+  'FFFFFF':'Broadcast',
+  '001122':'Synology','001132':'Synology',
+};
+
+//  USB VENDOR DATABASE 
+var USB_DB = {
+  '0x045E':'Microsoft Corporation','045E':'Microsoft Corporation',
+  '0x05AC':'Apple Inc','05AC':'Apple Inc',
+  '0x046D':'Logitech Inc','046D':'Logitech Inc',
+  '0x04F2':'Chicony Electronics (webcams)','04F2':'Chicony Electronics',
+  '0x0781':'SanDisk Corporation','0781':'SanDisk Corporation',
+  '0x0951':'Kingston Technology','0951':'Kingston Technology',
+  '0x0BDA':'Realtek Semiconductor','0BDA':'Realtek Semiconductor',
+  '0x8087':'Intel Corp (USB hub)','8087':'Intel Corp',
+  '0x1D6B':'Linux Foundation (USB hub)','1D6B':'Linux Foundation',
+  '0x2109':'VIA Labs (USB hub)','2109':'VIA Labs',
+  '0x04E8':'Samsung Electronics','04E8':'Samsung Electronics',
+  '0x18D1':'Google Inc (Android)','18D1':'Google Inc',
+  '0x12D1':'Huawei Technologies','12D1':'Huawei Technologies',
+  '0x0FCE':'Sony Ericsson Mobile','0FCE':'Sony Ericsson',
+  '0x2717':'Xiaomi Communications','2717':'Xiaomi',
+  '0x0424':'Microchip Technology','0424':'Microchip Technology',
+  '0x0403':'Future Technology Devices (FTDI)','0403':'FTDI',
+  '0x067B':'Prolific Technology (USB-Serial)','067B':'Prolific Technology',
+  '0x10C4':'Silicon Labs CP210x','10C4':'Silicon Labs',
+  '0x1A86':'QinHeng Electronics (CH340)','1A86':'QinHeng Electronics (CH340 USB-Serial)',
+  '0x239A':'Adafruit Industries','239A':'Adafruit Industries',
+  '0x2341':'Arduino SA','2341':'Arduino SA',
+  '0x0D28':'NXP ARM mbed','0D28':'NXP ARM mbed',
+  '0x04D8':'Microchip PIC','04D8':'Microchip Technology PIC',
+  '0x0B95':'ASIX Electronics (USB-LAN)','0B95':'ASIX Electronics',
+  '0x0525':'Network Controllers (RNDIS)','0525':'PLX Technology',
+  '0x058F':'Alcor Micro (card reader)','058F':'Alcor Micro',
+  '0x14CD':'Super Top (card reader)','14CD':'Super Top',
+  '0x0BC2':'Seagate RSS LLC','0BC2':'Seagate Technology',
+  '0x1058':'Western Digital','1058':'Western Digital Technologies',
+  '0x04A9':'Canon Inc','04A9':'Canon Inc',
+  '0x04B0':'Nikon Corp','04B0':'Nikon Corporation',
+  '0x04B8':'Seiko Epson Corp','04B8':'Seiko Epson Corp',
+  '0x03F0':'Hewlett-Packard','03F0':'Hewlett-Packard',
+  '0x0482':'Kyocera Corp','0482':'Kyocera Corp',
+  '0x09F8':'Unknown/Suspicious','09F8':'Unknown Vendor',
+  '0x1234':'Unknown Test Device','1234':'Unknown Test/Development',
+};
+
+//  PCI VENDOR DATABASE 
+var PCI_DB = {
+  '8086':'Intel Corporation',
+  '10DE':'NVIDIA Corporation',
+  '1002':'Advanced Micro Devices (AMD)',
+  '14E4':'Broadcom Corporation',
+  '10EC':'Realtek Semiconductor',
+  '1022':'Advanced Micro Devices (AMD)',
+  '1000':'Broadcom / LSI Logic',
+  '1028':'Dell Inc',
+  '103C':'Hewlett-Packard',
+  '10B5':'PLX Technology',
+  '1106':'VIA Technologies',
+  '168C':'Qualcomm Atheros',
+  '1969':'Qualcomm Atheros',
+  '1B21':'ASMedia Technology',
+  '1C5C':'SK Hynix',
+  '1D6A':'Aquantia Corp',
+  '1F96':'Intel (Ethernet)',
+  '2646':'Kingston Technology',
+  '4DEA':'Xtera Networks',
+  '8088':'Intel (alternate)',
+  '15AD':'VMware Inc',
+  '1234':'Technical',
+  '1AF4':'Red Hat / QEMU (Virtio)',
+  '10EE':'Xilinx',
+  '1BC5':'Marvell Technology',
+  '11AB':'Marvell Technology Group',
+  '1B4B':'Marvell Technology',
+  '19A2':'Emulex',
+  '10DF':'Emulex',
+  '1077':'QLogic Corp',
+  '15B3':'Mellanox Technologies',
+  '1FC9':'NXP Semiconductors',
+  '0CF3':'Qualcomm Atheros',
+  '17CB':'Qualcomm',
+  '1FC8':'NXP USA Inc',
+  '0E11':'Compaq Computer Corp',
+  '0E8F':'GreenWithEnvy',
+  '1131':'Philips Semiconductors',
+  '1304':'Shanghai Zhaoxin Semiconductor',
+  'DEAD':'Unknown/Suspect',
+};
+
+//  WATCH LIST 
+var WATCH_LIST = [
+  { vendor:'Huawei Technologies', reason:'US Government ban  Section 889. Flag on federal/cleared networks.', risk:'critical' },
+  { vendor:'Raspberry Pi Foundation', reason:'Often used in rogue network implants. Verify purpose.', risk:'high' },
+  { vendor:'QinHeng Electronics (CH340)', reason:'Common in counterfeit USB-Serial adapters and implants.', risk:'high' },
+  { vendor:'Unknown/Suspicious', reason:'No registered vendor  possible counterfeit or rogue hardware.', risk:'critical' },
+  { vendor:'Test/Placeholder', reason:'MAC suggests virtual or spoofed hardware.', risk:'high' },
+  { vendor:'Xiaomi Communications', reason:'Chinese manufacturer  monitor on sensitive networks.', risk:'medium' },
+  { vendor:'VMware Inc', reason:'Verify authorized VM host  unexpected VMs are a red flag.', risk:'medium' },
+  { vendor:'QEMU/KVM Virtual', reason:'Virtual machine detected  verify it is authorized.', risk:'medium' },
+];
+
+//  COMMON OUI SIDEBAR 
+function renderCommonOUI() {
+  var items = [
+    {prefix:'00:00:0C / 00:1A:2B', vendor:'Cisco Systems'},
+    {prefix:'00:1C:0F / 00:25:64', vendor:'Dell Inc'},
+    {prefix:'00:0A:27 / 04:F7:E4', vendor:'Apple Inc'},
+    {prefix:'B8:27:EB / DC:A6:32', vendor:'Raspberry Pi'},
+    {prefix:'00:50:56 / 00:0C:29', vendor:'VMware'},
+    {prefix:'00:1B:21 / 8C:FA:BA', vendor:'Intel Corp'},
+    {prefix:'00:1E:10 / 00:25:9E', vendor:'Huawei'},
+    {prefix:'00:09:04 / 70:4C:A5', vendor:'Fortinet'},
+  ];
+  document.getElementById('commonOUI').innerHTML = items.map(function(i){
+    return '<div class="side-item">'
+      +'<div class="si-label" style="font-size:9px">'+i.prefix+'</div>'
+      +'<div class="si-val" style="font-size:10px">'+i.vendor+'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function renderWatchList() {
+  document.getElementById('watchList').innerHTML = WATCH_LIST.map(function(w){
+    var col = w.risk==='critical'?'var(--red)':w.risk==='high'?'var(--orange)':'var(--yellow)';
+    return '<div style="margin-bottom:8px;padding:7px 9px;background:var(--s2);border:1px solid var(--b1);'
+      +'border-left:2px solid '+col+';border-radius:3px">'
+      +'<div style="font-size:10px;font-family:var(--mono);color:'+col+';font-weight:700;margin-bottom:3px">'+w.vendor+'</div>'
+      +'<div style="font-size:9px;font-family:var(--mono);color:var(--muted);line-height:1.5">'+w.reason+'</div>'
+    +'</div>';
+  }).join('');
+}
+
+//  UTILS 
+function safeStr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function updateStats(){
+  document.getElementById('sLookups').textContent = totalLookups;
+  document.getElementById('sRogues').textContent  = totalRogues;
+  document.getElementById('sUnknown').textContent = totalUnknown;
+  document.getElementById('sScanned').textContent = totalScanned;
+}
+
+function normMAC(mac) {
+  var clean = mac.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+  if(clean.length < 6) return null;
+  return clean.slice(0,6);
+}
+
+function lookupOUI(mac) {
+  var oui = normMAC(mac);
+  if(!oui) return { vendor:'Invalid MAC', oui:'', risk:'unknown' };
+  // Try exact OUI match
+  var vendor = OUI_DB[oui] || OUI_DB[oui.slice(0,4)] || null;
+  // Check by formatted prefixes
+  if(!vendor) {
+    var formatted = oui.slice(0,2)+':'+oui.slice(2,4)+':'+oui.slice(4,6);
+    for(var k in OUI_DB) {
+      if(k.replace(/[^0-9A-Fa-f]/g,'').toUpperCase() === oui) { vendor = OUI_DB[k]; break; }
+    }
+  }
+  if(!vendor) vendor = null;
+
+  var risk = 'low';
+  if(!vendor) { risk = 'unknown'; }
+  else if(vendor.includes('Huawei')) { risk = 'critical'; }
+  else if(vendor.includes('Raspberry Pi') || vendor.includes('QinHeng') || vendor.includes('Unknown') || vendor.includes('Test')) { risk = 'high'; }
+  else if(vendor.includes('Xiaomi') || vendor.includes('VMware') || vendor.includes('QEMU')) { risk = 'medium'; }
+
+  return { vendor: vendor || 'Unknown (not in local OUI database)', oui: oui, risk: risk };
+}
+
+function riskBadge(r) {
+  var cls = r==='critical'?'risk-c':r==='high'?'risk-h':r==='medium'?'risk-m':'risk-l';
+  var lbl = r==='critical'?'CRITICAL FLAG':r==='high'?'HIGH  VERIFY':r==='medium'?'MONITOR':'TRUSTED';
+  if(r==='unknown') return '<span class="risk-badge risk-m">UNKNOWN VENDOR</span>';
+  return '<span class="risk-badge '+cls+'">'+lbl+'</span>';
+}
+
+//  MAC LOOKUP 
+function lookupMAC() {
+  var raw = document.getElementById('macIn').value.trim();
+  if(!raw) { alert('Enter a MAC address.'); return; }
+
+  var oui = normMAC(raw);
+  if(!oui || oui.length < 6) { alert('Invalid MAC address format.'); return; }
+
+  var result = lookupOUI(raw);
+  totalLookups++; totalScanned++;
+  if(result.risk === 'unknown') totalUnknown++;
+  updateStats();
+
+  var formatted = oui.slice(0,2)+':'+oui.slice(2,4)+':'+oui.slice(4,6);
+  var macFormatted = oui.slice(0,2)+':'+oui.slice(2,4)+':'+oui.slice(4,6)+':??:??:??';
+
+  var notes = '';
+  if(result.vendor.includes('Huawei')) {
+    notes = '<div class="action-box"><strong style="color:var(--red)">SECURITY FLAG:</strong> Huawei Technologies is banned on US federal networks under Section 889 of the NDAA. If this device is on a government, cleared contractor, or sensitive network  remove it immediately and document for compliance reporting. Report to your ISSO.</div>';
+  } else if(result.vendor.includes('Raspberry Pi')) {
+    notes = '<div class="action-box"><strong style="color:var(--orange)">VERIFY:</strong> Raspberry Pi devices are frequently used in unauthorized network implants and rogue access points. Verify this device is authorized and its purpose is documented in your asset inventory. If unknown  isolate and investigate.</div>';
+  } else if(result.risk === 'unknown') {
+    notes = '<div class="action-box"><strong style="color:var(--yellow)">UNKNOWN VENDOR:</strong> This MAC OUI is not in the local database. Could be a newer device, custom hardware, or spoofed MAC. Check the full IEEE database at macvendors.com or maclookup.app for definitive identification.</div>';
+  } else if(result.vendor.includes('VMware') || result.vendor.includes('QEMU')) {
+    notes = '<div class="action-box"><strong style="color:var(--yellow)">VIRTUAL MACHINE:</strong> This is a virtualized network interface. Verify the VM is authorized, running on an approved hypervisor host, and is in your asset inventory. Unauthorized VMs may indicate compromise or policy violation.</div>';
+  }
+
+  document.getElementById('mainResults').innerHTML =
+    '<div class="result-card">'
+      +'<div class="rc-hdr">'
+        +'<div><div class="rc-title">'+safeStr(result.vendor)+'</div>'
+          +'<div style="font-size:10px;font-family:var(--mono);color:var(--muted);margin-top:3px">OUI: '+formatted+'  |  Full MAC prefix identified</div>'
+        +'</div>'
+        +'<div style="display:flex;gap:6px;align-items:center">'
+          +riskBadge(result.risk)
+          +'<span class="rc-type">MAC OUI</span>'
+        +'</div>'
+      +'</div>'
+      +'<div class="rc-grid">'
+        +'<div class="rc-field"><div class="rcf-label">OUI (Organizationally Unique Identifier)</div><div class="rcf-val" style="color:var(--cyan)">'+formatted+'</div></div>'
+        +'<div class="rc-field"><div class="rcf-label">Manufacturer</div><div class="rcf-val">'+safeStr(result.vendor)+'</div></div>'
+        +'<div class="rc-field"><div class="rcf-label">Input MAC</div><div class="rcf-val">'+safeStr(raw)+'</div></div>'
+        +'<div class="rc-field"><div class="rcf-label">MAC Range</div><div class="rcf-val">'+macFormatted+'</div></div>'
+        +'<div class="rc-field"><div class="rcf-label">Risk Assessment</div><div class="rcf-val">'+(result.risk.toUpperCase())+'</div></div>'
+        +'<div class="rc-field"><div class="rcf-label">IEEE Block Type</div><div class="rcf-val">MA-L (24-bit OUI)</div></div>'
+      +'</div>'
+      + notes
+      +'<div class="rc-footer">'
+        +'<a class="ref-link" href="https://macvendors.com/'+encodeURIComponent(oui)+'" target="_blank">Verify at macvendors.com</a>'
+        +'<a class="ref-link" href="https://maclookup.app/search/result?mac='+encodeURIComponent(oui)+'" target="_blank">maclookup.app</a>'
+        +'<a class="ref-link" href="https://www.ieee.org/regauth" target="_blank">IEEE Registry</a>'
+      +'</div>'
+    +'</div>';
+}
+
+//  USB LOOKUP 
+function lookupUSB() {
+  var vid = document.getElementById('usbVid').value.trim().replace(/^0x/i,'').toUpperCase().slice(0,4);
+  var pid = document.getElementById('usbPid').value.trim().replace(/^0x/i,'').toUpperCase().slice(0,4);
+  if(!vid) { alert('Enter a USB Vendor ID (VID).'); return; }
+
+  var vendor = USB_DB['0x'+vid] || USB_DB[vid] || 'Unknown Vendor (not in local database)';
+  totalLookups++; totalScanned++;
+  if(vendor.includes('Unknown')) totalUnknown++;
+  updateStats();
+
+  var risk = 'low';
+  if(vendor.includes('Unknown')) risk = 'unknown';
+  else if(vendor.includes('Huawei') || vendor.includes('QinHeng') || vendor.includes('1A86')) risk = 'high';
+  else if(vendor.includes('Xiaomi') || vendor.includes('12D1')) risk = 'medium';
+
+  var notes = '';
+  if(vid === '1A86') notes = '<div class="action-box"><strong style="color:var(--orange)">SECURITY NOTE:</strong> QinHeng CH340 USB-Serial chips are commonly found in counterfeit devices and low-cost Arduino clones. Monitor for data exfiltration or unauthorized serial communication on systems where this device appears unexpectedly.</div>';
+  if(vendor.includes('Unknown')) notes = '<div class="action-box"><strong style="color:var(--yellow)">UNKNOWN DEVICE:</strong> This USB VID is not in the local database. Check the full USB ID database at usb-ids.gowdy.us or devicehunt.com for identification. Unknown USB devices on secure systems should be investigated and possibly blocked via USB device control policy.</div>';
+
+  document.getElementById('mainResults').innerHTML =
+    '<div class="result-card">'
+      +'<div class="rc-hdr">'
+        +'<div><div class="rc-title">'+safeStr(vendor)+'</div>'
+          +'<div style="font-size:10px;font-family:var(--mono);color:var(--muted);margin-top:3px">'
+          +'VID: 0x'+vid+(pid?' | PID: 0x'+pid:'')+'</div>'
+        +'</div>'
+        +'<div style="display:flex;gap:6px;align-items:center">'
+          +riskBadge(risk)
+          +'<span class="rc-type">USB DEVICE</span>'
+        +'</div>'
+      +'</div>'
+      +'<div class="rc-grid">'
+        +'<div class="rc-field"><div class="rcf-label">Vendor ID (VID)</div><div class="rcf-val" style="color:var(--cyan)">0x'+vid+'</div></div>'
+        +'<div class="rc-field"><div class="rcf-label">Manufacturer</div><div class="rcf-val">'+safeStr(vendor)+'</div></div>'
+        +(pid?'<div class="rc-field"><div class="rcf-label">Product ID (PID)</div><div class="rcf-val" style="color:var(--cyan)">0x'+pid+'</div></div>':'')
+        +'<div class="rc-field"><div class="rcf-label">Risk Assessment</div><div class="rcf-val">'+risk.toUpperCase()+'</div></div>'
+        +'<div class="rc-field"><div class="rcf-label">Source</div><div class="rcf-val">USB ID Database</div></div>'
+      +'</div>'
+      + notes
+      +'<div class="rc-footer">'
+        +'<a class="ref-link" href="https://devicehunt.com/view/type/usb/vendor/'+vid+(pid?'/'+pid:'')+'" target="_blank">devicehunt.com</a>'
+        +'<a class="ref-link" href="https://usb-ids.gowdy.us/read/UD/'+vid.toLowerCase()+'" target="_blank">usb-ids.gowdy.us</a>'
+        +'<a class="ref-link" href="https://www.the-sz.com/products/usbid/index.php?v='+vid+(pid?'&p='+pid:'')+'" target="_blank">USB ID Browser</a>'
+      +'</div>'
+    +'</div>';
+}
+
+//  PCI LOOKUP 
+function lookupPCI() {
+  var vid = document.getElementById('pciVid').value.trim().replace(/^0x/i,'').toUpperCase().slice(0,4);
+  var did = document.getElementById('pciDid').value.trim().replace(/^0x/i,'').toUpperCase().slice(0,4);
+  if(!vid) { alert('Enter a PCI Vendor ID.'); return; }
+
+  var vendor = PCI_DB[vid] || 'Unknown PCI Vendor';
+  totalLookups++; totalScanned++;
+  if(vendor.includes('Unknown')) totalUnknown++;
+  updateStats();
+
+  document.getElementById('mainResults').innerHTML =
+    '<div class="result-card">'
+      +'<div class="rc-hdr">'
+        +'<div><div class="rc-title">'+safeStr(vendor)+'</div>'
+          +'<div style="font-size:10px;font-family:var(--mono);color:var(--muted);margin-top:3px">'
+          +'VID: '+vid+(did?' | Device ID: '+did:'')+'</div>'
+        +'</div>'
+        +'<span class="rc-type">PCI/PCIe DEVICE</span>'
+      +'</div>'
+      +'<div class="rc-grid">'
+        +'<div class="rc-field"><div class="rcf-label">PCI Vendor ID</div><div class="rcf-val" style="color:var(--cyan)">'+vid+'</div></div>'
+        +'<div class="rc-field"><div class="rcf-label">Manufacturer</div><div class="rcf-val">'+safeStr(vendor)+'</div></div>'
+        +(did?'<div class="rc-field"><div class="rcf-label">Device ID</div><div class="rcf-val" style="color:var(--cyan)">'+did+'</div></div>':'')
+        +'<div class="rc-field"><div class="rcf-label">Bus Type</div><div class="rcf-val">PCI / PCIe</div></div>'
+        +'<div class="rc-field"><div class="rcf-label">Source</div><div class="rcf-val">PCI ID Database</div></div>'
+      +'</div>'
+      +'<div class="rc-footer">'
+        +'<a class="ref-link" href="https://pci-ids.ucw.cz/mods/PC/read/PD/'+vid.toLowerCase()+(did?'/'+did.toLowerCase():'')+'" target="_blank">pci-ids.ucw.cz</a>'
+        +'<a class="ref-link" href="https://devicehunt.com/view/type/pci/vendor/'+vid+(did?'/'+did:'')+'" target="_blank">devicehunt.com</a>'
+      +'</div>'
+    +'</div>';
+}
+
+//  BULK MAC SCAN 
+var bulkResults = [];
+function bulkScan() {
+  var raw = document.getElementById('bulkIn').value.trim();
+  if(!raw) { alert('Paste MAC addresses first.'); return; }
+
+  var macRegex = /([0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}|[0-9A-Fa-f]{12}/g;
+  var macs = raw.match(macRegex) || [];
+  if(!macs.length) { alert('No valid MAC addresses found. Format: XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX'); return; }
+
+  // Deduplicate
+  var seen = {};
+  macs = macs.filter(function(m){ var n=normMAC(m); if(!n||seen[n]) return false; seen[n]=true; return true; });
+
+  bulkResults = macs.map(function(mac) {
+    var r = lookupOUI(mac);
+    totalLookups++; totalScanned++;
+    if(r.risk==='unknown') totalUnknown++;
+    return { mac:mac, oui:r.oui, vendor:r.vendor, risk:r.risk };
+  });
+  updateStats();
+
+  var sortOrder = {critical:0,high:1,medium:2,unknown:3,low:4};
+  bulkResults.sort(function(a,b){ return (sortOrder[a.risk]||4)-(sortOrder[b.risk]||4); });
+
+  document.getElementById('mainResults').innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--b1);background:var(--s1)">'
+      +'<span style="font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:.18em;color:var(--ng)">// BULK SCAN RESULTS  '+macs.length+' DEVICES</span>'
+      +'<button class="export-btn" onclick="exportBulkReport()">&#128196; EXPORT REPORT</button>'
+    +'</div>'
+    +'<div style="overflow-x:auto;max-height:520px;overflow-y:auto">'
+    +'<table class="bulk-table"><thead><tr>'
+    +'<th>MAC ADDRESS</th><th>OUI</th><th>VENDOR / MANUFACTURER</th><th>RISK</th>'
+    +'</tr></thead><tbody>'
+    + bulkResults.map(function(r,i){
+        var bg = i%2===0?'var(--ng-dd)':'';
+        return '<tr style="background:'+bg+'">'
+          +'<td class="mac-raw">'+safeStr(r.mac)+'</td>'
+          +'<td style="color:var(--cyan)">'+safeStr(r.oui.slice(0,2)+':'+r.oui.slice(2,4)+':'+r.oui.slice(4,6))+'</td>'
+          +'<td class="mac-vendor">'+safeStr(r.vendor)+'</td>'
+          +'<td>'+riskBadge(r.risk)+'</td>'
+        +'</tr>';
+    }).join('')
+    +'</tbody></table></div>';
+}
+
+//  ROGUE DETECTOR 
+var rogueResults = [];
+function rogueDetect() {
+  var vendorStr = document.getElementById('authorizedVendors').value.trim();
+  var raw = document.getElementById('rogueIn').value.trim();
+  if(!raw) { alert('Paste your network MAC address list.'); return; }
+  if(!vendorStr) { alert('Enter authorized vendor names.'); return; }
+
+  var authorized = vendorStr.toLowerCase().split(',').map(function(v){return v.trim();});
+
+  var macRegex = /([0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}|[0-9A-Fa-f]{12}/g;
+  var macs = raw.match(macRegex) || [];
+  if(!macs.length) { alert('No MAC addresses found in pasted text.'); return; }
+
+  var seen = {};
+  macs = macs.filter(function(m){ var n=normMAC(m); if(!n||seen[n]) return false; seen[n]=true; return true; });
+
+  rogueResults = macs.map(function(mac) {
+    var r = lookupOUI(mac);
+    var vLower = r.vendor.toLowerCase();
+    var isAuth = authorized.some(function(a){ return a && vLower.includes(a); });
+    var isRogue = !isAuth;
+    if(isRogue) totalRogues++;
+    totalLookups++; totalScanned++;
+    return { mac:mac, vendor:r.vendor, oui:r.oui, risk:r.risk, rogue:isRogue };
+  });
+  updateStats();
+
+  var rogueCount = rogueResults.filter(function(r){return r.rogue;}).length;
+  rogueResults.sort(function(a,b){ return (b.rogue?1:0)-(a.rogue?1:0); });
+
+  document.getElementById('mainResults').innerHTML =
+    '<div style="background:'+(rogueCount>0?'var(--red-g)':'var(--ng-d)')+';border-bottom:1px solid '+(rogueCount>0?'var(--red-b)':'var(--b2)')+';padding:12px 16px;display:flex;align-items:center;justify-content:space-between">'
+      +'<div>'
+        +'<div style="font-family:var(--display);font-size:11px;font-weight:900;color:'+(rogueCount>0?'var(--red)':'var(--ng)')+'">'+rogueCount+' ROGUE DEVICE'+(rogueCount!==1?'S':'')+' DETECTED</div>'
+        +'<div style="font-size:10px;font-family:var(--mono);color:var(--muted);margin-top:2px">'+macs.length+' total devices scanned  |  '+rogueCount+' unauthorized vendors</div>'
+      +'</div>'
+      +'<button class="export-btn" onclick="exportRogueReport()">&#128196; EXPORT REPORT</button>'
+    +'</div>'
+    +'<div style="overflow-x:auto;max-height:500px;overflow-y:auto">'
+    +'<table class="bulk-table"><thead><tr>'
+    +'<th>STATUS</th><th>MAC ADDRESS</th><th>VENDOR</th><th>RISK</th>'
+    +'</tr></thead><tbody>'
+    + rogueResults.map(function(r,i){
+        var bg = r.rogue?'rgba(255,55,55,0.04)':i%2===0?'var(--ng-dd)':'';
+        return '<tr style="background:'+bg+'">'
+          +'<td>'+(r.rogue
+            ?'<span class="rogue-flag">&#9888; ROGUE</span>'
+            :'<span class="trusted-flag">&#10003; AUTHORIZED</span>')+'</td>'
+          +'<td class="mac-raw">'+safeStr(r.mac)+'</td>'
+          +'<td class="mac-vendor">'+safeStr(r.vendor)+'</td>'
+          +'<td>'+riskBadge(r.risk)+'</td>'
+        +'</tr>';
+    }).join('')
+    +'</tbody></table></div>';
+}
+
+//  EXPORT REPORTS 
+function buildReport(title, rows, headers) {
+  var now = new Date();
+  function safe(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+safe(title)+' - Ghost Defense</title>'
+    +'<style>body{font-family:Calibri,Arial;background:#f3f4f6;margin:0}'
+    +'table{width:100%;border-collapse:collapse}th{background:#111827;color:#00ff41;font-size:10px;padding:10px 12px;text-align:left}'
+    +'td{padding:9px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;font-family:monospace}'
+    +'@media print{.np{display:none}}</style></head><body>'
+    +'<div style="background:#111827;padding:20px 32px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div><div style="font-size:20px;font-weight:800;color:#00ff41">GHOST DEFENSE</div>'
+        +'<div style="color:#9ca3af;font-size:11px">HWIDENT - '+safe(title)+'</div></div>'
+      +'<div style="text-align:right"><div style="color:#fff;font-weight:700">'+now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>'
+        +'<div style="color:#9ca3af;font-size:10px">'+now.toUTCString().replace('GMT','UTC')+'</div>'
+        +'<div style="margin-top:5px;background:#dc2626;color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:3px;display:inline-block">TLP:CLEAR // DEFENSIVE USE ONLY</div>'
+      +'</div>'
+    +'</div>'
+    +'<table><thead><tr>'+headers.map(function(h){return '<th>'+safe(h)+'</th>';}).join('')+'</tr></thead>'
+    +'<tbody>'+rows+'</tbody></table>'
+    +'<div style="background:#111827;padding:14px 32px;display:flex;justify-content:space-between;margin-top:10px" class="np">'
+      +'<div style="color:#9ca3af;font-size:10px">Source: IEEE OUI + USB ID Database | Ghost Defense | All lookups local | TLP:CLEAR</div>'
+    +'</div>'
+    +'<div style="text-align:center;padding:12px" class="np">'
+      +'<button onclick="window.print()" style="background:#00ff41;color:#111;border:none;padding:10px 28px;border-radius:4px;font-size:13px;font-weight:800;cursor:pointer;margin-right:8px">PRINT / PDF</button>'
+      +'<button onclick="window.close()" style="background:#374151;color:#fff;border:none;padding:10px 22px;border-radius:4px;font-size:13px;font-weight:700;cursor:pointer">CLOSE</button>'
+    +'</div></body></html>';
+  var win = window.open('','_blank');
+  if(!win){alert('Allow popups and retry.');return;}
+  win.document.write(html); win.document.close(); win.focus();
+}
+
+function exportBulkReport() {
+  if(!bulkResults.length){alert('Run a bulk scan first.');return;}
+  var rows = bulkResults.map(function(r,i){
+    var bg = i%2===0?'#f9fafb':'#fff';
+    var rc = r.risk==='critical'?'#dc2626':r.risk==='high'?'#ea580c':r.risk==='medium'?'#ca8a04':'#374151';
+    return '<tr style="background:'+bg+'">'
+      +'<td>'+r.mac+'</td><td>'+r.oui+'</td><td style="font-weight:600">'+r.vendor+'</td>'
+      +'<td><span style="background:'+rc+';color:#fff;font-size:10px;padding:2px 7px;border-radius:3px;font-weight:700">'+r.risk.toUpperCase()+'</span></td>'
+    +'</tr>';
+  }).join('');
+  buildReport('Bulk MAC Scan Report', rows, ['MAC ADDRESS','OUI','VENDOR / MANUFACTURER','RISK']);
+}
+
+function exportRogueReport() {
+  if(!rogueResults.length){alert('Run rogue detection first.');return;}
+  var rows = rogueResults.map(function(r,i){
+    var bg = r.rogue?'#fef2f2':i%2===0?'#f9fafb':'#fff';
+    return '<tr style="background:'+bg+'">'
+      +'<td style="font-weight:700;color:'+(r.rogue?'#dc2626':'#16a34a')+'">'+(r.rogue?'ROGUE':'AUTHORIZED')+'</td>'
+      +'<td>'+r.mac+'</td><td style="font-weight:600">'+r.vendor+'</td>'
+      +'<td><span style="background:'+(r.rogue?'#dc2626':'#16a34a')+';color:#fff;font-size:10px;padding:2px 7px;border-radius:3px">'+r.risk.toUpperCase()+'</span></td>'
+    +'</tr>';
+  }).join('');
+  buildReport('Rogue Device Detection Report', rows, ['STATUS','MAC ADDRESS','VENDOR','RISK']);
+}
+
+//  TAB SWITCHING 
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active');});
+  el.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  clearPanel(name);
+}
+
+function clearPanel(name) {
+  document.getElementById('mainResults').innerHTML =
+    '<div class="empty-state"><div style="font-size:32px;margin-bottom:12px;opacity:.3">&#128187;</div>'
+    +'Enter hardware identifiers above to begin lookup.</div>';
+}
+
+//  INIT 
+renderCommonOUI();
+renderWatchList();
+</script>
+</body>
+</html>

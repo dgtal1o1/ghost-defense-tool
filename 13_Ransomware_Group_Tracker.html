@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Ransomware Group Tracker — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020507;--s1:#060d0a;--s2:#0a150f;--s3:#0f1f16;--s4:#162b1e;
+  --b1:rgba(0,255,65,0.07);--b2:rgba(0,255,65,0.14);--b3:rgba(0,255,65,0.25);
+  --ng:#00ff41;--ng2:#39ff14;--ng-d:rgba(0,255,65,0.10);--ng-dd:rgba(0,255,65,0.05);
+  --red:#ff3737;--red-g:rgba(255,55,55,0.13);
+  --orange:#ff8c00;--orange-g:rgba(255,140,0,0.12);
+  --yellow:#ffe600;--yellow-g:rgba(255,230,0,0.09);
+  --green:#00ff41;--green-g:rgba(0,255,65,0.10);
+  --cyan:#00e5ff;--cyan-g:rgba(0,229,255,0.09);
+  --muted:rgba(0,255,65,0.32);--muted2:rgba(0,255,65,0.58);
+  --mono:'Share Tech Mono',monospace;
+  --display:'Orbitron',sans-serif;
+  --body:'Exo 2',sans-serif;
+}
+html{background:var(--bg);scroll-behavior:smooth}
+body{font-family:var(--body);color:var(--ng);min-height:100vh;overflow-x:hidden;
+  text-shadow:0 0 6px rgba(0,255,65,0.18)}
+
+/* scanlines */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:500;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.14) 2px,rgba(0,0,0,0.14) 4px)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:499;
+  background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,0.72) 100%)}
+
+.grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(0,255,65,0.025) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(0,255,65,0.025) 1px,transparent 1px);
+  background-size:44px 44px}
+
+.wrap{position:relative;z-index:1;max-width:1360px;margin:0 auto;padding:0 16px 60px}
+
+/* TOP BAR */
+.topbar{border-bottom:1px solid var(--b2);padding:12px 0;
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;
+  position:sticky;top:0;z-index:200;background:rgba(2,5,7,0.96);backdrop-filter:blur(10px)}
+.tl{display:flex;align-items:center;gap:12px}
+.logo{font-family:var(--display);font-size:14px;font-weight:900;letter-spacing:.18em;
+  color:var(--ng);text-shadow:0 0 14px var(--ng),0 0 30px rgba(0,255,65,.4)}
+.logo span{color:var(--red);text-shadow:0 0 12px var(--red)}
+.tsep{color:var(--b3);font-family:var(--mono)}
+.tsub{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.12em}
+.tr{display:flex;gap:8px;align-items:center}
+.tb{font-size:10px;font-family:var(--mono);padding:4px 10px;border-radius:3px;
+  display:flex;align-items:center;gap:5px;letter-spacing:.07em}
+.tb-ng{background:var(--ng-d);border:1px solid var(--b2);color:var(--ng)}
+.tb-red{background:var(--red-g);border:1px solid rgba(255,55,55,.25);color:var(--red)}
+.blink{animation:blink 1.1s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+#clk{font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:18px}
+.sbox{background:var(--s1);border:1px solid var(--b1);border-radius:4px;padding:12px 14px;
+  position:relative;overflow:hidden}
+.sbox::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,currentColor,transparent);opacity:.4}
+.sn{font-family:var(--display);font-size:20px;font-weight:700;line-height:1;margin-bottom:4px}
+.sl{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+
+/* AI UPDATE BAR */
+.ai-bar{background:var(--s1);border:1px solid rgba(0,255,65,0.14);border-radius:5px;
+  padding:13px 16px;margin-bottom:16px;position:relative;overflow:hidden}
+.ai-bar::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(135deg,rgba(0,229,255,0.04),transparent 60%)}
+.ai-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:relative;z-index:1}
+.ai-icon{width:34px;height:34px;border-radius:8px;flex-shrink:0;
+  background:rgba(0,229,255,0.10);border:1px solid rgba(0,229,255,0.25);
+  display:flex;align-items:center;justify-content:center;font-size:16px}
+.ai-text{flex:1;min-width:160px}
+.ai-title{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.14em;
+  color:var(--cyan);margin-bottom:3px}
+.ai-desc{font-size:10px;font-family:var(--mono);color:var(--muted);line-height:1.5}
+.ai-desc a{color:var(--cyan);text-decoration:none}
+.ai-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.api-key-in{background:var(--s2);border:1px solid rgba(0,229,255,0.2);border-radius:3px;
+  color:var(--ng);font-family:var(--mono);font-size:10px;padding:7px 10px;
+  outline:none;width:210px;text-shadow:none}
+.api-key-in::placeholder{color:var(--muted)}
+.api-key-in:focus{border-color:rgba(0,229,255,0.45)}
+.ai-btn{background:rgba(0,229,255,0.10);border:1px solid rgba(0,229,255,0.3);
+  border-radius:4px;color:var(--cyan);font-family:var(--display);font-size:10px;
+  font-weight:700;letter-spacing:.1em;padding:8px 14px;cursor:pointer;white-space:nowrap;
+  transition:all .15s;text-shadow:0 0 8px rgba(0,229,255,0.4)}
+.ai-btn:hover{background:rgba(0,229,255,0.18)}
+.ai-btn:active{transform:scale(.97)}
+.ai-btn:disabled{opacity:.35;pointer-events:none}
+.ai-prog{width:100%;height:2px;background:var(--s3);border-radius:1px;
+  overflow:hidden;margin-top:10px;display:none}
+.ai-prog.show{display:block}
+.ai-prog-bar{height:100%;background:linear-gradient(90deg,var(--ng),#39ff14);
+  width:0;transition:width .4s ease}
+.ai-log{width:100%;margin-top:8px;padding:9px 12px;background:var(--s2);
+  border:1px solid var(--b1);border-radius:3px;font-family:var(--mono);
+  font-size:11px;color:var(--muted2);line-height:1.7;display:none;
+  max-height:100px;overflow-y:auto}
+.ai-log.show{display:block}
+.ll{display:flex;gap:7px;margin-bottom:2px}
+.ll:last-child{margin-bottom:0}
+.lt{font-size:8px;font-weight:700;padding:2px 6px;border-radius:2px;
+  flex-shrink:0;letter-spacing:.06em;margin-top:2px}
+.lt-q{background:rgba(0,229,255,.12);color:var(--cyan)}
+.lt-ok{background:rgba(0,255,65,.10);color:var(--green)}
+.lt-err{background:var(--red-g);color:var(--red)}
+.lt-done{background:rgba(0,255,65,.10);color:var(--green)}
+
+/* FILTERS */
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center}
+.fl{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em}
+.fchip{font-size:10px;font-family:var(--mono);padding:5px 12px;border-radius:3px;
+  border:1px solid var(--b1);color:var(--muted);cursor:pointer;transition:all .12s;
+  -webkit-tap-highlight-color:transparent}
+.fchip:hover,.fchip.active{background:var(--ng-d);border-color:var(--b2);color:var(--ng);
+  box-shadow:0 0 10px rgba(0,255,65,0.12)}
+.search-in{background:var(--s2);border:1px solid var(--b1);border-radius:3px;
+  color:var(--ng);font-family:var(--mono);font-size:11px;padding:6px 12px;
+  outline:none;width:220px;margin-left:auto;text-shadow:none}
+.search-in::placeholder{color:var(--muted)}
+.search-in:focus{border-color:var(--b2)}
+
+/* CARD GRID */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px}
+
+/* GROUP CARD */
+.grp-card{background:var(--s1);border:1px solid var(--b1);border-radius:6px;
+  overflow:hidden;transition:border-color .15s,box-shadow .15s;cursor:pointer}
+.grp-card:hover{border-color:var(--b2);box-shadow:0 0 20px rgba(0,255,65,0.06)}
+.grp-card.expanded{border-color:var(--b2)}
+.card-stripe{height:3px}
+
+/* card header */
+.card-hdr{padding:14px 16px 12px;border-bottom:1px solid var(--b1)}
+.ch-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
+.grp-name{font-family:var(--display);font-size:14px;font-weight:900;
+  letter-spacing:.06em;margin-bottom:3px}
+.grp-aka{font-size:10px;font-family:var(--mono);color:var(--muted);line-height:1.5}
+.ch-badges{display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0}
+.status-badge{font-size:9px;font-family:var(--mono);font-weight:700;padding:3px 9px;
+  border-radius:12px;letter-spacing:.06em;white-space:nowrap}
+.st-active{background:var(--red-g);color:var(--red);border:1px solid rgba(255,55,55,.3)}
+.st-disrupted{background:var(--orange-g);color:var(--orange);border:1px solid rgba(255,140,0,.28)}
+.st-defunct{background:var(--s3);color:var(--muted);border:1px solid var(--b1)}
+.st-rebrand{background:rgba(255,230,0,.10);color:var(--yellow);border:1px solid rgba(255,230,0,.25)}
+.threat-badge{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 8px;
+  border-radius:3px;white-space:nowrap}
+.thr-critical{background:var(--red-g);color:var(--red)}
+.thr-high{background:var(--orange-g);color:var(--orange)}
+.thr-medium{background:var(--yellow-g);color:var(--yellow)}
+
+.ch-meta{display:flex;gap:12px;flex-wrap:wrap}
+.cm{font-size:10px;font-family:var(--mono);color:var(--muted);display:flex;align-items:center;gap:4px}
+.cm span{color:var(--muted2)}
+
+/* summary */
+.card-summary{padding:12px 16px;font-size:12px;color:var(--muted2);line-height:1.7;
+  border-bottom:1px solid var(--b1)}
+
+/* victims */
+.card-victims{padding:10px 16px;border-bottom:1px solid var(--b1)}
+.cv-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;
+  text-transform:uppercase;margin-bottom:7px}
+.victim-chips{display:flex;gap:5px;flex-wrap:wrap}
+.vchip{font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:2px;
+  background:var(--s2);border:1px solid var(--b1);color:var(--muted2)}
+
+/* targets */
+.card-sectors{padding:10px 16px;border-bottom:1px solid var(--b1)}
+.sector-grid{display:flex;gap:5px;flex-wrap:wrap}
+.sec-chip{font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:2px;
+  background:var(--s2);border:1px solid var(--b1);color:var(--muted2)}
+
+/* ttps */
+.card-ttps{padding:10px 16px}
+.ttp-mini{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.ttp-item{background:var(--s2);border:1px solid var(--b1);border-radius:3px;padding:6px 8px}
+.tti-id{font-family:var(--mono);font-size:9px;color:var(--cyan);margin-bottom:2px}
+.tti-name{font-size:10px;color:var(--ng)}
+
+/* card footer */
+.card-ftr{padding:9px 16px;border-top:1px solid var(--b1);display:flex;
+  align-items:center;justify-content:space-between}
+.exp-btn{font-size:10px;font-family:var(--mono);color:var(--muted);
+  display:flex;align-items:center;gap:5px}
+.exp-icon{transition:transform .2s}
+.grp-card.expanded .exp-icon{transform:rotate(180deg)}
+.ftr-links{display:flex;gap:6px}
+.ftr-link{font-size:9px;font-family:var(--mono);color:var(--cyan);
+  background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.18);
+  border-radius:2px;padding:3px 8px;text-decoration:none;transition:all .12s}
+.ftr-link:hover{background:rgba(0,229,255,.14)}
+
+/* expanded detail */
+.card-detail{display:none;background:var(--s2);border-top:1px solid var(--b1)}
+.grp-card.expanded .card-detail{display:block}
+.det-sec{padding:13px 16px;border-bottom:1px solid var(--b1)}
+.det-sec:last-child{border-bottom:none}
+.det-title{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.12em;
+  text-transform:uppercase;margin-bottom:9px;padding-bottom:6px;border-bottom:1px solid var(--b1)}
+.cve-row{display:flex;gap:6px;flex-wrap:wrap}
+.cve-chip{font-size:10px;font-family:var(--mono);padding:3px 9px;border-radius:2px;
+  background:var(--red-g);border:1px solid rgba(255,55,55,.25);color:var(--red);
+  text-decoration:none;transition:all .12s}
+.cve-chip:hover{background:rgba(255,55,55,.22)}
+.ioc-list{display:flex;flex-direction:column;gap:4px}
+.ioc-item{font-size:10px;font-family:var(--mono);padding:5px 9px;
+  background:var(--s3);border:1px solid var(--b1);border-radius:2px;
+  display:flex;gap:7px;align-items:flex-start;color:var(--muted2)}
+.ioc-t{font-size:8px;font-weight:700;padding:2px 5px;border-radius:2px;
+  flex-shrink:0;letter-spacing:.06em;margin-top:1px}
+.it-mal{background:var(--red-g);color:var(--red)}
+.it-cve{background:var(--orange-g);color:var(--orange)}
+.it-ttp{background:rgba(0,229,255,.10);color:var(--cyan)}
+.def-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.def-item{background:var(--s3);border:1px solid var(--b1);
+  border-left:2px solid var(--green);border-radius:3px;
+  padding:7px 10px;font-size:10px;color:var(--muted2);line-height:1.5}
+
+/* ai update badge */
+.ai-upd-badge{font-size:8px;font-family:var(--mono);font-weight:700;padding:1px 5px;
+  border-radius:2px;background:rgba(0,229,255,.12);color:var(--cyan);
+  border:1px solid rgba(0,229,255,.22);white-space:nowrap;margin-left:4px}
+
+/* ai intel card */
+.ai-intel-card{background:var(--s3);border:1px solid rgba(0,229,255,0.2);
+  border-left:2px solid var(--cyan);border-radius:3px;padding:10px 12px;margin:10px 16px}
+.aic-hdr{font-size:9px;font-family:var(--mono);color:var(--cyan);letter-spacing:.1em;
+  text-transform:uppercase;margin-bottom:8px}
+.aic-key{font-size:11px;color:var(--muted2);line-height:1.65;margin-bottom:8px;
+  padding:7px 9px;background:var(--s2);border:1px solid var(--b1);
+  border-left:2px solid var(--cyan);border-radius:2px}
+.aic-delta{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.delta-pill{font-size:9px;font-family:var(--mono);font-weight:700;padding:3px 9px;
+  border-radius:2px;letter-spacing:.05em}
+.dp-esc{background:var(--red-g);color:var(--red)}
+.dp-sta{background:var(--yellow-g);color:var(--yellow)}
+.dp-dec{background:var(--green-g);color:var(--green)}
+.aic-row{display:flex;flex-direction:column;gap:3px;margin-bottom:7px}
+.aic-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;
+  text-transform:uppercase;margin-bottom:3px}
+.aic-item{font-size:10px;font-family:var(--mono);color:var(--muted2);padding:3px 7px;
+  background:var(--s2);border:1px solid var(--b1);border-radius:2px}
+
+/* FOOTER */
+.ghost-footer{margin-top:32px;padding:18px 0 8px;border-top:1px solid var(--b1);text-align:center}
+.gf-rule{height:1px;background:linear-gradient(90deg,transparent,var(--ng),transparent);
+  opacity:.3;margin-bottom:16px}
+.ghost-by{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--muted);margin-bottom:4px}
+.ghost-name{font-family:var(--display);font-size:16px;font-weight:900;letter-spacing:.2em;
+  color:var(--ng);text-shadow:0 0 12px var(--ng),0 0 30px rgba(0,255,65,.45)}
+.gf-sub{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--muted);margin-top:5px}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+
+@media(max-width:800px){
+  .card-grid{grid-template-columns:1fr}
+  .stats-row{grid-template-columns:repeat(3,1fr)}
+  .def-grid,.ttp-mini{grid-template-columns:1fr}
+  .search-in{margin-left:0;width:100%}
+  .filter-row{flex-direction:column;align-items:flex-start}
+}
+@media(max-width:500px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="wrap">
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="tl">
+    <div class="logo">RANSOMWARE<span>TRACKER</span></div>
+    <div class="tsep">|</div>
+    <div class="tsub">ACTIVE THREAT GROUP INTELLIGENCE</div>
+  </div>
+  <div class="tr">
+    <div class="tb tb-red"><span class="blink">●</span>ACTIVE THREATS</div>
+    <div class="tb tb-ng">DEFENSIVE INTEL</div>
+    <div id="clk"></div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats-row">
+  <div class="sbox" style="color:var(--red)"><div class="sn" id="sActive">0</div><div class="sl">Active Groups</div></div>
+  <div class="sbox" style="color:var(--orange)"><div class="sn" id="sDisrupted">0</div><div class="sl">Disrupted</div></div>
+  <div class="sbox" style="color:var(--yellow)"><div class="sn" id="sTotal">0</div><div class="sl">Total Tracked</div></div>
+  <div class="sbox" style="color:var(--ng)"><div class="sn" id="sVictims">6,200+</div><div class="sl">2025 Victims</div></div>
+  <div class="sbox" style="color:var(--cyan)"><div class="sn">74</div><div class="sl">Groups (Q1 2025)</div></div>
+  <div class="sbox" style="color:var(--red)"><div class="sn">+213%</div><div class="sl">YoY Surge 2025</div></div>
+</div>
+
+<!-- AI UPDATE BAR -->
+<div class="ai-bar">
+  <div class="ai-row">
+    <div class="ai-icon">⚡</div>
+    <div class="ai-text">
+      <div class="ai-title">AI LIVE INTELLIGENCE UPDATE</div>
+      <div class="ai-desc">Get the latest on any ransomware group. Requires your <a href="https://console.anthropic.com/settings/keys" target="_blank">Anthropic API key</a> — paste it here, stays local.</div>
+    </div>
+    <div class="ai-controls">
+      <input class="api-key-in" id="apiKey" type="password" placeholder="Paste sk-ant-... API key here">
+      <button id="testKeyBtn" onclick="testAPIKey()"
+        style="background:var(--ng-d,rgba(0,255,65,0.1));border:1px solid var(--b2,rgba(0,255,65,0.14));
+               border-radius:3px;color:var(--ng,#00ff41);font-family:var(--mono,'Share Tech Mono',monospace);
+               font-size:10px;font-weight:700;letter-spacing:.1em;padding:5px 12px;
+               cursor:pointer;white-space:nowrap">TEST KEY</button>
+      <select id="grpSel" style="background:var(--s2);border:1px solid rgba(0,229,255,0.2);border-radius:3px;color:var(--ng);font-family:var(--mono);font-size:10px;padding:7px 10px;outline:none;cursor:pointer;-webkit-appearance:none;min-width:160px">
+        <option value="all">ALL GROUPS</option>
+      </select>
+      <button class="ai-btn" id="aiRunBtn" onclick="runUpdate(false)">⚡ UPDATE</button>
+      <button class="ai-btn" id="aiSweepBtn" onclick="runUpdate(true)" style="background:var(--ng-d);border-color:var(--b2);color:var(--ng)">🔄 SWEEP ALL</button>
+    </div>
+  </div>
+  <div class="ai-prog" id="aiProg"><div class="ai-prog-bar" id="aiProgBar"></div></div>
+  <div class="ai-log" id="aiLog"></div>
+</div>
+
+<!-- FILTERS -->
+<div class="filter-row">
+  <span class="fl">FILTER:</span>
+  <span class="fchip active" onclick="setFilter('all',this)">ALL</span>
+  <span class="fchip" onclick="setFilter('active',this)">🔴 ACTIVE</span>
+  <span class="fchip" onclick="setFilter('disrupted',this)">🟠 DISRUPTED</span>
+  <span class="fchip" onclick="setFilter('raas',this)">RaaS</span>
+  <span class="fchip" onclick="setFilter('healthcare',this)">HEALTHCARE</span>
+  <span class="fchip" onclick="setFilter('critical',this)">CRITICAL INFRA</span>
+  <span class="fchip" onclick="setFilter('government',this)">GOVERNMENT</span>
+  <input class="search-in" id="searchIn" type="text" placeholder="Search group, alias, target…" oninput="doSearch()">
+</div>
+
+<!-- CARD GRID -->
+<div class="card-grid" id="cardGrid"></div>
+
+<!-- FOOTER -->
+<div class="ghost-footer">
+  <div class="gf-rule"></div>
+  <div class="ghost-by">BUILT BY</div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px">
+    <span style="font-size:20px">👻</span>
+    <div class="ghost-name">GHOST DEFENSE</div>
+    <span style="font-size:20px">👻</span>
+  </div>
+  <div class="gf-sub">RANSOMWARE TRACKER v1.0 &nbsp;·&nbsp; BUILT BY GHOST DEFENSE &nbsp;·&nbsp; SOURCES: CISA · FBI · CHECKPOINT · MANDIANT · RECORDED FUTURE &nbsp;·&nbsp; DEFENSIVE USE ONLY &nbsp;·&nbsp; DEFEND ALWAYS 🛡️</div>
+</div>
+
+</div>
+<script>
+// ?? CLOCK ??????????????????????????????????????????????????????
+setInterval(function(){
+  document.getElementById('clk').textContent =
+    new Date().toUTCString().replace('GMT','UTC').split(' ').slice(1,5).join(' ');
+},1000);
+
+// ?? GROUP DATABASE ?????????????????????????????????????????????
+// Sources: CISA, FBI, Check Point, Mandiant, Recorded Future, SOCRadar
+var GROUPS = [
+  {
+    id:'cl0p', name:'CL0P', aka:'TA505 · Lace Tempest · FIN11',
+    status:'active', threat:'critical', raas:true,
+    origin:'Russia', color:'#ff3737',
+    active_since:'2019', peak_victims:'1,400+ (MOVEit 2023)',
+    total_extorted:'$500M+',
+    summary:'Most prolific ransomware group of Q1 2025 with a 1400% activity spike. Exploits zero-days in managed file transfer (MFT) software  -  MOVEit (2023), Cleo (2024/2025). Prefers mass supply-chain attacks over targeted intrusions, compromising thousands simultaneously. Over 3,000 US entities hit in MOVEit alone.',
+    sectors:['Retail','Logistics','Financial Services','Healthcare','Manufacturing','Energy'],
+    victims_recent:['Cleo MFT customers (2024/25)','MOVEit victims 3,000+ (2023)','GoAnywhere users (2023)','Blue Shield of CA','Harvard Pilgrim Health'],
+    ttps:[
+      {id:'T1190',name:'Exploit Public App'},
+      {id:'T1567',name:'Cloud Exfiltration'},
+      {id:'T1486',name:'Data Encrypted'},
+      {id:'T1657',name:'Financial Theft'},
+    ],
+    cves:['CVE-2023-34362','CVE-2024-55956','CVE-2024-50623','CVE-2023-0669'],
+    ioc:[
+      {t:'mal',v:'CLOP ransomware  -  custom encryptor, wiper component'},
+      {t:'ttp',v:'Zero-day MFT exploitation before patch release'},
+      {t:'ttp',v:'No ransomware deployment in some campaigns  -  pure extortion'},
+    ],
+    defenses:['Monitor MFT solutions (MOVEit, GoAnywhere, Cleo)  -  patch within hours of disclosure','Restrict MFT to VPN/allowlisted IPs only','Enable file integrity monitoring on MFT upload directories','Maintain offline backups of all MFT-processed data','Subscribe to CISA emergency alerts for MFT zero-days'],
+    refs:['https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-158a','https://nvd.nist.gov/vuln/detail/CVE-2023-34362']
+  },
+  {
+    id:'ransomhub', name:'RANSOMHUB', aka:'Spoiled Scorpius · DragonForce (suspected rebrand)',
+    status:'disrupted', threat:'critical', raas:true,
+    origin:'Unknown (ALPHV affiliates)', color:'#ff6b00',
+    active_since:'Feb 2024', peak_victims:'534 attacks in 2024',
+    total_extorted:'Undisclosed',
+    summary:'Rose rapidly after ALPHV/BlackCat exit scam, absorbing former BlackCat affiliates. Named 228 victims in Q1 2025 alone. Operated generous 90/10 affiliate revenue split. Went dark April 2025 in suspected exit scam; infrastructure silenced. Suspected rebrand to DragonForce. Exploited ZeroLogon (CVE-2020-1472) and phishing for initial access.',
+    sectors:['Healthcare','Government','Critical Infrastructure','Finance','Technology'],
+    victims_recent:['Change Healthcare (via ALPHV affiliates)','UnitedHealth Group','CDK Global','Rite Aid','Christie\'s Auction House'],
+    ttps:[
+      {id:'T1566',name:'Phishing'},
+      {id:'T1110',name:'Password Spray'},
+      {id:'T1190',name:'Exploit Public App'},
+      {id:'T1486',name:'Data Encrypted'},
+    ],
+    cves:['CVE-2020-1472','CVE-2023-3519','CVE-2023-46805'],
+    ioc:[
+      {t:'mal',v:'RansomHub encryptor  -  Golang-based, cross-platform'},
+      {t:'ttp',v:'RAMP forum affiliate recruitment with 90/10 revenue split'},
+      {t:'ttp',v:'Targets ESXi hypervisors for mass VM encryption'},
+    ],
+    defenses:['Patch CVE-2020-1472 (ZeroLogon)  -  still actively exploited','Enforce MFA on all VPN and remote access','Monitor ESXi management interfaces  -  restrict to management VLAN','Implement network segmentation to contain lateral movement','Backup all VM snapshots to immutable storage'],
+    refs:['https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-242a','https://nvd.nist.gov/vuln/detail/CVE-2020-1472']
+  },
+  {
+    id:'akira', name:'AKIRA', aka:'Storm-1567',
+    status:'active', threat:'critical', raas:true,
+    origin:'Russia (links to Conti)', color:'#ff4500',
+    active_since:'Mar 2023', peak_victims:'250+ in 2024',
+    total_extorted:'$42M+ (FBI)',
+    summary:'FBI/CISA advisory issued April 2024  -  $42M+ extorted from 250+ victims. Heavily targets Cisco VPN vulnerabilities. Uses double extortion (encrypt + leak). Linked to former Conti members. Known for targeting SMBs and mid-market companies overlooked by larger groups. Notably attacked the 2024 Paris Olympics infrastructure.',
+    sectors:['Manufacturing','Healthcare','Education','Financial Services','Government'],
+    victims_recent:['Lush Cosmetics','Stanford University','Yamaha','Sophos (partner orgs)','Paris 2024 Olympics'],
+    ttps:[
+      {id:'T1133',name:'External Remote Services'},
+      {id:'T1078',name:'Valid Accounts'},
+      {id:'T1486',name:'Data Encrypted'},
+      {id:'T1537',name:'Transfer to Cloud'},
+    ],
+    cves:['CVE-2023-20269','CVE-2019-7481','CVE-2023-46805'],
+    ioc:[
+      {t:'mal',v:'Akira ransomware  -  C++ encryptor, Rust variant for ESXi'},
+      {t:'cve',v:'CVE-2023-20269  -  Cisco ASA/FTD VPN zero-day exploitation'},
+      {t:'ttp',v:'Disables EDR using safe mode reboot technique'},
+    ],
+    defenses:['Patch all Cisco ASA/FTD VPN appliances immediately','Enforce MFA on Cisco VPN  -  no exceptions','Deploy EDR with tamper protection enabled','Monitor for Windows safe mode reboots  -  common pre-encryption step','Maintain tested offline backups with 3-2-1 strategy'],
+    refs:['https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-109a','https://nvd.nist.gov/vuln/detail/CVE-2023-20269']
+  },
+  {
+    id:'lockbit', name:'LOCKBIT 5.0', aka:'LockBit 3.0 · ChuongDong · ABCD',
+    status:'disrupted', threat:'high', raas:true,
+    origin:'Russia', color:'#ff8c00',
+    active_since:'2019', peak_victims:'2,500+ (dominant 2022-2024)',
+    total_extorted:'$91M+ (FBI, US victims only)',
+    summary:'Formerly the most dominant RaaS operation 2022-2024 (20-30% of all leak site postings). Operation Cronos (Feb 2024) seized infrastructure, decryption keys, and arrested members. Resurfaced as LockBit 5.0 in Sep 2025. Website defaced in May 2025, internal data leaked. Resilient but significantly degraded. Linked to Evil Corp by UK NCA.',
+    sectors:['Healthcare','Government','Financial Services','Manufacturing','Critical Infrastructure'],
+    victims_recent:['Royal Mail UK','ICBC Bank','Boeing','Industrial Commercial Bank of China','CDW'],
+    ttps:[
+      {id:'T1486',name:'Data Encrypted (RaaS)'},
+      {id:'T1190',name:'Exploit Public App'},
+      {id:'T1548',name:'Privilege Escalation'},
+      {id:'T1562',name:'Impair Defenses'},
+    ],
+    cves:['CVE-2023-4966','CVE-2023-22515','CVE-2021-44228'],
+    ioc:[
+      {t:'mal',v:'LockBit Black / Green / 3.0 encryptors  -  affiliate-distributed'},
+      {t:'ttp',v:'StealBit custom exfiltration tool before encryption'},
+      {t:'ttp',v:'Leak site publishes victim data if ransom unpaid'},
+    ],
+    defenses:['Patch Citrix Bleed (CVE-2023-4966) and Confluence CVEs immediately','Implement privileged access workstations (PAWs) for admin tasks','Deploy canary files for early ransomware detection','Test backup restoration monthly  -  assume backups will be targeted','Enroll in CISA ransomware disclosure program'],
+    refs:['https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-165a','https://www.justice.gov/opa/pr/us-and-uk-disrupt-lockbit-ransomware-variant']
+  },
+  {
+    id:'dragonforce', name:'DRAGONFORCE', aka:'DragonForce Cartel',
+    status:'active', threat:'high', raas:true,
+    origin:'Malaysia / Russia (mixed)', color:'#cc00cc',
+    active_since:'Late 2023', peak_victims:'120+ claimed',
+    total_extorted:'Undisclosed',
+    summary:'Formed a "ransomware cartel" with LockBit and Qilin in 2025, coordinating attacks and sharing resources. Reuses modified LockBit and Conti source code. Aggressively recruits affiliates on dark web forums. Suspected destination for RansomHub affiliates after April 2025 exit. Targeted UK retail sector in 2025 (M&S, Co-op, Harrods).',
+    sectors:['Retail','Logistics','Manufacturing','Healthcare','Government'],
+    victims_recent:['Marks & Spencer UK (2025)','Co-op UK (2025)','Harrods UK (2025)','Coinbase (2025)','Several EU retailers'],
+    ttps:[
+      {id:'T1195',name:'Supply Chain'},
+      {id:'T1566',name:'Phishing'},
+      {id:'T1486',name:'Data Encrypted'},
+      {id:'T1657',name:'Financial Extortion'},
+    ],
+    cves:['CVE-2024-1709','CVE-2023-46747'],
+    ioc:[
+      {t:'mal',v:'Modified LockBit Black encryptor with custom config'},
+      {t:'mal',v:'Conti-derived tooling for lateral movement'},
+      {t:'ttp',v:'Cartel model: shared infrastructure with LockBit and Qilin'},
+    ],
+    defenses:['Implement zero-trust network architecture','Monitor for modified LockBit IOCs  -  CISA has full list','Restrict lateral movement via microsegmentation','Deploy decoy/honeypot credentials to detect credential abuse','Ensure POS and retail systems are isolated from corporate IT'],
+    refs:['https://www.cisa.gov/known-exploited-vulnerabilities-catalog','https://www.ncsc.gov.uk/collection/ransomware']
+  },
+  {
+    id:'qilin', name:'QILIN', aka:'Agenda · Qilin Cartel',
+    status:'active', threat:'high', raas:true,
+    origin:'Russia / China-nexus (disputed)', color:'#9900cc',
+    active_since:'Jul 2022', peak_victims:'60+ in 2024',
+    total_extorted:'Undisclosed',
+    summary:'Originally known as Agenda (2022), transitioned to RaaS by late 2023. Became increasingly active claiming 60+ attacks in 2024. Joined DragonForce cartel in 2025. Notably attacked Synnovis (UK NHS blood testing service) causing emergency blood supply disruption. Cross-platform ransomware (Windows, Linux, ESXi) written in Go and Rust.',
+    sectors:['Healthcare','Government','Education','Financial Services','Critical Infrastructure'],
+    victims_recent:['Synnovis / NHS UK (June 2024)','Citibank Australia (disputed)','Big Issue Group','Lee Enterprises (US media)'],
+    ttps:[
+      {id:'T1133',name:'External Remote Services'},
+      {id:'T1078',name:'Valid Accounts'},
+      {id:'T1486',name:'ESXi Encryption'},
+      {id:'T1003',name:'Credential Dumping'},
+    ],
+    cves:['CVE-2023-27532','CVE-2024-40711'],
+    ioc:[
+      {t:'mal',v:'Qilin/Agenda  -  Go/Rust cross-platform encryptor for ESXi'},
+      {t:'ttp',v:'Veeam backup exploitation (CVE-2024-40711) to destroy backups'},
+      {t:'ttp',v:'Chrome browser credential harvesting post-compromise'},
+    ],
+    defenses:['Patch Veeam backup infrastructure immediately (CVE-2024-40711)','Isolate backup servers from production  -  no direct network access','Protect ESXi management with MFA and VPN','Monitor Chrome credential stores  -  deploy enterprise credential management','Have manual/paper fallback procedures for critical healthcare ops'],
+    refs:['https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-242a','https://nvd.nist.gov/vuln/detail/CVE-2024-40711']
+  },
+  {
+    id:'medusa', name:'MEDUSA', aka:'MedusaLocker (different group)',
+    status:'active', threat:'high', raas:true,
+    origin:'Russia', color:'#cc3300',
+    active_since:'Jun 2021', peak_victims:'300+ claimed',
+    total_extorted:'Undisclosed',
+    summary:'CISA advisory Feb 2025. Higher relative activity in UK market. Uses a dedicated Telegram channel ("Medusa Blog") to publish victim data. Offers victims a menu of options: pay to extend deadline, pay to delete data, or pay ransom. Brokers initial access from IABs. Targets healthcare and education heavily.',
+    sectors:['Healthcare','Education','Government','Financial Services','Technology'],
+    victims_recent:['Minneapolis Public Schools','Toyota Financial Services','Philippine Health Insurance','State Bar of California'],
+    ttps:[
+      {id:'T1566',name:'Phishing'},
+      {id:'T1190',name:'Exploit Public App'},
+      {id:'T1486',name:'Data Encrypted'},
+      {id:'T1491',name:'Defacement/Extortion'},
+    ],
+    cves:['CVE-2024-1709','CVE-2023-48788'],
+    ioc:[
+      {t:'mal',v:'MedusaLocker encryptor  -  .medusa or .mylock extension'},
+      {t:'ttp',v:'Telegram "Medusa Blog" used to publish victim data'},
+      {t:'ttp',v:'Menu-based extortion: deadline extension, data delete, or decryption'},
+    ],
+    defenses:['Monitor ConnectWise ScreenConnect (CVE-2024-1709)  -  patch immediately','Train staff to identify and report phishing attempts','Implement email filtering with sandboxed attachment analysis','Deploy DLP to detect unusual bulk data movement','Establish clear ransomware payment decision policy with legal/cyber insurance'],
+    refs:['https://www.cisa.gov/news-events/cybersecurity-advisories/aa25-071a']
+  },
+  {
+    id:'alphv', name:'ALPHV / BLACKCAT', aka:'Noberus · BlackCat',
+    status:'defunct', threat:'critical', raas:true,
+    origin:'Russia (ex-DarkSide / REvil members)', color:'#666666',
+    active_since:'Nov 2021', peak_victims:'1,000+ victims claimed',
+    total_extorted:'$300M+ (DOJ)',
+    summary:'Formerly the second most prolific ransomware group. FBI seized infrastructure Dec 2023, released free decryption keys for 500+ victims. Conducted exit scam in March 2024 after Change Healthcare $22M ransom payment  -  stole affiliate share and shut down. Affiliates migrated to RansomHub. Most sophisticated triple-extortion operation: encrypt + leak + DDoS.',
+    sectors:['Healthcare','Critical Infrastructure','Government','Finance','Technology'],
+    victims_recent:['Change Healthcare ($22M ransom)','MGM Resorts ($100M+ damage)','Caesars Entertainment','Reddit','Western Digital'],
+    ttps:[
+      {id:'T1190',name:'Exploit Public App'},
+      {id:'T1078',name:'Valid Accounts'},
+      {id:'T1486',name:'Triple Extortion'},
+      {id:'T1499',name:'Endpoint DDoS'},
+    ],
+    cves:['CVE-2023-46805','CVE-2021-44228','CVE-2019-7481'],
+    ioc:[
+      {t:'mal',v:'BlackCat/ALPHV  -  Rust-based, cross-platform, highly configurable'},
+      {t:'ttp',v:'EXIT SCAM: stole $22M from Change Healthcare affiliate payment'},
+      {t:'ttp',v:'BYOVD: brings vulnerable drivers to disable EDR solutions'},
+    ],
+    defenses:['Defunct but affiliates active in RansomHub/Qilin  -  same defenses apply','Patch Citrix and Fortinet appliances  -  primary ALPHV initial access vectors','Implement healthcare-specific HIPAA incident response plan','Ensure cyber insurance covers ransomware events','Test business continuity without IT systems  -  healthcare must operate manually'],
+    refs:['https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-353a','https://www.justice.gov/opa/pr/justice-department-disrupts-prolific-alphvblackcat-ransomware-variant']
+  },
+  {
+    id:'play', name:'PLAY', aka:'PlayCrypt · Balloonfly',
+    status:'active', threat:'high', raas:true,
+    origin:'Russia', color:'#cc6600',
+    active_since:'Jun 2022', peak_victims:'300+ claimed',
+    total_extorted:'Undisclosed',
+    summary:'CISA advisory issued December 2023. Known for exploiting Exchange and Fortinet vulnerabilities. Targets MSPs to reach downstream customers. Double extortion  -  encrypts and leaks. Published data in "Play" site. Linked to Prolific Puma group for initial access brokering. Notably attacked Oakland city government, disrupting emergency services.',
+    sectors:['Government','MSPs / IT Providers','Healthcare','Manufacturing','Legal'],
+    victims_recent:['City of Oakland','Dallas County','Rackspace','Arnold Clark (UK)','Callaway Golf'],
+    ttps:[
+      {id:'T1190',name:'Exploit Exchange/Fortinet'},
+      {id:'T1059',name:'PowerShell Scripts'},
+      {id:'T1486',name:'Data Encrypted'},
+      {id:'T1021',name:'Remote Services'},
+    ],
+    cves:['CVE-2022-41040','CVE-2022-41082','CVE-2018-13379'],
+    ioc:[
+      {t:'mal',v:'Play ransomware  -  custom encryptor, .play extension'},
+      {t:'cve',v:'ProxyNotShell (CVE-2022-41040/41082)  -  Exchange exploitation'},
+      {t:'ttp',v:'Targets MSP tools (RMM, PSA) to push ransomware to all clients'},
+    ],
+    defenses:['Patch all Exchange servers immediately  -  apply CUs and SUs','Disable PowerShell remoting where not required','Implement MFA on all MSP remote access tools (ConnectWise, Kaseya)','Audit MSP access to your environment  -  least privilege','Monitor for unusual admin tool usage outside business hours'],
+    refs:['https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-352a']
+  },
+  {
+    id:'blackbasta', name:'BLACK BASTA', aka:'BlackBasta · UNC4393',
+    status:'disrupted', threat:'high', raas:true,
+    origin:'Russia (ex-Conti members)', color:'#880000',
+    active_since:'Apr 2022', peak_victims:'500+ claimed',
+    total_extorted:'$107M+ (Elliptic)',
+    summary:'Conti successor operated by former senior members. Internal chat logs leaked Feb 2024 revealed operations. Primarily uses Qakbot and Cobalt Strike. Exploited ConnectWise ScreenConnect vulnerability in 2024. Significantly disrupted after chat leaks exposed TTPs and members. Healthcare a major target  -  CISA/HHS advisory May 2024.',
+    sectors:['Healthcare','Manufacturing','Financial Services','Technology','Construction'],
+    victims_recent:['Ascension Health (2024)','ABB Group','Hyundai Europe','Toronto Public Library','BT Group'],
+    ttps:[
+      {id:'T1566',name:'Phishing (QakBot)'},
+      {id:'T1059',name:'Cobalt Strike'},
+      {id:'T1486',name:'Data Encrypted'},
+      {id:'T1562',name:'Disable Windows Defender'},
+    ],
+    cves:['CVE-2024-1709','CVE-2024-49138','CVE-2023-20198'],
+    ioc:[
+      {t:'mal',v:'Black Basta encryptor  -  ChaCha20/RSA-4096 encryption'},
+      {t:'mal',v:'QakBot / Cobalt Strike for initial access and lateral movement'},
+      {t:'ttp',v:'Exfiltrates to rclone + MegaSync before encryption'},
+    ],
+    defenses:['Block QakBot delivery  -  enforce email attachment policies','Deploy Cobalt Strike detection rules (many free in Sigma/YARA repos)','Disable macros in Office documents from the internet','Monitor for rclone and MegaSync on corporate systems','Implement healthcare-specific cyber resilience per CISA/HHS AA24-131A'],
+    refs:['https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-131a']
+  },
+  {
+    id:'rhysida', name:'RHYSIDA', aka:'Vice Society (possible link)',
+    status:'active', threat:'high', raas:true,
+    origin:'Unknown (Eastern Europe suspected)', color:'#cc0066',
+    active_since:'May 2023', peak_victims:'80+ claimed',
+    total_extorted:'Undisclosed',
+    summary:'CISA/FBI advisory Nov 2023. Targets healthcare, education, and government. Sells victim data publicly on their leak site if ransom unpaid. Particularly aggressive in healthcare  -  hit multiple hospital systems causing patient care disruption. FBI released free decryptor keys for many victims. Uses opportunistic phishing and VPN exploitation.',
+    sectors:['Healthcare','Government','Education','Manufacturing','IT'],
+    victims_recent:['British Library (2023)','Lurie Children\'s Hospital Chicago','MarineMax','Army of the Republic of North Macedonia','City of Columbus OH'],
+    ttps:[
+      {id:'T1566',name:'Spearphishing'},
+      {id:'T1133',name:'VPN Exploitation'},
+      {id:'T1486',name:'Data Encrypted'},
+      {id:'T1657',name:'Data Extortion/Sale'},
+    ],
+    cves:['CVE-2023-27997','CVE-2023-4966'],
+    ioc:[
+      {t:'mal',v:'Rhysida ransomware  -  4096-bit RSA + ChaCha20, .rhysida extension'},
+      {t:'ttp',v:'Sells victim data via auction on leak site instead of negotiating'},
+      {t:'cve',v:'Fortinet SSL VPN and Citrix Bleed used for initial access'},
+    ],
+    defenses:['Patch Fortinet and Citrix VPN appliances immediately','Implement phishing-resistant MFA (FIDO2) on all remote access','Deploy honeypot files named "finance_2024.xlsx"  -  triggers on open','Ensure hospital systems have manual operational fallback procedures','Use FBI/CISA Rhysida decryptor if hit  -  check cisa.gov first'],
+    refs:['https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-319a']
+  },
+  {
+    id:'hunters', name:'HUNTERS INTERNATIONAL', aka:'Hive Successor',
+    status:'active', threat:'high', raas:true,
+    origin:'Nigeria / Russia (disputed)', color:'#006666',
+    active_since:'Oct 2023', peak_victims:'200+ claimed',
+    total_extorted:'Undisclosed',
+    summary:'Emerged after FBI takedown of Hive ransomware (Jan 2023), using repurposed Hive source code. Primarily extortion-focused  -  in 2025 announced pivot away from ransomware toward pure data theft and extortion (no encryption). Targets Operational Technology (OT) environments and industrial sectors. World-Labs extortion subsidiary operates separately.',
+    sectors:['Healthcare','Manufacturing','OT / Industrial','Financial Services','Government'],
+    victims_recent:['Hoya Corporation Japan','Integris Health','Austal USA (defense)','Fred Hutchinson Cancer Center','US Marshals Service (disputed)'],
+    ttps:[
+      {id:'T1190',name:'Exploit Public App'},
+      {id:'T1005',name:'Data Collection'},
+      {id:'T1567',name:'Exfil to Cloud'},
+      {id:'T1657',name:'Financial Extortion'},
+    ],
+    cves:['CVE-2023-27997','CVE-2024-3400'],
+    ioc:[
+      {t:'mal',v:'Modified Hive encryptor  -  Golang-based'},
+      {t:'ttp',v:'2025: Announced pivot to data theft only  -  no encryption'},
+      {t:'ttp',v:'World-Labs subsidiary focuses on pure extortion without encryption'},
+    ],
+    defenses:['Classify and protect sensitive data  -  theft-only attacks bypass backup protection','Implement DLP to detect bulk data exfiltration before attack completes','Monitor cloud storage egress (S3, Azure Blob, Google Drive) for unusual uploads','Establish data breach notification procedures independent of ransomware response','Protect OT environments with dedicated OT security monitoring'],
+    refs:['https://www.cisa.gov/known-exploited-vulnerabilities-catalog']
+  },
+];
+
+// ?? STATE ??????????????????????????????????????????????????????
+var activeFilter = 'all';
+var searchQuery  = '';
+var aiIntelCache = {};
+var aiUpdating   = false;
+
+// ?? POPULATE SELECT ?????????????????????????????????????????????
+(function(){
+  var sel = document.getElementById('grpSel');
+  GROUPS.forEach(function(g){
+    var o = document.createElement('option');
+    o.value = g.id; o.textContent = g.name;
+    sel.appendChild(o);
+  });
+})();
+
+// ?? STATS ??????????????????????????????????????????????????????
+function updateStats(list){
+  document.getElementById('sActive').textContent = list.filter(function(g){return g.status==='active';}).length;
+  document.getElementById('sDisrupted').textContent = list.filter(function(g){return g.status==='disrupted'||g.status==='defunct';}).length;
+  document.getElementById('sTotal').textContent = list.length;
+}
+
+// ?? FILTER / SEARCH ?????????????????????????????????????????????
+function setFilter(f, el){
+  activeFilter = f;
+  document.querySelectorAll('.fchip').forEach(function(c){ c.classList.remove('active'); });
+  el.classList.add('active');
+  render();
+}
+function doSearch(){ searchQuery = document.getElementById('searchIn').value.toLowerCase(); render(); }
+
+function filtered(){
+  return GROUPS.filter(function(g){
+    var mf = true;
+    if(activeFilter==='active') mf = g.status==='active';
+    else if(activeFilter==='disrupted') mf = g.status==='disrupted'||g.status==='defunct';
+    else if(activeFilter==='raas') mf = g.raas;
+    else if(activeFilter==='healthcare') mf = g.sectors.some(function(s){return s.toLowerCase().includes('health');});
+    else if(activeFilter==='critical') mf = g.sectors.some(function(s){return /energy|power|water|ics|ot|infrastructure/i.test(s);});
+    else if(activeFilter==='government') mf = g.sectors.some(function(s){return /gov/i.test(s);});
+    if(!mf) return false;
+    if(!searchQuery) return true;
+    return (g.name+g.aka+g.summary+g.sectors.join('')).toLowerCase().includes(searchQuery);
+  });
+}
+
+// ?? RENDER ??????????????????????????????????????????????????????
+function safeStr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function statusClass(s){
+  return s==='active'?'st-active':s==='disrupted'?'st-disrupted':s==='rebrand'?'st-rebrand':'st-defunct';
+}
+function statusLabel(s){
+  return s==='active'?'? ACTIVE':s==='disrupted'?'? DISRUPTED':s==='rebrand'?'? REBRAND':'? DEFUNCT';
+}
+function threatClass(t){ return t==='critical'?'thr-critical':t==='high'?'thr-high':'thr-medium'; }
+
+function render(){
+  var list = filtered();
+  updateStats(list);
+  var grid = document.getElementById('cardGrid');
+
+  if(!list.length){
+    grid.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:13px">NO GROUPS MATCH FILTER</div>';
+    return;
+  }
+
+  grid.innerHTML = list.map(function(g, i){
+    var nc = g.color;
+    var intel = aiIntelCache[g.id];
+
+    var aiSection = '';
+    if(intel){
+      var dc = intel.threat_delta==='escalating'?'var(--red)':intel.threat_delta==='declining'?'var(--green)':'var(--yellow)';
+      var dl = intel.threat_delta==='escalating'?'ESCALATING':intel.threat_delta==='declining'?'DECLINING':'STABLE';
+      aiSection = '<div class="ai-intel-card">'
+        +'<div class="aic-hdr">&#9889; AI INTEL UPDATE &mdash; '+(intel.last_seen||'2026')+'</div>'
+        +'<div class="aic-delta">'
+          +'<span class="delta-pill '+(intel.threat_delta==='escalating'?'dp-esc':intel.threat_delta==='declining'?'dp-dec':'dp-sta')+'">'+dl+'</span>'
+          +(intel.priority?'<span style="font-size:9px;font-family:var(--mono);color:'+dc+';padding:2px 8px;border:1px solid '+dc+'44;border-radius:2px;font-weight:700">PRIORITY: '+safeStr(intel.priority)+'</span>':'')
+        +'</div>'
+        +(intel.key_update?'<div class="aic-key">'+safeStr(intel.key_update)+'</div>':'')
+        +(intel.new_victims&&intel.new_victims.length?'<div class="aic-label">RECENT VICTIMS</div><div class="aic-row">'+intel.new_victims.map(function(v){return'<div class="aic-item">'+safeStr(v)+'</div>';}).join('')+'</div>':'')
+        +(intel.new_cves&&intel.new_cves.length?'<div class="aic-label">NEW CVEs</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">'+intel.new_cves.map(function(c){return'<a href="https://nvd.nist.gov/vuln/detail/'+encodeURIComponent(c)+'" target="_blank" class="cve-chip">'+safeStr(c)+'</a>';}).join('')+'</div>':'')
+        +(intel.new_ttps&&intel.new_ttps.length?'<div class="aic-label">NEW TTPs</div><div class="aic-row">'+intel.new_ttps.map(function(t){return'<div class="aic-item" style="color:var(--cyan)">'+safeStr(t)+'</div>';}).join('')+'</div>':'')
+      +'</div>';
+    }
+
+    return '<div class="grp-card" id="gc'+i+'" onclick="toggleCard('+i+')" style="animation-delay:'+(i*0.04)+'s">'
+      +'<div class="card-stripe" style="background:linear-gradient(90deg,'+nc+',transparent)"></div>'
+      +'<div class="card-hdr">'
+        +'<div class="ch-top">'
+          +'<div>'
+            +'<div class="grp-name" style="color:'+nc+';text-shadow:0 0 10px '+nc+'55">'+safeStr(g.name)+(intel?'<span class="ai-upd-badge">&#9889;AI</span>':'')+'</div>'
+            +'<div class="grp-aka">'+safeStr(g.aka)+'</div>'
+          +'</div>'
+          +'<div class="ch-badges">'
+            +'<span class="status-badge '+statusClass(g.status)+'">'+statusLabel(g.status)+'</span>'
+            +'<span class="threat-badge '+threatClass(g.threat)+'">'+g.threat.toUpperCase()+'</span>'
+          +'</div>'
+        +'</div>'
+        +'<div class="ch-meta">'
+          +'<div class="cm">ORIGIN: <span>'+safeStr(g.origin)+'</span></div>'
+          +'<div class="cm">SINCE: <span>'+safeStr(g.active_since)+'</span></div>'
+          +'<div class="cm">PEAK: <span>'+safeStr(g.peak_victims)+'</span></div>'
+          +'<div class="cm">EXTORTED: <span>'+safeStr(g.total_extorted)+'</span></div>'
+        +'</div>'
+      +'</div>'
+      +'<div class="card-summary">'+safeStr(g.summary.slice(0,200))+(g.summary.length>200?'&hellip;':'')+'</div>'
+      +'<div class="card-victims">'
+        +'<div class="cv-label">NOTABLE VICTIMS</div>'
+        +'<div class="victim-chips">'+g.victims_recent.slice(0,4).map(function(v){return'<span class="vchip">'+safeStr(v)+'</span>';}).join('')+'</div>'
+      +'</div>'
+      +'<div class="card-sectors">'
+        +'<div class="cv-label">TARGET SECTORS</div>'
+        +'<div class="sector-grid">'+g.sectors.map(function(s){return'<span class="sec-chip">'+safeStr(s)+'</span>';}).join('')+'</div>'
+      +'</div>'
+      +'<div class="card-ttps">'
+        +'<div class="cv-label">MITRE ATT&amp;CK TTPs</div>'
+        +'<div class="ttp-mini">'+g.ttps.map(function(t){return'<div class="ttp-item"><div class="tti-id">'+t.id+'</div><div class="tti-name">'+safeStr(t.name)+'</div></div>';}).join('')+'</div>'
+      +'</div>'
+      +'<div class="card-ftr">'
+        +'<div class="exp-btn"><span class="exp-icon">&#9660;</span>&nbsp;FULL PROFILE + DEFENSES</div>'
+        +'<div class="ftr-links">'
+          +g.refs.map(function(r,ri){return'<a class="ftr-link" href="'+r+'" target="_blank" onclick="event.stopPropagation()">'+(ri===0?'CISA':'REF'+(ri+1))+'</a>';}).join('')
+        +'</div>'
+      +'</div>'
+      +'<div class="card-detail" id="cd'+i+'">'
+        +aiSection
+        +'<div class="det-sec">'
+          +'<div class="det-title">ASSOCIATED CVEs (CLICK FOR NVD)</div>'
+          +'<div class="cve-row">'+g.cves.map(function(c){return'<a href="https://nvd.nist.gov/vuln/detail/'+encodeURIComponent(c)+'" target="_blank" onclick="event.stopPropagation()" class="cve-chip">'+safeStr(c)+'</a>';}).join('')+'</div>'
+        +'</div>'
+        +'<div class="det-sec">'
+          +'<div class="det-title">MALWARE / TOOLS / TRADECRAFT</div>'
+          +'<div class="ioc-list">'+g.ioc.map(function(ioc){return'<div class="ioc-item"><span class="ioc-t it-'+ioc.t+'">'+ioc.t.toUpperCase()+'</span><span>'+safeStr(ioc.v)+'</span></div>';}).join('')+'</div>'
+        +'</div>'
+        +'<div class="det-sec" style="border-bottom:none">'
+          +'<div class="det-title">&#x1F6E1; DEFENSIVE COUNTERMEASURES</div>'
+          +'<div class="def-grid">'+g.defenses.map(function(d){return'<div class="def-item">'+safeStr(d)+'</div>';}).join('')+'</div>'
+        +'</div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function toggleCard(i){
+  var c = document.getElementById('gc'+i);
+  if(c) c.classList.toggle('expanded');
+}
+
+// ?? AI UPDATE ENGINE ??????????????????????????????????????????
+function setProg(pct){
+  var w=document.getElementById('aiProg'), b=document.getElementById('aiProgBar');
+  if(!w||!b) return;
+  w.classList.add('show'); b.style.width=pct+'%';
+  if(pct>=100) setTimeout(function(){w.classList.remove('show');b.style.width='0';},800);
+}
+
+function addLog(tag,cls,msg){
+  var log=document.getElementById('aiLog');
+  if(!log) return;
+  log.classList.add('show');
+  var d=document.createElement('div'); d.className='ll';
+  d.innerHTML='<span class="lt '+cls+'">'+tag+'</span><span>'+String(msg).replace(/</g,'&lt;')+'</span>';
+  log.appendChild(d);
+  log.scrollTop=log.scrollHeight;
+}
+
+function clearLog(){
+  var log=document.getElementById('aiLog');
+  if(log){log.classList.remove('show');log.innerHTML='';}
+}
+
+function safeParseJSON(raw, fallbackName) {
+  raw = raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```\s*$/i,'').trim();
+  var hit = raw.match(/\{[\s\S]*\}/);
+  if (!hit) throw new Error('No JSON object in response');
+  var s = hit[0]
+    .replace(/,\s*]/g, ']')
+    .replace(/,\s*}/g, '}')
+    .replace(/[\u0000-\u001F\u007F]/g, ' ');
+  try {
+    return JSON.parse(s);
+  } catch(e) {
+    console.warn('JSON parse error for', fallbackName, e.message);
+    throw new Error('Malformed JSON from AI  -  please retry (' + e.message + ')');
+  }
+}
+
+async function fetchGroupIntel(group, apiKey){
+  var prompt = 'Cybersecurity threat intelligence analyst. Date: June 6, 2026. '
+    + 'Latest open-source intel on ransomware group: ' + group.name + ' (aka ' + group.aka + '). '
+    + 'Focus on 2025-2026. Return ONLY raw JSON  -  no markdown, no backticks, no text outside JSON. '
+    + 'Schema: {"group":"","threat_delta":"escalating|stable|declining",'
+    + '"last_seen":"YYYY-MM","priority":"IMMEDIATE|HIGH|MEDIUM",'
+    + '"key_update":"2-3 sentence summary of most important recent development",'
+    + '"new_victims":["org name"],"new_cves":["CVE-XXXX-XXXXX"],'
+    + '"new_ttps":["technique description"],"new_sectors":["sector"],'
+    + '"law_enforcement":"any recent LE action",'
+    + '"sources":["public source"]}';
+
+  var headers = {
+    'Content-Type': 'application/json',
+    'x-api-key': apiKey,
+    'anthropic-version': '2023-06-01',
+    'anthropic-dangerous-direct-browser-access': 'true'
+  };
+
+  var resp;
+  try {
+    resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', headers: headers,
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+  } catch(ne){ throw new Error('Network: ' + ne.message); }
+
+  if(!resp.ok){
+    var txt=''; try{txt=await resp.text();}catch(e){}
+    var j={}; try{j=JSON.parse(txt);}catch(e){}
+    var m=(j.error&&j.error.message)?j.error.message:txt.slice(0,100);
+    if(resp.status===401) m='Invalid API key  -  get one at console.anthropic.com/settings/keys';
+    if(resp.status===429) m='Rate limited  -  wait 30s and retry';
+    throw new Error('HTTP '+resp.status+': '+m);
+  }
+
+  var data = await resp.json();
+  var raw = (data.content||[]).filter(function(b){return b.type==='text';})
+    .map(function(b){return b.text;}).join('').trim();
+  raw = raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```\s*$/i,'').trim();
+  var hit = raw.match(/\{[\s\S]*\}/);
+  if(!hit) throw new Error('No JSON in response. Got: '+raw.slice(0,100));
+  return safeParseJSON(raw, "group");
+}
+
+async function runUpdate(sweepAll){
+  if(aiUpdating) return;
+  var apiKey = (document.getElementById('apiKey')||{}).value||'';
+  apiKey = apiKey.trim();
+  if(!apiKey){
+    clearLog();
+    addLog('ERR','lt-err','API key required  -  paste your sk-ant-... key from console.anthropic.com/settings/keys');
+    return;
+  }
+
+  aiUpdating=true;
+  var rb=document.getElementById('aiRunBtn'), sb=document.getElementById('aiSweepBtn');
+  if(rb) rb.disabled=true; if(sb) sb.disabled=true;
+  clearLog();
+
+  var targets;
+  if(sweepAll){
+    targets=GROUPS.map(function(g){return g.id;});
+  } else {
+    var sel=document.getElementById('grpSel').value;
+    targets=(sel==='all')?GROUPS.map(function(g){return g.id;}):[sel];
+  }
+
+  setProg(5);
+  addLog('INIT','lt-q','Queuing '+targets.length+' group'+(targets.length>1?'s':'')+'...');
+
+  var ok=0, fail=0;
+  for(var i=0;i<targets.length;i++){
+    var id=targets[i];
+    var group=GROUPS.find(function(g){return g.id===id;});
+    if(!group) continue;
+
+    setProg(Math.round(5+((i+1)/targets.length)*90));
+    addLog('QUERY','lt-q',group.name+'...');
+
+    try{
+      var intel=await fetchGroupIntel(group,apiKey);
+      aiIntelCache[id]=intel;
+      addLog('DONE','lt-ok',group.name+'  -  '+(intel.threat_delta||'?').toUpperCase()+'  -  '+(intel.key_update||'').slice(0,60)+'...');
+      ok++;
+    } catch(err){
+      console.error(group.name, err);
+      addLog('ERR','lt-err',group.name+': '+(err.message||String(err)));
+      fail++;
+      if(String(err.message).indexOf('401')!==-1||String(err.message).indexOf('403')!==-1) {
+        addLog('STOP','lt-err','Auth error  -  check your API key.'); break;
+      }
+    }
+    if(i<targets.length-1) await new Promise(function(r){setTimeout(r,750);});
+  }
+
+  setProg(100);
+  addLog('DONE','lt-done',ok+' updated / '+fail+' failed');
+  render();
+  aiUpdating=false;
+  if(rb) rb.disabled=false; if(sb) sb.disabled=false;
+}
+
+// ?? INIT ??????????????????????????????????????????????????????
+render();
+
+// -- API KEY TESTER --
+async function testAPIKey() {
+  var keyEl = document.getElementById('apiKeyInput') || document.getElementById('apiKey');
+  var apiKey = keyEl ? keyEl.value.trim() : '';
+  if (!apiKey) { alert('Paste your API key first.'); return; }
+  var btn = document.getElementById('testKeyBtn');
+  if (btn) { btn.textContent = 'TESTING...'; btn.disabled = true; }
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: 'Say OK.' }]
+      })
+    });
+    var data = await resp.json();
+    if (resp.ok) {
+      alert('SUCCESS - API key is valid and working!\nYou are ready to use all AI features.');
+      if (btn) { btn.textContent = 'KEY OK'; btn.style.color = 'var(--green, #00ff41)'; }
+    } else {
+      var msg = (data.error && data.error.message) ? data.error.message : JSON.stringify(data);
+      if (resp.status === 401) msg = 'Invalid API key - copy it fresh from console.anthropic.com/settings/keys';
+      if (resp.status === 429) msg = 'Rate limited - wait 30 seconds and retry';
+      if (resp.status === 403) msg = 'API key disabled or lacks permissions';
+      alert('ERROR ' + resp.status + ':\n\n' + msg);
+      if (btn) { btn.textContent = 'FAILED'; btn.style.color = 'var(--red, #ff3737)'; }
+    }
+  } catch (err) {
+    alert('NETWORK ERROR:\n\n' + err.message + '\n\nCheck your internet connection.');
+    if (btn) { btn.textContent = 'NET ERR'; btn.style.color = 'var(--red, #ff3737)'; }
+  }
+  setTimeout(function() {
+    if (btn) { btn.textContent = 'TEST KEY'; btn.disabled = false; btn.style.color = ''; }
+  }, 4000);
+}
+
+</script>
+</body>
+</html>

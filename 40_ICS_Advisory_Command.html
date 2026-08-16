@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICS ADVISORY COMMAND // Ghost Defense</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000000;
+    --panel:#050f05;
+    --panel-2:#091209;
+    --line:rgba(0,255,65,.10);
+    --line-2:rgba(0,255,65,.18);
+    --grn:#00ff41;
+    --grn-dim:#00cc33;
+    --txt:#c8e6cc;
+    --mut:#5f7a63;
+    --mut-2:#3f5443;
+    --red:#ff3333;
+    --amber:#ffcc00;
+    --yellow:#ffe14d;
+    --blue:#39c0ff;
+    --mono:'IBM Plex Mono','Share Tech Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(900px 500px at 80% -10%,rgba(0,255,65,.05),transparent 60%),
+      var(--bg);
+    color:var(--txt);
+    font-family:var(--mono);
+    font-size:13px;
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  /* faint tactical grid */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      linear-gradient(rgba(0,255,65,.03) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(0,255,65,.03) 1px,transparent 1px);
+    background-size:42px 42px;
+    mask-image:radial-gradient(120% 100% at 50% 0,#000 35%,transparent 90%);
+  }
+  .wrap{position:relative;z-index:1;max-width:1480px;margin:0 auto;padding:16px 18px 60px}
+  a{color:var(--grn-dim);text-decoration:none}
+  a:hover{color:var(--grn)}
+
+  /* ---------- header ---------- */
+  header.cmd{
+    display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    border:1px solid var(--line-2);
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    padding:12px 16px;border-radius:4px;
+  }
+  .brand{display:flex;align-items:center;gap:12px;min-width:0}
+  .ghost{
+    width:42px;height:42px;flex:none;border:1px solid var(--grn);border-radius:3px;
+    display:grid;place-items:center;background:rgba(0,255,65,.05);
+    box-shadow:0 0 18px rgba(0,255,65,.15) inset;
+  }
+  .ghost svg{width:26px;height:26px}
+  .titles h1{
+    font-size:16px;margin:0;letter-spacing:2.5px;color:var(--grn);font-weight:700;
+    text-shadow:0 0 14px rgba(0,255,65,.35);
+  }
+  .titles .sub{font-size:10.5px;color:var(--mut);letter-spacing:1.5px;margin-top:2px}
+  .titles .sub b{color:var(--grn-dim)}
+  .spacer{flex:1 1 auto}
+  .status{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:1px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 8px currentColor}
+  .dot.live{background:var(--grn)}
+  .dot.err{background:var(--red)}
+  .pulse{animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .btn{
+    font-family:var(--mono);font-size:11px;letter-spacing:1.5px;cursor:pointer;
+    background:transparent;color:var(--grn);border:1px solid var(--grn-dim);
+    padding:8px 14px;border-radius:3px;transition:.15s;text-transform:uppercase;white-space:nowrap;
+  }
+  .btn:hover{background:rgba(0,255,65,.12);box-shadow:0 0 12px rgba(0,255,65,.25)}
+  .btn:active{transform:translateY(1px)}
+  .btn.alt{color:var(--blue);border-color:rgba(57,192,255,.5)}
+  .btn.alt:hover{background:rgba(57,192,255,.1)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+
+  /* ---------- config drawer ---------- */
+  .cfg{
+    margin-top:10px;border:1px dashed var(--line-2);border-radius:4px;
+    padding:0 14px;max-height:0;overflow:hidden;transition:max-height .25s,padding .25s;
+    background:var(--panel);
+  }
+  .cfg.open{max-height:260px;padding:14px}
+  .cfg label{display:block;font-size:10.5px;color:var(--mut);letter-spacing:1px;margin:0 0 5px}
+  .cfg input[type=text]{
+    width:100%;font-family:var(--mono);font-size:12px;background:#060906;color:var(--txt);
+    border:1px solid var(--line-2);border-radius:3px;padding:9px 11px;margin-bottom:12px;
+  }
+  .cfg input:focus{outline:none;border-color:var(--grn-dim)}
+  .cfg .hint{font-size:10.5px;color:var(--mut-2);line-height:1.6}
+  .cfg .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+
+  /* ---------- KPI strip ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:14px}
+  .kevnotice{margin-top:10px;border:1px solid rgba(255,204,0,.4);background:rgba(255,204,0,.06);color:var(--amber);border-radius:4px;padding:10px 14px;font-size:11px;letter-spacing:.3px;line-height:1.6}
+  .kevnotice b{color:#ffe14d}
+  .kpi{
+    border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:11px 13px;
+    position:relative;overflow:hidden;
+  }
+  .kpi::after{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--grn-dim);opacity:.5}
+  .kpi.alert::after{background:var(--red);opacity:.9}
+  .kpi.warn::after{background:var(--amber);opacity:.8}
+  .kpi .n{font-size:26px;font-weight:700;letter-spacing:.5px;color:var(--grn);line-height:1}
+  .kpi.alert .n{color:var(--red)}
+  .kpi.warn .n{color:var(--amber)}
+  .kpi .l{font-size:9.5px;color:var(--mut);letter-spacing:1.2px;margin-top:7px;text-transform:uppercase}
+
+  /* ---------- triage alert strip ---------- */
+  .triage{
+    margin-top:14px;border:1px solid rgba(255,59,59,.35);border-radius:4px;background:rgba(255,59,59,.04);
+    padding:11px 14px;
+  }
+  .triage .th{display:flex;align-items:center;gap:9px;font-size:11px;letter-spacing:1.5px;color:var(--red);margin-bottom:9px}
+  .triage .th .dot{background:var(--red)}
+  .triage-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
+  .tcard{
+    border:1px solid rgba(255,59,59,.25);background:rgba(255,59,59,.05);border-radius:3px;
+    padding:8px 10px;display:flex;gap:10px;align-items:center;cursor:pointer;transition:.15s;
+  }
+  .tcard:hover{background:rgba(255,59,59,.12)}
+  .tcard .sc{font-size:18px;font-weight:700;color:var(--red);min-width:34px;text-align:center}
+  .tcard .meta{min-width:0;flex:1}
+  .tcard .meta .v{font-size:12px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tcard .meta .d{font-size:10px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* ---------- filter bar ---------- */
+  .filters{
+    display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:14px;
+    border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:11px 13px;
+  }
+  .filters .grow{flex:1 1 240px;min-width:180px}
+  .filters input[type=text],.filters select{
+    width:100%;font-family:var(--mono);font-size:12px;background:#060906;color:var(--txt);
+    border:1px solid var(--line-2);border-radius:3px;padding:8px 10px;
+  }
+  .filters select{cursor:pointer}
+  .filters input:focus,.filters select:focus{outline:none;border-color:var(--grn-dim)}
+  .chk{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--txt);letter-spacing:.5px;
+    border:1px solid rgba(255,59,59,.4);padding:8px 11px;border-radius:3px;cursor:pointer;user-select:none;white-space:nowrap}
+  .chk.on{background:rgba(255,59,59,.15);color:var(--red)}
+  .chk input{accent-color:var(--red)}
+  .filter-count{font-size:10.5px;color:var(--mut);letter-spacing:1px;white-space:nowrap}
+
+  /* ---------- main grid ---------- */
+  .main{display:grid;grid-template-columns:1fr 340px;gap:14px;margin-top:14px}
+  .panel{border:1px solid var(--line);background:var(--panel);border-radius:4px}
+  .panel .ph{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:10px 13px;border-bottom:1px solid var(--line);
+    font-size:10.5px;letter-spacing:1.5px;color:var(--grn-dim);text-transform:uppercase;
+  }
+  .panel .ph .ph-r{color:var(--mut);font-size:10px;letter-spacing:1px}
+
+  /* table */
+  .tbl-scroll{max-height:620px;overflow:auto}
+  table{width:100%;border-collapse:collapse;font-size:11.5px}
+  thead th{
+    position:sticky;top:0;z-index:2;background:var(--panel-2);
+    text-align:left;padding:9px 11px;font-size:9.5px;letter-spacing:1px;color:var(--mut);
+    text-transform:uppercase;border-bottom:1px solid var(--line-2);cursor:pointer;white-space:nowrap;user-select:none;
+  }
+  thead th:hover{color:var(--grn-dim)}
+  thead th .ar{color:var(--grn);margin-left:3px}
+  tbody td{padding:9px 11px;border-bottom:1px solid rgba(0,255,65,.05);vertical-align:middle}
+  tbody tr{transition:background .12s}
+  tbody tr:hover{background:rgba(0,255,65,.045)}
+  tbody tr.kev{background:rgba(255,59,59,.05)}
+  tbody tr.kev:hover{background:rgba(255,59,59,.1)}
+  .vendor{color:var(--txt);font-weight:600}
+  .product{color:var(--mut);font-size:10.5px}
+  .adv{color:var(--blue);font-size:10.5px;white-space:nowrap}
+  .sector-tag{font-size:9.5px;color:var(--grn-dim);white-space:nowrap}
+
+  .pill{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.5px}
+  .pill.crit{background:rgba(255,59,59,.16);color:var(--red);border:1px solid rgba(255,59,59,.4)}
+  .pill.high{background:rgba(255,176,0,.14);color:var(--amber);border:1px solid rgba(255,176,0,.4)}
+  .pill.med{background:rgba(255,225,77,.12);color:var(--yellow);border:1px solid rgba(255,225,77,.35)}
+  .pill.low{background:rgba(0,255,65,.1);color:var(--grn);border:1px solid rgba(0,255,65,.3)}
+
+  .kevbadge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;letter-spacing:.5px;
+    color:var(--red);border:1px solid rgba(255,59,59,.5);background:rgba(255,59,59,.1);
+    padding:1px 6px;border-radius:3px}
+  .kevbadge .dot{width:5px;height:5px}
+
+  .risk{display:flex;align-items:center;gap:7px}
+  .risk .rb{width:42px;height:6px;border-radius:3px;background:rgba(255,255,255,.06);overflow:hidden;flex:none}
+  .risk .rb i{display:block;height:100%}
+  .risk .rn{font-weight:700;font-size:12px;min-width:22px}
+
+  /* right rail */
+  .rail{display:flex;flex-direction:column;gap:14px}
+  .rail .panel{padding-bottom:6px}
+  .rail .body{padding:12px 13px}
+
+  /* sector heat grid */
+  .heat{display:grid;grid-template-columns:1fr;gap:5px}
+  .hrow{display:flex;align-items:center;gap:9px;cursor:pointer;padding:2px 3px;border-radius:3px;transition:.12s}
+  .hrow:hover{background:rgba(0,255,65,.05)}
+  .hrow .hl{font-size:10.5px;color:var(--mut);width:128px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hrow.on .hl{color:var(--grn)}
+  .hbar{flex:1;height:14px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden;position:relative}
+  .hbar i{display:block;height:100%;background:linear-gradient(90deg,var(--grn-dim),var(--grn));opacity:.55}
+  .hbar.hot i{background:linear-gradient(90deg,var(--amber),var(--red));opacity:.7}
+  .hrow .hn{font-size:10.5px;color:var(--txt);width:30px;text-align:right;flex:none}
+
+  /* mini bars (vendors) */
+  .vbar{display:flex;align-items:center;gap:9px;margin-bottom:6px;cursor:pointer}
+  .vbar:hover .vname{color:var(--grn)}
+  .vbar .vname{font-size:10.5px;color:var(--mut);width:118px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vbar .vt{flex:1;height:10px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden}
+  .vbar .vt i{display:block;height:100%;background:var(--grn-dim);opacity:.7}
+  .vbar .vn{font-size:10px;color:var(--txt);width:24px;text-align:right;flex:none}
+
+  /* cvss distribution */
+  .cvss-dist{display:flex;align-items:flex-end;gap:6px;height:90px;padding-top:6px}
+  .cd{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end}
+  .cd .cbar{width:100%;border-radius:2px 2px 0 0;min-height:2px;transition:height .3s}
+  .cd .cl{font-size:9px;color:var(--mut)}
+  .cd .cv{font-size:10px;font-weight:700}
+
+  /* timeline */
+  .tl{display:flex;align-items:flex-end;gap:3px;height:70px}
+  .tl .tlb{flex:1;background:var(--grn-dim);opacity:.5;border-radius:1px;min-height:2px;transition:.3s;position:relative}
+  .tl .tlb:hover{opacity:.9}
+  .tl .tlb:hover::after{content:attr(data-t);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+    background:#000;border:1px solid var(--line-2);color:var(--grn);font-size:9px;padding:2px 5px;border-radius:3px;white-space:nowrap;margin-bottom:3px;z-index:5}
+  .tl-labels{display:flex;justify-content:space-between;margin-top:5px;font-size:9px;color:var(--mut-2)}
+
+  .empty{padding:40px;text-align:center;color:var(--mut)}
+  .empty b{color:var(--grn-dim);display:block;margin-bottom:6px;letter-spacing:1.5px}
+
+  footer{margin-top:22px;border-top:1px solid var(--line);padding-top:14px;
+    display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;font-size:10px;color:var(--mut-2);letter-spacing:.5px}
+  footer .ds{color:var(--mut)}
+  footer b{color:var(--grn-dim)}
+
+  .legend{font-size:9.5px;color:var(--mut);line-height:1.7}
+  .legend .pill{margin-right:4px}
+
+  /* modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:50;display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto}
+  .modal-bg.open{display:flex}
+  .modal{max-width:640px;width:100%;border:1px solid var(--line-2);background:var(--panel-2);border-radius:5px;
+    box-shadow:0 0 40px rgba(0,255,65,.1)}
+  .modal .mh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
+  .modal .mh h3{margin:0;font-size:15px;color:var(--grn);letter-spacing:1px}
+  .modal .mh .x{cursor:pointer;color:var(--mut);font-size:20px;line-height:1;background:none;border:none}
+  .modal .mb{padding:16px 18px}
+  .mrow{display:flex;gap:12px;padding:7px 0;border-bottom:1px solid rgba(0,255,65,.06);font-size:12px}
+  .mrow .mk{width:150px;flex:none;color:var(--mut);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;padding-top:2px}
+  .mrow .mv{color:var(--txt);min-width:0}
+  .mrow .mv a{word-break:break-all}
+
+  @media(max-width:1080px){
+    .main{grid-template-columns:1fr}
+    .kpis{grid-template-columns:repeat(3,1fr)}
+  }
+  @media(max-width:620px){
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .titles h1{font-size:14px}
+    .product,.sector-tag{display:none}
+  }
+  @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <header class="cmd">
+    <div class="brand">
+      <div class="ghost" title="Ghost Defense — DEFEND ALWAYS">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#00ff41" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 20V10a8 8 0 0 1 16 0v10l-2.5-2-2.5 2-3-2-3 2L4 20Z"/>
+          <circle cx="9" cy="11" r="1.1" fill="#00ff41" stroke="none"/>
+          <circle cx="15" cy="11" r="1.1" fill="#00ff41" stroke="none"/>
+        </svg>
+      </div>
+      <div class="titles">
+        <h1>ICS ADVISORY COMMAND</h1>
+        <div class="sub">GHOST DEFENSE // TOOL 40 &nbsp;·&nbsp; <b>DEFEND ALWAYS</b> &nbsp;·&nbsp; OT/ICS VULN TRIAGE</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="status">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">LOADING…</span>
+    </div>
+    <button class="btn alt" id="cfgBtn">⚙ SOURCE</button>
+    <button class="btn" id="importKevBtn">⤓ IMPORT</button>
+    <button class="btn" id="epssBtn">⊕ EPSS</button>
+    <input type="file" id="kevFile" accept=".json,.csv,.txt" style="display:none">
+    <button class="btn" id="syncBtn">⟲ SYNC LIVE</button>
+    <button class="btn" id="exportBtn">↓ EXPORT CSV</button>
+  </header>
+
+  <!-- CONFIG DRAWER -->
+  <div class="cfg" id="cfg">
+    <div class="row">
+      <div style="flex:1 1 480px">
+        <label>ICS[AP] CSV SOURCE URL &nbsp;(raw.githubusercontent.com — CORS-enabled, no proxy needed)</label>
+        <input type="text" id="srcUrl" spellcheck="false"
+          value="https://raw.githubusercontent.com/icsadvprj/ICS-Advisory-Project/main/ICS-CERT_ADV/CISA_ICS_ADV_Master.csv">
+      </div>
+      <div style="flex:1 1 220px">
+        <label>KEV CATALOG (CISA — optional enrichment)</label>
+        <input type="text" id="kevUrl" spellcheck="false"
+          value="https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json">
+      </div>
+    </div>
+    <div class="hint">
+      Parser auto-normalizes column headers (Vendor / Product / Advisory&nbsp;Number / CVE / CVSS / CWE / Sectors / Release&nbsp;Date) and tolerates naming variants.
+      If the exact filename/branch differs in the upstream repo, paste the correct raw URL above and hit <b>SYNC LIVE</b>.
+      Data is CISA public-domain; CSV parsing courtesy of the open-source <a href="https://github.com/icsadvprj" target="_blank" rel="noopener">ICS Advisory Project</a>.
+      When CISA's KEV feed is CORS-blocked from a browser, route it through your <b>ghost2210-proxy</b> worker — or just click <b>⤓ IMPORT KEV</b> to load CISA's known_exploited_vulnerabilities.json/.csv from disk (no proxy, no network).
+    </div>
+  </div>
+
+  <!-- KPI STRIP -->
+  <div class="kpis" id="kpis"></div>
+  <div class="kevnotice" id="kevNotice" style="display:none"></div>
+
+  <!-- TRIAGE ALERT STRIP -->
+  <div class="triage" id="triage" style="display:none">
+    <div class="th"><span class="dot pulse"></span> PRIORITY TRIAGE — ACTIVELY EXPLOITED / CRITICAL-RECENT &nbsp;·&nbsp; PATCH FIRST</div>
+    <div class="triage-list" id="triageList"></div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filters">
+    <div class="grow"><input type="text" id="q" placeholder="SEARCH — vendor · product · CVE · advisory · CWE"></div>
+    <select id="fSector"><option value="">ALL SECTORS</option></select>
+    <select id="fVendor"><option value="">ALL VENDORS</option></select>
+    <select id="fCountry"><option value="">ALL ORIGINS</option></select>
+    <select id="fYear"><option value="">ALL YEARS</option></select>
+    <select id="fBand">
+      <option value="">ALL SEVERITY</option>
+      <option value="crit">CRITICAL 9.0–10</option>
+      <option value="high">HIGH 7.0–8.9</option>
+      <option value="med">MEDIUM 4.0–6.9</option>
+      <option value="low">LOW 0–3.9</option>
+    </select>
+    <label class="chk" id="kevChk"><input type="checkbox" id="fKev"> KEV ONLY</label>
+    <span class="filter-count" id="fCount">—</span>
+    <button class="btn alt" id="resetBtn" style="padding:8px 11px">RESET</button>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- TABLE -->
+    <div class="panel">
+      <div class="ph">
+        <span>ADVISORY REGISTER</span>
+        <span class="ph-r" id="tblMeta">—</span>
+      </div>
+      <div class="tbl-scroll">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th data-k="risk">RISK<span class="ar" data-for="risk"></span></th>
+              <th data-k="vendor">VENDOR / PRODUCT<span class="ar" data-for="vendor"></span></th>
+              <th data-k="advisory">ADVISORY<span class="ar" data-for="advisory"></span></th>
+              <th data-k="cvss">CVSS<span class="ar" data-for="cvss"></span></th>
+              <th data-k="sector">SECTOR<span class="ar" data-for="sector"></span></th>
+              <th data-k="date">RELEASED<span class="ar" data-for="date"></span></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RIGHT RAIL -->
+    <div class="rail">
+      <div class="panel">
+        <div class="ph"><span>SECTOR EXPOSURE</span><span class="ph-r">16 CI SECTORS</span></div>
+        <div class="body"><div class="heat" id="heat"></div></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><span>CVSS DISTRIBUTION</span><span class="ph-r" id="cvssMeta">—</span></div>
+        <div class="body"><div class="cvss-dist" id="cvssDist"></div></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><span>TOP VENDORS</span><span class="ph-r">BY ADVISORY</span></div>
+        <div class="body" id="vendorBars"></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><span>VENDOR ORIGIN</span><span class="ph-r">HQ COUNTRY</span></div>
+        <div class="body" id="originBars"></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><span>RELEASE TIMELINE</span><span class="ph-r" id="tlMeta">—</span></div>
+        <div class="body">
+          <div class="tl" id="tl"></div>
+          <div class="tl-labels" id="tlLabels"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph"><span>RISK MODEL</span></div>
+        <div class="body legend">
+          Priority = CVSS&nbsp;(0–60) + KEV&nbsp;exploited&nbsp;(+30) + recency&nbsp;(+0–10), 0–100.<br>
+          <span class="pill crit">90+</span><span class="pill high">70+</span><span class="pill med">50+</span><span class="pill low">&lt;50</span><br>
+          KEV-listed = confirmed in-the-wild exploitation. Patch those first regardless of base score.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="ds">
+      DATA: CISA ICS-CERT advisories (public domain) · parsed CSV via <a href="https://github.com/icsadvprj" target="_blank" rel="noopener">ICS Advisory Project</a> · exploitation flags from <a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener">CISA KEV</a>.
+    </div>
+    <div><b>GHOST DEFENSE</b> · DEFEND ALWAYS · STATIC HTML · NO INFRA · CLOUDFLARE PAGES READY</div>
+  </footer>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="mh">
+      <h3 id="mTitle">—</h3>
+      <button class="x" id="mClose">×</button>
+    </div>
+    <div class="mb" id="mBody"></div>
+  </div>
+</div>
+
+<script>
+//=================================================================
+// GHOST DEFENSE — ICS ADVISORY COMMAND (Tool 40)
+// Static HTML. Loads the real ICS Advisory Project dataset live on open (SYNC LIVE re-pulls).
+// ICS Advisory Project CSV. No build step, no dependencies.
+//=================================================================
+
+const SECTORS16 = [
+  "Energy","Water and Wastewater","Critical Manufacturing","Chemical",
+  "Commercial Facilities","Communications","Dams","Defense Industrial Base",
+  "Emergency Services","Financial Services","Food and Agriculture",
+  "Government Facilities","Healthcare and Public Health","Information Technology",
+  "Nuclear","Transportation Systems"
+];
+
+// ---------- (fabricated sample removed) real data loads on open via syncLive() ----------
+// Representative recent-style CISA ICS advisories for UI demonstration.
+// Vendors/products are real; advisory numbers/CVEs are illustrative seed values.
+const SEED = []; // fabricated sample removed — tool loads real ICS Advisory Project data on open
+
+const COLS = ["vendor","product","advisory","cve","cvss","cwe","sector","date","kev","country","epss"];
+
+let DATA = [];
+let VIEW = [];
+let sortKey="risk", sortDir=-1;
+let kevStatus="seed";   // seed | csv | feed | csv+feed | imported | offline
+let IMPORTED_KEV=null;  // Set of CVE IDs imported from a CISA KEV file
+let EPSS_MAP=null;      // Map of CVE -> EPSS probability (from FIRST API or import)
+
+//---------------- helpers ----------------
+function band(cvss){ if(cvss>=9)return"crit"; if(cvss>=7)return"high"; if(cvss>=4)return"med"; return"low"; }
+function bandLabel(b){ return {crit:"CRITICAL",high:"HIGH",med:"MEDIUM",low:"LOW"}[b]; }
+function bandColor(b){ return {crit:"var(--red)",high:"var(--amber)",med:"var(--yellow)",low:"var(--grn)"}[b]; }
+function parseSectors(s){ return (s||"").split(/[;,/]+/).map(x=>x.trim()).filter(Boolean); }
+function daysSince(d){ const t=Date.parse(d); if(isNaN(t))return 99999; return (Date.now()-t)/864e5; }
+
+function riskScore(r){
+  // severity x exploit (runZero / EPSS-informed): CVSS severity + EPSS exploit-probability + KEV confirmed + recency
+  const cvss = Math.max(0,Math.min(10,parseFloat(r.cvss)||0));
+  const epssKnown = (r.epss!=null && !isNaN(r.epss));
+  const sev = (cvss/10)*55;                                  // severity, max 55
+  const exploit = epssKnown ? (r.epss*25) : (cvss/10)*15;    // EPSS exploit-prob (max 25); fall back to CVSS weight if EPSS absent
+  const kevB = r.kev ? 20 : 0;                               // confirmed in-the-wild
+  const d = daysSince(r.date);
+  const rec = d<=30?5 : d<=90?3 : d<=180?2 : d<=365?1 : 0;   // recency, max 5
+  return Math.round(Math.min(100, sev+exploit+kevB+rec));
+}
+function riskBand(s){ if(s>=90)return"crit"; if(s>=70)return"high"; if(s>=50)return"med"; return"low"; }
+
+function buildRecords(rows){
+  return rows.map(a=>{
+    const r = {
+      vendor:a[0]||"Unknown", product:a[1]||"", advisory:a[2]||"", cve:a[3]||"",
+      cvss:parseFloat(a[4])||0, cwe:a[5]||"", sector:a[6]||"", date:a[7]||"",
+      kev:!!a[8], country:canonCountry(a[9]||""), epss:parseEpss(a[10]), sectors:parseSectors(a[6]),
+      year:(String(a[7]).match(/^\d{4}/)||["—"])[0]
+    };
+    r.risk = riskScore(r);
+    return r;
+  });
+}
+
+//---------------- CSV parse (live sync) ----------------
+function parseCSV(text){
+  const rows=[]; let cur=[],val="",q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c=='"'){ if(text[i+1]=='"'){val+='"';i++;} else q=false; } else val+=c; }
+    else { if(c=='"')q=true; else if(c==','){cur.push(val);val="";}
+      else if(c=='\n'){cur.push(val);rows.push(cur);cur=[];val="";}
+      else if(c=='\r'){} else val+=c; }
+  }
+  if(val.length||cur.length){cur.push(val);rows.push(cur);}
+  return rows.filter(r=>r.length>1);
+}
+function norm(h){ return String(h||"").toLowerCase().replace(/[^a-z0-9]/g,""); }
+function mapHeaders(header){
+  const idx={};
+  const want={
+    vendor:["vendor","manufacturer","company"],
+    product:["product","productaffected","products","affectedproduct"],
+    advisory:["advisorynumber","icscertnumber","icsadvisory","advisory","advisoryid","cisaadvisory"],
+    cve:["cve","cves","cvenumber"],
+    cvss:["cvss","cvssscore","cvssv3","basescore","cvssv4","cvss3","score"],
+    cwe:["cwe","cwes","cwenumber"],
+    sector:["sector","sectors","criticalinfrastructuresectors","cisectors","affectedsectors"],
+    date:["originalreleasedate","releasedate","date","published","datepublished"],
+    kev:["kev","knownexploited","inkev","cisakev","kevstatus","exploited","knownexploitedvulnerability"],
+    country:["vendorheadquarters","companyheadquarters","vendorcountry","countryoforigin","country","headquarters","nation","origin"],
+    epss:["epss","epssscore","epssprobability","exploitprediction"]
+  };
+  const N=header.map(norm);
+  for(const key in want){
+    for(const cand of want[key]){ const p=N.indexOf(cand); if(p>=0){idx[key]=p;break;} }
+    if(idx[key]===undefined){ // fuzzy contains
+      for(let i=0;i<N.length;i++){ if(want[key].some(c=>N[i].includes(c))){idx[key]=i;break;} }
+    }
+  }
+  return idx;
+}
+let CSV_KEV_PRESENT=false;
+function rowsFromCSV(text){
+  const csv=parseCSV(text);
+  if(csv.length<2) throw new Error("empty/invalid CSV");
+  const idx=mapHeaders(csv[0]);
+  if(idx.vendor===undefined && idx.advisory===undefined) throw new Error("could not map columns");
+  CSV_KEV_PRESENT = idx.kev!==undefined;
+  return csv.slice(1).map(c=>[
+    c[idx.vendor]||"", c[idx.product]||"", c[idx.advisory]||"", c[idx.cve]||"",
+    c[idx.cvss]||"0", c[idx.cwe]||"", c[idx.sector]||"", normDate(c[idx.date]||""),
+    CSV_KEV_PRESENT ? parseKevCell(c[idx.kev]) : false,
+    c[idx.country]||"",
+    idx.epss!==undefined ? (c[idx.epss]||"") : ""
+  ]).filter(r=>r[0]||r[2]);
+}
+function normDate(d){
+  d=String(d).trim(); if(!d)return"";
+  let m=d.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/); if(m)return`${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+  m=d.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/); if(m)return`${m[3]}-${pad(m[1])}-${pad(m[2])}`;
+  const t=Date.parse(d); if(!isNaN(t)){const dt=new Date(t);return`${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;}
+  return d;
+}
+function pad(n){return String(n).padStart(2,"0");}
+function parseKevCell(v){ v=String(v||"").trim().toLowerCase(); return ["true","yes","y","1","x","kev","known","✓"].includes(v); }
+const ISO2={"usa":"US","united states":"US","u.s.":"US","us":"US","united states of america":"US","america":"US",
+  "germany":"DE","france":"FR","switzerland":"CH","japan":"JP","taiwan":"TW","china":"CN","israel":"IL",
+  "czech republic":"CZ","czechia":"CZ","canada":"CA","united kingdom":"GB","uk":"GB","great britain":"GB",
+  "ireland":"IE","south korea":"KR","korea":"KR","republic of korea":"KR","netherlands":"NL","sweden":"SE",
+  "italy":"IT","spain":"ES","india":"IN","russia":"RU","russian federation":"RU","finland":"FI","norway":"NO",
+  "denmark":"DK","austria":"AT","belgium":"BE","singapore":"SG","australia":"AU","brazil":"BR","poland":"PL","turkey":"TR"};
+function canonCountry(c){ c=String(c||"").trim(); if(!c) return "";
+  const m={"United States":"USA","U.S.":"USA","US":"USA","United States of America":"USA","America":"USA",
+    "Czechia":"Czech Republic","UK":"United Kingdom","Great Britain":"United Kingdom","Korea":"South Korea",
+    "Republic of Korea":"South Korea","Russian Federation":"Russia"}; return m[c]||c; }
+function countryFlag(c){ c=String(c||"").trim().toLowerCase(); if(!c) return "";
+  const iso=ISO2[c]; if(!iso) return "\u{1F3F3}";
+  return String.fromCodePoint(...[...iso.toUpperCase()].map(ch=>0x1F1E6+ch.charCodeAt(0)-65)); }
+function parseEpss(v){ if(v===""||v==null) return null; const n=parseFloat(v); return isNaN(n)?null:Math.max(0,Math.min(1,n)); }
+function patchWindow(r){
+  if(r.kev) return {t:"24H", c:"crit", title:"KEV — confirmed in-the-wild exploitation"};
+  if(r.epss!=null && r.epss>=0.5 && r.cvss>=7) return {t:"7D", c:"high", title:"EPSS ≥0.5 + CVSS ≥7 — likely imminent exploitation"};
+  if(r.cvss>=9) return {t:"30D", c:"med", title:"Critical severity, no confirmed/likely exploitation yet"};
+  return {t:"ROUTINE", c:"low", title:"Standard remediation cycle"};
+}
+function epssBand(e){ if(e==null) return "none"; if(e>=0.5) return "crit"; if(e>=0.1) return "high"; if(e>=0.01) return "med"; return "low"; }
+
+function extractCves(text){
+  const m=String(text).match(/CVE-\d{4}-\d{3,7}/gi)||[];
+  return new Set(m.map(x=>x.toUpperCase()));
+}
+function applyImportedKev(records){
+  if(!IMPORTED_KEV) return 0;
+  let n=0;
+  records.forEach(rec=>{
+    const ids=String(rec.cve||"").toUpperCase().split(/[;,\s]+/).filter(Boolean);
+    if(ids.some(id=>IMPORTED_KEV.has(id))){ rec.kev=true; n++; }
+  });
+  return n;
+}
+function parseEpssFile(text){
+  // FIRST EPSS daily CSV: lines of  CVE-x,<0..1>,<percentile>   (ignores #comment header)
+  const map=new Map(); const re=/(CVE-\d{4}-\d{3,7})\s*,\s*(0?\.\d+|[01](?:\.\d+)?)/gi; let m;
+  while((m=re.exec(text))){ map.set(m[1].toUpperCase(), Math.max(0,Math.min(1,parseFloat(m[2])))); }
+  return map.size?map:null;
+}
+function applyEpssMap(records){
+  if(!EPSS_MAP) return 0; let n=0;
+  records.forEach(r=>{
+    const ids=String(r.cve||"").toUpperCase().split(/[;,\s]+/).filter(Boolean);
+    for(const id of ids){ if(EPSS_MAP.has(id)){ r.epss=EPSS_MAP.get(id); n++; break; } }
+  });
+  return n;
+}
+function handleImportFile(file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const text=reader.result;
+    // EPSS first (CSV with CVE,score rows); else fall back to KEV (CVE id list)
+    const em=parseEpssFile(text);
+    if(em){
+      EPSS_MAP=em;
+      const matched=applyEpssMap(DATA);
+      DATA.forEach(r=>r.risk=riskScore(r));
+      setStatus("live","EPSS IMPORTED · "+em.size+" scored · "+matched+" matched");
+      render(); return;
+    }
+    const set=extractCves(text);
+    if(!set.size){ alert("No KEV or EPSS data recognized in "+file.name+".\n\nKEV: CISA known_exploited_vulnerabilities.json/.csv\nEPSS: FIRST epss_scores-current.csv (CVE,score,percentile)"); return; }
+    IMPORTED_KEV=set;
+    const matched=applyImportedKev(DATA);
+    DATA.forEach(r=>r.risk=riskScore(r));
+    kevStatus = (kevStatus && kevStatus!=="offline" && kevStatus!=="seed") ? kevStatus+"+import" : "imported";
+    setStatus("live","KEV IMPORTED · "+set.size+" CVEs · "+matched+" matched");
+    render();
+  };
+  reader.onerror=()=>alert("Could not read "+file.name);
+  reader.readAsText(file);
+}
+async function syncEpss(){
+  const cves=[...new Set(DATA.flatMap(r=>String(r.cve||"").toUpperCase().split(/[;,\s]+/)).filter(x=>/^CVE-/.test(x)))];
+  if(!cves.length){ alert("No CVEs in the current dataset to score."); return; }
+  const btn=document.getElementById("epssBtn"); btn.disabled=true; setStatus("warn","EPSS SYNC…");
+  try{
+    const map=new Map();
+    for(let i=0;i<cves.length;i+=80){
+      const chunk=cves.slice(i,i+80).join(",");
+      const r=await fetch("https://api.first.org/data/v1/epss?cve="+chunk);
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      const j=await r.json();
+      (j.data||[]).forEach(d=>{ const e=parseFloat(d.epss); if(!isNaN(e)) map.set(String(d.cve).toUpperCase(), e); });
+    }
+    if(!map.size) throw new Error("no EPSS scores returned");
+    EPSS_MAP=map;
+    const matched=applyEpssMap(DATA);
+    DATA.forEach(r=>r.risk=riskScore(r));
+    setStatus("live","EPSS · "+map.size+" scored · "+matched+" matched");
+    render();
+  }catch(e){
+    setStatus("err","EPSS SYNC FAILED");
+    alert("EPSS sync failed: "+e.message+"\n\nFIRST's API may be CORS-blocked from the browser. Route it via ghost2210-proxy, or download FIRST's daily epss_scores-current.csv and use ⤓ IMPORT.");
+  }finally{ btn.disabled=false; }
+}
+async function applyKEV(records){
+  const url=document.getElementById("kevUrl").value.trim();
+  if(!url) return {ok:false, reason:"no-url"};
+  try{
+    const r=await fetch(url);
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const j=await r.json();
+    const set=new Set((j.vulnerabilities||[]).map(v=>v.cveID));
+    let n=0;
+    records.forEach(rec=>{
+      const ids=String(rec.cve||"").split(/[;,\s]+/).filter(Boolean);
+      if(ids.some(id=>set.has(id))){ rec.kev=true; n++; }
+    });
+    return {ok:true, matched:n, size:set.size};
+  }catch(e){ return {ok:false, reason:e.message}; }
+}
+
+//---------------- sync ----------------
+async function syncLive(){
+  const url=document.getElementById("srcUrl").value.trim();
+  setStatus("warn","SYNCING…");
+  const btn=document.getElementById("syncBtn"); btn.disabled=true;
+  try{
+    const res=await fetch(url);
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const text=await res.text();
+    const rows=rowsFromCSV(text);
+    if(!rows.length) throw new Error("no records parsed");
+    DATA=buildRecords(rows);
+    const parts=[];
+    if(CSV_KEV_PRESENT) parts.push("csv");
+    const kr = await applyKEV(DATA);            // merge CISA KEV feed if reachable
+    if(kr.ok) parts.push("feed");
+    if(IMPORTED_KEV){ applyImportedKev(DATA); parts.push("import"); }  // re-apply imported KEV
+    if(EPSS_MAP){ applyEpssMap(DATA); }                                  // re-apply EPSS scores
+    kevStatus = parts.length ? parts.join("+") : "offline";
+    DATA.forEach(r=>r.risk=riskScore(r));
+    const kevCount=DATA.filter(r=>r.kev).length;
+    setStatus(kevStatus==="offline"?"warn":"live",
+      "LIVE · "+DATA.length+" ADV · "+(kevStatus==="offline"?"KEV UNVERIFIED":kevCount+" KEV"));
+    initFilters(); render();
+  }catch(e){
+    setStatus("err","SYNC FAILED");
+    alert("SYNC LIVE failed: "+e.message+
+      "\n\nLikely causes:\n• Exact CSV path/branch differs — paste the correct raw URL in ⚙ SOURCE.\n• Browser CORS block — route via your ghost2210-proxy worker.\n\nNo data loaded — this tool shows only real, sourced advisories, never fabricated samples.");
+  }finally{ btn.disabled=false; }
+}
+function setStatus(cls,txt){
+  const d=document.getElementById("statusDot"),t=document.getElementById("statusText");
+  d.className="dot"+(cls==="live"?" live":cls==="err"?" err":"");
+  t.textContent=txt;
+}
+
+//---------------- filters ----------------
+function initFilters(){
+  const sV=document.getElementById("fVendor"), sY=document.getElementById("fYear"), sS=document.getElementById("fSector"), sC=document.getElementById("fCountry");
+  const vendors=[...new Set(DATA.map(r=>r.vendor))].sort();
+  const years=[...new Set(DATA.map(r=>r.year))].filter(y=>y!=="—").sort().reverse();
+  const sectors=[...new Set(DATA.flatMap(r=>r.sectors))].sort();
+  sV.innerHTML='<option value="">ALL VENDORS</option>'+vendors.map(v=>`<option>${esc(v)}</option>`).join("");
+  sY.innerHTML='<option value="">ALL YEARS</option>'+years.map(y=>`<option>${y}</option>`).join("");
+  sS.innerHTML='<option value="">ALL SECTORS</option>'+sectors.map(s=>`<option>${esc(s)}</option>`).join("");
+  const origins=[...new Set(DATA.map(r=>r.country))].filter(Boolean).sort();
+  sC.innerHTML='<option value="">ALL ORIGINS</option>'+origins.map(c=>`<option>${countryFlag(c)} ${esc(c)}</option>`.replace("<option>","<option value=\""+esc(c)+"\">")).join("");
+}
+function getFilters(){
+  return {
+    q:document.getElementById("q").value.trim().toLowerCase(),
+    sector:document.getElementById("fSector").value,
+    vendor:document.getElementById("fVendor").value,
+    year:document.getElementById("fYear").value,
+    bandf:document.getElementById("fBand").value,
+    country:document.getElementById("fCountry").value,
+    kev:document.getElementById("fKev").checked
+  };
+}
+function applyFilters(){
+  const f=getFilters();
+  document.getElementById("kevChk").classList.toggle("on",f.kev);
+  VIEW=DATA.filter(r=>{
+    if(f.kev && !r.kev) return false;
+    if(f.vendor && r.vendor!==f.vendor) return false;
+    if(f.year && r.year!==f.year) return false;
+    if(f.sector && !r.sectors.includes(f.sector)) return false;
+    if(f.bandf && band(r.cvss)!==f.bandf) return false;
+    if(f.country && r.country!==f.country) return false;
+    if(f.q){
+      const hay=(r.vendor+" "+r.product+" "+r.cve+" "+r.advisory+" "+r.cwe+" "+r.sector+" "+r.country).toLowerCase();
+      if(!hay.includes(f.q)) return false;
+    }
+    return true;
+  });
+  sortView();
+}
+function sortView(){
+  const k=sortKey;
+  VIEW.sort((a,b)=>{
+    let av,bv;
+    if(k==="vendor"){av=a.vendor.toLowerCase();bv=b.vendor.toLowerCase();}
+    else if(k==="advisory"){av=a.advisory;bv=b.advisory;}
+    else if(k==="sector"){av=a.sectors[0]||"";bv=b.sectors[0]||"";}
+    else if(k==="date"){av=Date.parse(a.date)||0;bv=Date.parse(b.date)||0;}
+    else {av=a[k];bv=b[k];} // risk, cvss
+    if(av<bv)return -1*sortDir; if(av>bv)return 1*sortDir; return 0;
+  });
+}
+
+//---------------- render ----------------
+function render(){
+  applyFilters();
+  renderKPIs(); renderTriage(); renderTable(); renderHeat(); renderCVSS(); renderVendors(); renderOrigin(); renderTimeline(); renderArrows();
+  document.getElementById("fCount").textContent=VIEW.length+" / "+DATA.length+" ADVISORIES";
+  document.getElementById("tblMeta").textContent=VIEW.length+" ROWS";
+}
+
+function renderKPIs(){
+  const total=VIEW.length;
+  const kev=VIEW.filter(r=>r.kev).length;
+  const crit=VIEW.filter(r=>r.cvss>=9).length;
+  const recent=VIEW.filter(r=>daysSince(r.date)<=30).length;
+  const vendors=new Set(VIEW.map(r=>r.vendor)).size;
+  const sectors=new Set(VIEW.flatMap(r=>r.sectors)).size;
+  const kevVerified = kevStatus!=="offline";
+  const kevTile = kevVerified
+    ? [kev, "KEV · ACTIVELY EXPLOITED", kev>0?"alert":""]
+    : ["—", "KEV · NOT VERIFIED — SET PROXY", "warn"];
+  const k=[
+    [total,"ADVISORIES IN VIEW",""],
+    kevTile,
+    [crit,"CRITICAL · CVSS ≥ 9.0","warn"],
+    [recent,"RELEASED ≤ 30 DAYS",""],
+    [vendors,"VENDORS AFFECTED",""],
+    [sectors,"CI SECTORS HIT",""]
+  ];
+  document.getElementById("kpis").innerHTML=k.map(([n,l,c])=>
+    `<div class="kpi ${c}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+  renderKevNotice();
+}
+function renderKevNotice(){
+  const el=document.getElementById("kevNotice");
+  if(!el) return;
+  if(kevStatus==="offline"){
+    el.style.display="block";
+    el.innerHTML='⚠ KEV enrichment offline — CISA\'s KEV feed is CORS-blocked from the browser and this dataset carries no KEV column. Exploitation status is <b>UNVERIFIED, not zero</b>. Click <b>⤓ IMPORT KEV</b> to load CISA\'s known_exploited_vulnerabilities.json/.csv from disk, or point the KEV URL in ⚙ SOURCE at your <b>ghost2210-proxy</b> worker. Triage is running on CVSS severity until then.';
+  } else { el.style.display="none"; }
+}
+
+function renderTriage(){
+  const top=[...VIEW].filter(r=>r.kev||r.cvss>=9||r.risk>=70)
+    .sort((a,b)=>(b.kev-a.kev)||(b.risk-a.risk)||(b.cvss-a.cvss)).slice(0,6);
+  const box=document.getElementById("triage"), list=document.getElementById("triageList");
+  if(!top.length){box.style.display="none";return;}
+  box.style.display="block";
+  list.innerHTML=top.map(r=>`
+    <div class="tcard" data-cve="${esc(r.cve)}" data-adv="${esc(r.advisory)}">
+      <div class="sc">${r.risk}</div>
+      <div class="meta">
+        <div class="v">${esc(r.vendor)} — ${esc(r.product)} ${r.kev?'<span class="kevbadge"><span class="dot"></span>KEV</span>':''}</div>
+        <div class="d">${esc(r.advisory)} · ${esc(r.cve)} · CVSS ${r.cvss.toFixed(1)}</div>
+      </div>
+    </div>`).join("");
+  list.querySelectorAll(".tcard").forEach(c=>c.onclick=()=>openModal(c.dataset.cve,c.dataset.adv));
+}
+
+function renderTable(){
+  const tb=document.getElementById("tbody");
+  if(!VIEW.length){ tb.innerHTML=`<tr><td colspan="6"><div class="empty"><b>NO MATCHES</b>Adjust filters or RESET to clear all constraints.</div></td></tr>`; return; }
+  tb.innerHTML=VIEW.map(r=>{
+    const rb=riskBand(r.risk), cb=band(r.cvss);
+    return `<tr class="${r.kev?'kev':''}" data-cve="${esc(r.cve)}" data-adv="${esc(r.advisory)}">
+      <td><div class="risk">
+        <span class="rn" style="color:${bandColor(rb)}">${r.risk}</span>
+        <span class="rb"><i style="width:${r.risk}%;background:${bandColor(rb)}"></i></span>
+      </div></td>
+      <td><div class="vendor">${countryFlag(r.country)} ${esc(r.vendor)}</div><div class="product">${esc(r.product)}${r.country?` · ${esc(r.country)}`:""}</div></td>
+      <td><div class="adv">${esc(r.advisory)}</div>${r.kev?'<span class="kevbadge"><span class="dot"></span>KEV</span>':''}</td>
+      <td><span class="pill ${cb}">${r.cvss.toFixed(1)}</span></td>
+      <td><span class="sector-tag">${esc(r.sectors[0]||"—")}${r.sectors.length>1?` +${r.sectors.length-1}`:""}</span></td>
+      <td style="color:var(--mut);white-space:nowrap">${esc(r.date)}</td>
+    </tr>`;
+  }).join("");
+  tb.querySelectorAll("tr[data-cve]").forEach(tr=>tr.onclick=()=>openModal(tr.dataset.cve,tr.dataset.adv));
+}
+
+function renderHeat(){
+  const counts={}; SECTORS16.forEach(s=>counts[s]=0);
+  VIEW.forEach(r=>r.sectors.forEach(s=>{ if(counts[s]===undefined)counts[s]=0; counts[s]++; }));
+  const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const max=Math.max(1,...entries.map(e=>e[1]));
+  const cur=document.getElementById("fSector").value;
+  document.getElementById("heat").innerHTML=entries.map(([s,n])=>{
+    const pct=(n/max)*100, hot=n/max>=0.6;
+    return `<div class="hrow ${cur===s?'on':''}" data-sector="${esc(s)}">
+      <span class="hl">${esc(s)}</span>
+      <span class="hbar ${hot?'hot':''}"><i style="width:${pct}%"></i></span>
+      <span class="hn">${n}</span>
+    </div>`;
+  }).join("");
+  document.getElementById("heat").querySelectorAll(".hrow").forEach(row=>row.onclick=()=>{
+    const sel=document.getElementById("fSector");
+    sel.value = sel.value===row.dataset.sector ? "" : row.dataset.sector;
+    render();
+  });
+}
+
+function renderCVSS(){
+  const bands={crit:0,high:0,med:0,low:0};
+  VIEW.forEach(r=>bands[band(r.cvss)]++);
+  const max=Math.max(1,...Object.values(bands));
+  const order=[["crit","9–10"],["high","7–8.9"],["med","4–6.9"],["low","0–3.9"]];
+  document.getElementById("cvssDist").innerHTML=order.map(([b,lab])=>{
+    const h=(bands[b]/max)*100;
+    return `<div class="cd">
+      <div class="cv" style="color:${bandColor(b)}">${bands[b]}</div>
+      <div class="cbar" style="height:${h}%;background:${bandColor(b)};opacity:.55"></div>
+      <div class="cl">${lab}</div>
+    </div>`;
+  }).join("");
+  document.getElementById("cvssMeta").textContent="μ "+(VIEW.length?(VIEW.reduce((s,r)=>s+r.cvss,0)/VIEW.length).toFixed(1):"0.0");
+}
+
+function renderVendors(){
+  const c={}; VIEW.forEach(r=>c[r.vendor]=(c[r.vendor]||0)+1);
+  const top=Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const max=Math.max(1,...top.map(e=>e[1]));
+  document.getElementById("vendorBars").innerHTML=top.map(([v,n])=>`
+    <div class="vbar" data-vendor="${esc(v)}">
+      <span class="vname">${esc(v)}</span>
+      <span class="vt"><i style="width:${(n/max)*100}%"></i></span>
+      <span class="vn">${n}</span>
+    </div>`).join("")||`<div style="color:var(--mut);font-size:11px">No data in view.</div>`;
+  document.getElementById("vendorBars").querySelectorAll(".vbar").forEach(b=>b.onclick=()=>{
+    const sel=document.getElementById("fVendor");
+    sel.value = sel.value===b.dataset.vendor ? "" : b.dataset.vendor;
+    render();
+  });
+}
+
+function renderOrigin(){
+  const c={}; VIEW.forEach(r=>{ if(!r.country) return; c[r.country]=(c[r.country]||0)+1; });
+  const top=Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const max=Math.max(1,...top.map(e=>e[1]));
+  const cur=document.getElementById("fCountry").value;
+  const el=document.getElementById("originBars");
+  el.innerHTML=top.map(([v,n])=>`
+    <div class="vbar" data-country="${esc(v)}">
+      <span class="vname" style="${cur===v?'color:var(--grn)':''}">${countryFlag(v)} ${esc(v)}</span>
+      <span class="vt"><i style="width:${(n/max)*100}%"></i></span>
+      <span class="vn">${n}</span>
+    </div>`).join("")||`<div style="color:var(--mut);font-size:11px">No origin data in view.</div>`;
+  el.querySelectorAll(".vbar").forEach(b=>b.onclick=()=>{
+    const sel=document.getElementById("fCountry");
+    sel.value = sel.value===b.dataset.country ? "" : b.dataset.country;
+    render();
+  });
+}
+function renderTimeline(){
+  const buckets={};
+  VIEW.forEach(r=>{ const m=String(r.date).slice(0,7); if(/^\d{4}-\d{2}$/.test(m)) buckets[m]=(buckets[m]||0)+1; });
+  let keys=Object.keys(buckets).sort();
+  if(keys.length>14) keys=keys.slice(-14);
+  const max=Math.max(1,...keys.map(k=>buckets[k]));
+  document.getElementById("tl").innerHTML=keys.map(k=>
+    `<div class="tlb" style="height:${(buckets[k]/max)*100}%" data-t="${k}: ${buckets[k]}"></div>`).join("")
+    ||`<div style="color:var(--mut);font-size:11px;align-self:center">No dated records.</div>`;
+  document.getElementById("tlLabels").innerHTML = keys.length?`<span>${keys[0]}</span><span>${keys[keys.length-1]}</span>`:"";
+  document.getElementById("tlMeta").textContent=keys.length?keys.length+" MO":"—";
+}
+
+function renderArrows(){
+  document.querySelectorAll(".ar").forEach(a=>a.textContent="");
+  const a=document.querySelector(`.ar[data-for="${sortKey}"]`);
+  if(a) a.textContent = sortDir===1?"▲":"▼";
+}
+
+//---------------- modal ----------------
+function openModal(cve,adv){
+  const r=DATA.find(x=>x.cve===cve && x.advisory===adv) || DATA.find(x=>x.advisory===adv);
+  if(!r)return;
+  document.getElementById("mTitle").textContent=r.vendor+" — "+(r.product||"Advisory");
+  const rb=riskBand(r.risk), cb=band(r.cvss);
+  const cveLink = r.cve && /^CVE-/.test(r.cve) ? `<a href="https://nvd.nist.gov/vuln/detail/${esc(r.cve)}" target="_blank" rel="noopener">${esc(r.cve)}</a>` : esc(r.cve||"—");
+  const advLink = r.advisory ? `<a href="https://www.cisa.gov/news-events/ics-advisories/${esc(r.advisory.toLowerCase())}" target="_blank" rel="noopener">${esc(r.advisory)}</a>` : "—";
+  document.getElementById("mBody").innerHTML=`
+    <div class="mrow"><div class="mk">Priority Risk</div><div class="mv"><span style="color:${bandColor(rb)};font-weight:700;font-size:16px">${r.risk}/100</span> &nbsp;<span class="pill ${rb}">${bandLabel(rb)}</span></div></div>
+    <div class="mrow"><div class="mk">Exploitation</div><div class="mv">${r.kev?'<span class="kevbadge"><span class="dot"></span>CISA KEV — IN-THE-WILD</span> &nbsp;Patch immediately.':'No KEV listing. Prioritize by CVSS + exposure.'}</div></div>
+    <div class="mrow"><div class="mk">CVSS Base</div><div class="mv"><span class="pill ${cb}">${r.cvss.toFixed(1)}</span> ${bandLabel(cb)}</div></div>
+    <div class="mrow"><div class="mk">CVE</div><div class="mv">${cveLink}</div></div>
+    <div class="mrow"><div class="mk">Advisory</div><div class="mv">${advLink}</div></div>
+    <div class="mrow"><div class="mk">CWE</div><div class="mv">${esc(r.cwe||"—")}</div></div>
+    <div class="mrow"><div class="mk">Sectors</div><div class="mv">${r.sectors.map(s=>esc(s)).join(" · ")||"—"}</div></div>
+    <div class="mrow"><div class="mk">Vendor Origin</div><div class="mv">${countryFlag(r.country)} ${esc(r.country||"—")}</div></div>
+    <div class="mrow"><div class="mk">Released</div><div class="mv">${esc(r.date||"—")} &nbsp;<span style="color:var(--mut)">(${Math.round(daysSince(r.date))}d ago)</span></div></div>
+    <div style="margin-top:14px;font-size:10.5px;color:var(--mut-2);line-height:1.6">
+      Links resolve to NVD and the CISA ICS advisory page. Verify product/firmware versions in the source advisory before acting.
+    </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(0,255,65,.15)">
+      <div style="font-size:9px;color:var(--grn);letter-spacing:1px;margin-bottom:8px">↳ PIVOT — GHOST DEFENSE INTELLIGENCE CHAIN</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${r.cve && /^CVE-/.test(r.cve) ? `<a class="pivot" href="44_Shodan_CVE_Exposure_Map.html?cve=${encodeURIComponent(r.cve)}" style="font-size:10.5px;padding:6px 11px;border:1px solid var(--cyan);border-radius:5px;color:var(--cyan);text-decoration:none">🌐 Internet exposure for ${esc(r.cve)} →</a>`:''}
+        ${(r.sectors&&r.sectors.length) ? `<a class="pivot" href="12_APT_Exposure_Map.html?q=${encodeURIComponent(r.sectors[0])}" style="font-size:10.5px;padding:6px 11px;border:1px solid var(--amber);border-radius:5px;color:var(--amber);text-decoration:none">🎯 APT groups targeting ${esc(r.sectors[0])} →</a>`:''}
+      </div>
+    </div>`;
+  document.getElementById("modalBg").classList.add("open");
+}
+function closeModal(){ document.getElementById("modalBg").classList.remove("open"); }
+
+//---------------- export ----------------
+function exportCSV(){
+  const head=["Risk","Vendor","Product","VendorOrigin","Advisory","CVE","CVSS","CWE","Sectors","ReleaseDate","KEV"];
+  const lines=[head.join(",")].concat(VIEW.map(r=>[
+    r.risk, q(r.vendor), q(r.product), q(r.country), q(r.advisory), q(r.cve), r.cvss.toFixed(1),
+    q(r.cwe), q(r.sectors.join("; ")), r.date, r.kev?"YES":"NO"
+  ].join(",")));
+  const blob=new Blob([lines.join("\n")],{type:"text/csv"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="ghost2210_ics_triage_"+new Date().toISOString().slice(0,10)+".csv";
+  a.click();
+}
+function q(s){ s=String(s??""); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }
+function esc(s){ return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+//---------------- wire up ----------------
+function bind(){
+  ["q","fSector","fVendor","fYear","fBand","fCountry"].forEach(id=>{
+    document.getElementById(id).addEventListener("input",render);
+  });
+  // checkboxes don't reliably fire 'input' across browsers — bind 'change'
+  document.getElementById("fKev").addEventListener("change",render);
+  document.querySelectorAll("thead th[data-k]").forEach(th=>{
+    th.onclick=()=>{
+      const k=th.dataset.k;
+      if(sortKey===k) sortDir*=-1; else {sortKey=k; sortDir=(k==="vendor"||k==="advisory"||k==="sector")?1:-1;}
+      render();
+    };
+  });
+  document.getElementById("cfgBtn").onclick=()=>document.getElementById("cfg").classList.toggle("open");
+  document.getElementById("syncBtn").onclick=syncLive;
+  document.getElementById("exportBtn").onclick=exportCSV;
+  document.getElementById("importKevBtn").onclick=()=>document.getElementById("kevFile").click();
+  document.getElementById("kevFile").addEventListener("change",e=>{ handleImportFile(e.target.files[0]); e.target.value=""; });
+  document.getElementById("epssBtn").onclick=syncEpss;
+  document.getElementById("resetBtn").onclick=()=>{
+    ["q","fSector","fVendor","fYear","fBand","fCountry"].forEach(id=>document.getElementById(id).value="");
+    document.getElementById("fKev").checked=false; render();
+  };
+  document.getElementById("mClose").onclick=closeModal;
+  document.getElementById("modalBg").onclick=e=>{ if(e.target.id==="modalBg")closeModal(); };
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape")closeModal(); });
+}
+
+//---------------- boot ----------------
+// Load the REAL ICS Advisory Project dataset on open (no fabricated seed shown as live).
+DATA=[]; bind(); initFilters(); render();
+setStatus("warn","LOADING LIVE ICS ADVISORY PROJECT DATA…");
+(function autoload(){
+  syncLive().then(function(){
+    // syncLive sets its own status; if it left DATA empty, fall through to the honest offline note
+    if(!DATA || !DATA.length){ offlineNote(); return; }
+    applyDeepLink();
+  }).catch(function(){ offlineNote(); });
+})();
+// Cross-tool deep link: another Ghost Defense tool can open this with ?q=<term> (CVE, vendor, sector)
+function applyDeepLink(){
+  try{
+    var p=new URLSearchParams(location.search);
+    var q=p.get('q')||p.get('cve')||p.get('sector')||'';
+    if(q){
+      document.getElementById('q').value=q;
+      if(typeof applyFilters==='function') applyFilters();
+      render();
+      setStatus('live','FILTERED via pivot: '+q+' · '+ (VIEW?VIEW.length:DATA.length) +' advisories');
+    }
+  }catch(e){}
+}
+function offlineNote(){
+  setStatus("err","LIVE DATA UNAVAILABLE");
+  var host=document.getElementById("tbody")||document.body;
+  try{
+    var note=document.getElementById("advTable")?document.getElementById("advTable").parentNode:document.body;
+  }catch(e){}
+  // Surface an honest empty-state message instead of fabricated advisories
+  var t=document.getElementById("tbody");
+  if(t){ t.innerHTML='<tr><td colspan="20" style="padding:22px;color:var(--mut);line-height:1.7">'
+    +'<b style="color:var(--amber)">Could not load the live ICS Advisory Project dataset.</b><br>'
+    +'This tool shows real CISA ICS-CERT advisories sourced from the open-source '
+    +'<a href="https://github.com/icsadvprj" target="_blank" rel="noopener" style="color:var(--grn)">ICS Advisory Project</a> (ODbL). '
+    +'It does not display fabricated sample data.<br><br>'
+    +'Likely cause: the raw GitHub CSV was unreachable (network or CORS). '
+    +'Open <b>⚙ SOURCE</b>, confirm the CSV URL, and click <b>⟲ SYNC LIVE</b> — '
+    +'or route it through your Ghost Worker if your network blocks raw.githubusercontent.com.'
+    +'</td></tr>'; }
+}
+</script>
+</body>
+</html>

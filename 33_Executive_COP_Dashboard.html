@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Executive COP Dashboard — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020507;--s1:#060c10;--s2:#0a1218;--s3:#0f1a22;
+  --border:rgba(0,255,65,0.08);--border2:rgba(0,255,65,0.18);
+  --text:#d0e8d0;--muted:#3a5a3a;--muted2:#5a8a5a;
+  --ng:#00ff41;--ng-d:rgba(0,255,65,0.08);--ng-b:rgba(0,255,65,0.25);
+  --red:#ff2244;--red-s:rgba(255,34,68,0.1);--red-b:rgba(255,34,68,0.3);
+  --orange:#ff8800;--orange-s:rgba(255,136,0,0.1);--orange-b:rgba(255,136,0,0.28);
+  --yellow:#ffd700;--yellow-s:rgba(255,215,0,0.08);--yellow-b:rgba(255,215,0,0.25);
+  --blue:#00aaff;--blue-s:rgba(0,170,255,0.08);--blue-b:rgba(0,170,255,0.25);
+  --cyan:#00e5ff;--cyan-s:rgba(0,229,255,0.06);--cyan-b:rgba(0,229,255,0.2);
+  --mono:'IBM Plex Mono',monospace;--display:'Rajdhani',sans-serif;
+}
+html,body{background:var(--bg);color:var(--text);font-family:var(--mono);height:100%;margin:0;overflow:hidden}
+body{display:flex;flex-direction:column}
+
+/* CRT overlay */
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:1000}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border2);padding:8px 20px;
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px}
+.tb-left{display:flex;align-items:center;gap:12px}
+.brand{font-family:var(--display);font-size:18px;font-weight:700;color:var(--ng);
+  letter-spacing:.2em;text-shadow:0 0 14px var(--ng)}
+.brand-sub{font-size:10px;color:var(--muted2);letter-spacing:.15em;margin-top:1px}
+.tb-right{display:flex;align-items:center;gap:14px}
+.tb-clock{font-size:13px;color:var(--ng);letter-spacing:.1em}
+.tb-date{font-size:10px;color:var(--muted2);letter-spacing:.08em}
+.refresh-btn{font-size:10px;padding:5px 12px;border-radius:3px;cursor:pointer;
+  background:var(--ng-d);border:1px solid var(--ng-b);color:var(--ng);
+  font-family:var(--mono);letter-spacing:.08em;transition:all .15s}
+.refresh-btn:hover{background:rgba(0,255,65,.15)}
+.tool-links{display:flex;gap:6px;flex-wrap:wrap}
+.tl-btn{font-size:10px;padding:4px 10px;border-radius:3px;cursor:pointer;
+  background:var(--s2);border:1px solid var(--border);color:var(--muted2);
+  font-family:var(--mono);transition:all .12s;text-decoration:none}
+.tl-btn:hover{border-color:var(--ng-b);color:var(--ng)}
+
+/* THREAT LEVEL BANNER */
+.threat-banner{padding:10px 20px;display:flex;align-items:center;gap:20px;
+  border-bottom:1px solid var(--border);flex-shrink:0;position:relative;overflow:hidden}
+.tl-label-wrap{display:flex;flex-direction:column}
+.tl-label-sub{font-size:9px;letter-spacing:.15em;color:var(--muted2);margin-bottom:4px}
+.tl-label{font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:.2em}
+.tl-desc{font-size:11px;color:var(--muted2);flex:1;line-height:1.7}
+.tl-meter{display:flex;gap:4px;align-items:center}
+.tl-seg{height:20px;border-radius:2px;transition:all .4s;position:relative}
+.tl-seg-label{font-size:8px;letter-spacing:.06em;text-align:center;margin-top:3px;font-family:var(--mono)}
+.tl-stats{display:flex;gap:16px}
+.tl-stat{text-align:center}
+.tl-stat-num{font-family:var(--display);font-size:22px;font-weight:700}
+.tl-stat-lbl{font-size:9px;color:var(--muted2);letter-spacing:.08em;margin-top:1px}
+
+/* MAIN GRID */
+.main{display:grid;grid-template-columns:300px 1fr 280px;grid-template-rows:1fr 1fr;
+  gap:1px;flex:1;overflow:hidden;background:var(--border)}
+
+/* PANELS */
+.panel{background:var(--bg);overflow:hidden;display:flex;flex-direction:column}
+.panel-hdr{padding:8px 14px;background:var(--s1);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.ph-title{font-size:10px;letter-spacing:.14em;color:var(--ng);text-transform:uppercase;
+  display:flex;align-items:center;gap:6px}
+.ph-badge{font-size:9px;font-family:var(--mono);padding:2px 7px;border-radius:3px}
+.panel-body{flex:1;overflow-y:auto;padding:10px 12px}
+
+/* INTEL FEED */
+.intel-item{border-bottom:1px solid var(--border);padding:8px 0;display:flex;gap:8px;align-items:flex-start}
+.intel-item:last-child{border-bottom:none}
+.intel-sev{width:3px;border-radius:2px;flex-shrink:0;align-self:stretch;min-height:40px}
+.intel-body{flex:1;min-width:0}
+.intel-source{font-size:9px;letter-spacing:.1em;margin-bottom:3px}
+.intel-title{font-size:11px;color:var(--text);line-height:1.4;margin-bottom:3px}
+.intel-time{font-size:9px;color:var(--muted2)}
+.intel-cve{font-size:9px;padding:1px 5px;border-radius:3px;
+  background:var(--red-s);color:var(--red);border:1px solid var(--red-b);
+  display:inline-block;margin:2px 2px 0 0}
+
+/* SECTOR GRID */
+.sector-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px}
+.sector-card{border-radius:5px;padding:8px 6px;text-align:center;cursor:pointer;
+  transition:all .15s;border:1px solid;position:relative;overflow:hidden}
+.sector-card:hover{transform:scale(1.03)}
+.sc-icon{font-size:18px;margin-bottom:3px}
+.sc-name{font-size:9px;letter-spacing:.05em;line-height:1.3}
+.sc-risk{font-size:8px;font-weight:700;margin-top:3px;letter-spacing:.06em}
+.sc-dot{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%}
+
+/* ASSET EXPOSURE */
+.asset-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px}
+.asset-row:last-child{border-bottom:none}
+.ar-host{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ar-ip{font-size:10px;color:var(--muted2);width:110px;flex-shrink:0}
+.ar-badge{font-size:9px;padding:1px 6px;border-radius:3px;font-weight:700;flex-shrink:0}
+
+/* ALERTS */
+.alert-row{padding:7px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:flex-start}
+.alert-row:last-child{border-bottom:none}
+.ar-sev-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.ar-rule{font-size:11px;color:var(--text);margin-bottom:2px}
+.ar-detail{font-size:10px;color:var(--muted2);line-height:1.4}
+.ar-time{font-size:9px;color:var(--muted);flex-shrink:0}
+.ar-mitre{font-size:9px;padding:1px 5px;border-radius:3px;
+  background:var(--cyan-s);color:var(--cyan);border:1px solid var(--cyan-b);
+  display:inline-block;margin-top:3px}
+
+/* COMMS STATUS */
+.comms-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px}
+.comms-card{background:var(--s1);border:1px solid var(--border);border-radius:5px;padding:8px 10px}
+.cc-name{font-size:10px;color:var(--muted2);margin-bottom:4px}
+.cc-status{font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px}
+.cc-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.cc-dot.ok{background:var(--ng);box-shadow:0 0 5px var(--ng)}
+.cc-dot.warn{background:var(--yellow);box-shadow:0 0 5px var(--yellow)}
+.cc-dot.down{background:var(--red);box-shadow:0 0 5px var(--red);animation:blink .8s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* KEV TICKER */
+.kev-ticker{background:var(--s1);border-bottom:1px solid var(--border2);
+  padding:5px 20px;display:flex;gap:16px;flex-shrink:0;overflow:hidden}
+.kt-item{font-size:10px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.kt-cve{color:var(--red);font-weight:700}
+.kt-vendor{color:var(--muted2)}
+.kt-due{color:var(--orange)}
+
+/* QUICK ACTIONS */
+.qa-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px}
+.qa-btn{background:var(--s1);border:1px solid var(--border);border-radius:5px;
+  padding:8px;text-align:center;cursor:pointer;transition:all .15s;text-decoration:none;display:block}
+.qa-btn:hover{border-color:var(--ng-b);background:var(--ng-d)}
+.qa-icon{font-size:16px;margin-bottom:3px}
+.qa-label{font-size:9px;color:var(--muted2);letter-spacing:.06em}
+
+/* LOADING SPINNER */
+.spin{animation:spin .8s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--muted);border-radius:2px}
+
+/* PANEL SPANNING */
+.panel-wide{grid-column:span 1}
+.panel-center{grid-column:2;grid-row:1/3}
+.panel-left-top{grid-column:1;grid-row:1}
+.panel-left-bot{grid-column:1;grid-row:2}
+.panel-right-top{grid-column:3;grid-row:1}
+.panel-right-bot{grid-column:3;grid-row:2}
+
+/* SECTOR REPORT MODAL */
+.sector-modal{position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:500;
+  display:none;align-items:center;justify-content:center;padding:20px}
+.sector-modal.open{display:flex}
+.sector-modal-box{background:var(--s1);border:1px solid var(--border2);border-radius:8px;
+  width:100%;max-width:720px;max-height:88vh;overflow-y:auto;
+  box-shadow:0 0 60px rgba(0,255,65,0.12)}
+.sm-hdr{padding:14px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;
+  background:var(--s1);z-index:10}
+.sm-title{font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:.1em}
+.sm-close{background:var(--red-s);border:1px solid var(--red-b);border-radius:4px;
+  color:var(--red);font-family:var(--mono);font-size:11px;padding:5px 12px;cursor:pointer}
+.sm-body{padding:16px 18px}
+.sm-risk-banner{padding:10px 14px;border-radius:6px;margin-bottom:14px;
+  display:flex;align-items:center;gap:12px}
+.sm-section{margin-bottom:14px}
+.sm-sec-title{font-size:10px;letter-spacing:.14em;color:var(--muted2);text-transform:uppercase;
+  font-family:var(--mono);margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.sm-actor-row{display:flex;align-items:center;gap:8px;padding:7px 10px;
+  background:var(--s2);border:1px solid var(--border);border-radius:5px;margin-bottom:5px}
+.sm-actor-name{font-size:11px;font-weight:700;color:var(--text);flex:1}
+.sm-actor-nation{font-size:12px}
+.sm-actor-status{font-size:9px;font-family:var(--mono);font-weight:700;padding:1px 6px;
+  border-radius:3px;background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.sm-threat-box{background:var(--s2);border:1px solid var(--border);border-radius:5px;
+  padding:10px 12px;font-size:12px;color:var(--muted2);line-height:1.7;margin-bottom:6px}
+.sm-action-item{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);
+  font-size:11px;color:var(--muted2)}
+.sm-action-item:last-child{border-bottom:none}
+.sm-action-num{font-family:var(--mono);font-weight:700;color:var(--ng);flex-shrink:0;width:20px}
+.sm-kev-pill{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:4px;
+  background:var(--red-s);color:var(--red);border:1px solid var(--red-b);
+  display:inline-block;margin:2px}
+.sm-link{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:var(--mono);
+  padding:5px 10px;border-radius:4px;background:var(--ng-d);border:1px solid var(--ng-b);
+  color:var(--ng);text-decoration:none;margin:3px;transition:all .12s}
+.sm-link:hover{background:rgba(0,255,65,.15)}
+
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tb-left">
+    <div>
+      <div class="brand">GHOST DEFENSE // COP</div>
+      <div class="brand-sub">COMMON OPERATING PICTURE · DEFENSIVE CYBER OPERATIONS</div>
+    </div>
+  </div>
+  <div class="tb-right">
+    <div class="tool-links">
+      <a class="tl-btn" href="10_OSINT_Vulnerability_Readboard.html" target="_blank">📡 OSINT</a>
+      <a class="tl-btn" href="29_IR_Playbook_Builder.html" target="_blank">📋 IR</a>
+      <a class="tl-btn" href="31_Realtime_Intrusion_Detection.html" target="_blank">🚨 IDS</a>
+      <a class="tl-btn" href="32_Asset_Inventory_Tracker.html" target="_blank">🗂️ ASSETS</a>
+      <a class="tl-btn" href="07_Global_Ship_Traffic_Monitor.html" target="_blank">🌊 AIS</a>
+      <a class="tl-btn" href="27_Aircraft_Tracker.html" target="_blank">✈️ ADS-B</a>
+    </div>
+    <button class="refresh-btn" onclick="refreshAll()">⟳ REFRESH</button>
+    <div>
+      <div class="tb-clock" id="clock">--:--:-- UTC</div>
+      <div class="tb-date" id="dateLine">--</div>
+    </div>
+  </div>
+</div>
+
+<!-- THREAT LEVEL BANNER -->
+<div class="threat-banner" id="threatBanner">
+  <div class="tl-label-wrap">
+    <div class="tl-label-sub">CYBER THREAT LEVEL</div>
+    <div class="tl-label" id="tlLabel" style="color:var(--ng)">LOADING…</div>
+  </div>
+  <div class="tl-meter" id="tlMeter"></div>
+  <div class="tl-desc" id="tlDesc">Pulling live CISA advisory feed…</div>
+  <div class="tl-stats">
+    <div class="tl-stat"><div class="tl-stat-num" id="tsAdvisories" style="color:var(--ng)">—</div><div class="tl-stat-lbl">Advisories</div></div>
+    <div class="tl-stat"><div class="tl-stat-num" id="tsKEV" style="color:var(--red)">—</div><div class="tl-stat-lbl">KEV Entries</div></div>
+    <div class="tl-stat"><div class="tl-stat-num" id="tsActors" style="color:var(--yellow)">—</div><div class="tl-stat-lbl">Active Actors</div></div>
+  </div>
+</div>
+
+<!-- KEV TICKER -->
+<div class="kev-ticker" id="kevTicker">
+  <div class="kt-item"><span style="color:var(--ng);letter-spacing:.12em">KEV FEED</span></div>
+  <div class="kt-item"><span class="spin">⟳</span> <span style="color:var(--muted2)">Loading CISA KEV…</span></div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="main">
+
+  <!-- LEFT TOP: INTEL FEED -->
+  <div class="panel panel-left-top">
+    <div class="panel-hdr">
+      <div class="ph-title">📡 LIVE THREAT INTELLIGENCE</div>
+      <span class="ph-badge" style="background:var(--red-s);color:var(--red);border:1px solid var(--red-b)" id="intelCount">—</span>
+    </div>
+    <div class="panel-body" id="intelFeed">
+      <div style="color:var(--muted2);font-size:11px;padding:10px 0">
+        <span class="spin">⟳</span> Pulling live CISA advisory feed…
+      </div>
+    </div>
+  </div>
+
+  <!-- LEFT BOTTOM: ASSET EXPOSURE -->
+  <div class="panel panel-left-bot">
+    <div class="panel-hdr">
+      <div class="ph-title">🗂️ ASSET EXPOSURE</div>
+      <span class="ph-badge" style="background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)" id="assetBadge">—</span>
+    </div>
+    </div>
+  </div>
+
+  <!-- CENTER: SECTOR GRID + QUICK ACTIONS -->
+  <div class="panel panel-center" style="display:flex;flex-direction:column">
+    <div class="panel-hdr">
+      <div class="ph-title">🏛️ CRITICAL INFRASTRUCTURE SECTOR STATUS</div>
+      <span class="ph-badge" style="background:var(--ng-d);color:var(--ng);border:1px solid var(--ng-b)">16 SECTORS</span>
+    </div>
+    <div style="flex:1;overflow-y:auto">
+      <div class="sector-grid" id="sectorGrid">
+        <div style="grid-column:span 4;color:var(--muted2);font-size:11px;padding:10px 0">
+          <span class="spin">⟳</span> Loading sector status…
+        </div>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);background:var(--s1)">
+      <div class="panel-hdr" style="border-bottom:1px solid var(--border)">
+        <div class="ph-title">⚡ QUICK ACTIONS</div>
+      </div>
+      <div class="qa-grid">
+        <a class="qa-btn" href="10_OSINT_Vulnerability_Readboard.html" target="_blank">
+          <div class="qa-icon">☀️</div><div class="qa-label">MORNING BRIEF</div>
+        </a>
+        <a class="qa-btn" href="29_IR_Playbook_Builder.html" target="_blank">
+          <div class="qa-icon">📋</div><div class="qa-label">IR PLAYBOOK</div>
+        </a>
+        <a class="qa-btn" href="31_Realtime_Intrusion_Detection.html" target="_blank">
+          <div class="qa-icon">🚨</div><div class="qa-label">LIVE IDS</div>
+        </a>
+        <a class="qa-btn" href="02_KEV_Scanner.html" target="_blank">
+          <div class="qa-icon">🔍</div><div class="qa-label">KEV SCAN</div>
+        </a>
+        <a class="qa-btn" href="32_Asset_Inventory_Tracker.html" target="_blank">
+          <div class="qa-icon">🗂️</div><div class="qa-label">ASSETS</div>
+        </a>
+        <a class="qa-btn" href="07_Global_Ship_Traffic_Monitor.html" target="_blank">
+          <div class="qa-icon">🌊</div><div class="qa-label">MARITIME</div>
+        </a>
+        <a class="qa-btn" href="25_Telecom_Grid_Monitor.html" target="_blank">
+          <div class="qa-icon">📡</div><div class="qa-label">TELECOM</div>
+        </a>
+        <a class="qa-btn" href="27_Aircraft_Tracker.html" target="_blank">
+          <div class="qa-icon">✈️</div><div class="qa-label">AIRCRAFT</div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT TOP: LIVE ALERTS -->
+  <div class="panel panel-right-top">
+    <div class="panel-hdr">
+      <div class="ph-title">🚨 DETECTION ALERTS</div>
+      <span class="ph-badge" style="background:var(--red-s);color:var(--red);border:1px solid var(--red-b)" id="alertBadge">NO LIVE SOURCE</span>
+    </div>
+    <div class="panel-body" id="commsStatus">
+      <div style="color:var(--muted2);font-size:11px"><span class="spin">⟳</span> Checking…</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+//  GHOST DEFENSE — EXECUTIVE COP DASHBOARD
+//  Common Operating Picture for cyber defensive operations
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────────
+function updateClock() {
+  var now = new Date();
+  document.getElementById('clock').textContent = now.toUTCString().split(' ')[4] + ' UTC';
+  document.getElementById('dateLine').textContent =
+    now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── SECTOR DATA ───────────────────────────────────────────────────────────────
+var SECTORS = [
+  { name:'Energy',          icon:'⚡', risk:'critical', actors:['Volt Typhoon','CyberAv3ngers'],    threat:'Nation-state pre-positioning in grid infrastructure' },
+  { name:'Water / WWS',     icon:'💧', risk:'critical', actors:['CyberAv3ngers','IRGC'],            threat:'ATG and ICS targeting by Iranian actors ongoing' },
+  { name:'Comms',           icon:'📡', risk:'critical', actors:['Salt Typhoon'],                    threat:'Telecom carrier compromise — call record access' },
+  { name:'Defense Ind.',    icon:'🛡️', risk:'high',    actors:['Lazarus','APT29'],                 threat:'IP theft and supply chain targeting' },
+  { name:'Healthcare',      icon:'🏥', risk:'high',    actors:['BlackSuit','LockBit'],              threat:'Ransomware targeting hospitals and medical devices' },
+  { name:'Financial',       icon:'🏦', risk:'high',    actors:['Lazarus','Scattered Spider'],       threat:'Crypto theft and BEC campaigns active' },
+  { name:'Transport',       icon:'🚢', risk:'high',    actors:['Volt Typhoon'],                    threat:'Port and logistics infrastructure targeted' },
+  { name:'Gov / Federal',   icon:'🏛️', risk:'high',    actors:['APT29','APT40'],                   threat:'Spearphishing and credential theft ongoing' },
+  { name:'Emergency Svcs',  icon:'🚨', risk:'medium',  actors:['Multiple'],                        threat:'Ransomware disrupting dispatch and 911 systems' },
+  { name:'Food & Agri',     icon:'🌾', risk:'medium',  actors:['Ransomware groups'],               threat:'Processing facility ransomware increasing' },
+  { name:'Nuclear',         icon:'☢️', risk:'medium',  actors:['Nation-state'],                    threat:'Reconnaissance activity detected' },
+  { name:'Dams',            icon:'🌊', risk:'medium',  actors:['CyberAv3ngers'],                   threat:'ICS/SCADA system exposure being monitored' },
+  { name:'Chemicals',       icon:'🧪', risk:'medium',  actors:['Multiple'],                        threat:'OT network segmentation gaps being exploited' },
+  { name:'IT / Tech',       icon:'💻', risk:'low',     actors:['Multiple APTs'],                   threat:'Software supply chain attacks ongoing' },
+  { name:'Manufacturing',   icon:'🏭', risk:'low',     actors:['Ransomware'],                      threat:'Ransomware targeting production systems' },
+  { name:'Postal / Ship.',  icon:'📦', risk:'low',     actors:['BEC actors'],                      threat:'BEC and logistics fraud campaigns active' },
+];
+
+// ── INTEL FEED DATA ────────────────────────────────────────────────────────────
+var INTEL_FEED = [];  // populated ONLY by live CISA fetch — no fabricated fallback
+var INTEL_STATE = 'loading';  // loading | ok | fail
+
+// ── THREAT ACTORS ─────────────────────────────────────────────────────────────
+var ACTIVE_ACTORS = [
+  { name:'Salt Typhoon (APT40)', nation:'🇨🇳', status:'ACTIVE', targets:'Telecom, Defense' },
+  { name:'Volt Typhoon',         nation:'🇨🇳', status:'ACTIVE', targets:'CI Pre-positioning' },
+  { name:'APT29 (Cozy Bear)',    nation:'🇷🇺', status:'ACTIVE', targets:'Government, Think Tanks' },
+  { name:'Lazarus Group',        nation:'🇰🇵', status:'ACTIVE', targets:'Crypto, Defense' },
+  { name:'CyberAv3ngers',        nation:'🇮🇷', status:'ACTIVE', targets:'Water, Energy ICS' },
+  { name:'Scattered Spider',     nation:'🌐',  status:'ACTIVE', targets:'Insurance, Retail' },
+];
+
+// ── KEV ENTRIES ───────────────────────────────────────────────────────────────
+var KEV_ITEMS = [];  // populated ONLY by live CISA KEV fetch — no fabricated fallback
+var KEV_STATE = 'loading';  // loading | ok | fail
+var KEV_CVE_SET = {};  // {CVE-ID: {vendor,product,ransomware}} from live CISA KEV — authoritative
+
+// ── DEMO ALERTS ───────────────────────────────────────────────────────────────
+
+// COMMS status is not fabricated — link status can't be verified in-browser, so none is shown.
+
+// ── RENDER FUNCTIONS ───────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderThreatLevel() {
+  var critCount = INTEL_FEED.filter(function(i){ return (i.cves||[]).some(function(c){ return KEV_CVE_SET[c]; }); }).length;
+  var kevCount  = KEV_ITEMS.length;
+  var actorCount= ACTIVE_ACTORS.length;
+
+  var level, color, desc, meter;
+  if (critCount >= 2 || kevCount >= 4) {
+    level='ELEVATED'; color='var(--red)'; meter=4;
+    desc='Multiple critical advisories and active KEV exploitation. Heightened defensive posture required across all sectors. Priority: patch KEV entries, increase monitoring on edge devices.';
+  } else if (critCount >= 1 || kevCount >= 2) {
+    level='GUARDED'; color='var(--orange)'; meter=3;
+    desc='Active critical threats detected. Increased monitoring and patch prioritization required. Review today\'s advisories with your team.';
+  } else {
+    level='LOW'; color='var(--ng)'; meter=1;
+    desc='Normal threat environment. Maintain standard defensive posture and routine monitoring.';
+  }
+
+  document.getElementById('tlLabel').textContent = level;
+  document.getElementById('tlLabel').style.color  = color;
+  document.getElementById('tlLabel').style.textShadow = '0 0 20px '+color;
+  document.getElementById('tlDesc').textContent   = desc;
+
+  // Threat level banner background
+  document.getElementById('threatBanner').style.background =
+    'linear-gradient(90deg, '+color+'10 0%, transparent 60%)';
+  document.getElementById('threatBanner').style.borderBottomColor = color+'44';
+
+  // Meter segments
+  var labels = ['LOW','GUARDED','ELEVATED','HIGH','CRITICAL'];
+  var colors  = ['var(--ng)','var(--yellow)','var(--orange)','var(--red)','#ff0000'];
+  document.getElementById('tlMeter').innerHTML = labels.map(function(l,i) {
+    var active = i < meter;
+    return '<div style="display:flex;flex-direction:column;align-items:center">'
+      + '<div class="tl-seg" style="width:40px;background:'+(active?colors[i]:'rgba(255,255,255,0.05)')+';'
+        +'box-shadow:'+(active?'0 0 8px '+colors[i]:'none')+'"></div>'
+      + '<div class="tl-seg-label" style="color:'+(active?colors[i]:'var(--muted)')+'">'+l+'</div>'
+    + '</div>';
+  }).join('');
+
+  // Stats
+  document.getElementById('tsAdvisories').textContent = INTEL_FEED.length;
+  document.getElementById('tsKEV').textContent        = KEV_ITEMS.length;
+  document.getElementById('tsActors').textContent     = ACTIVE_ACTORS.filter(function(a){ return a.status==='ACTIVE'; }).length;
+}
+
+function renderKEVTicker() {
+  if (!KEV_ITEMS.length) {
+    var msg = KEV_STATE === 'fail'
+      ? '<span style="color:var(--orange)">⚠ CISA KEV feed unreachable — no entries shown (no fabricated data).</span>'
+      : '<span style="color:var(--muted2)"><span class="spin">⟳</span> Loading live CISA KEV…</span>';
+    document.getElementById('kevTicker').innerHTML =
+      '<div class="kt-item"><span style="color:var(--ng);letter-spacing:.12em">KEV FEED</span></div>'
+      + '<div class="kt-item">' + msg + '</div>';
+    return;
+  }
+  var items = KEV_ITEMS.map(function(k) {
+    var daysLeft = Math.ceil((new Date(k.due) - new Date()) / 86400000);
+    var urgency  = daysLeft <= 3 ? 'var(--red)' : daysLeft <= 7 ? 'var(--orange)' : 'var(--yellow)';
+    return '<div class="kt-item">'
+      + '<span class="kt-cve">'+esc(k.id)+'</span>'
+      + '<span class="kt-vendor">'+esc(k.vendor)+' '+esc(k.product)+'</span>'
+      + '<span class="kt-due" style="color:'+urgency+'">Due: '+esc(k.due)+'</span>'
+      + '<span style="color:var(--muted)">|</span>'
+    + '</div>';
+  }).join('');
+  document.getElementById('kevTicker').innerHTML =
+    '<div class="kt-item"><span style="color:var(--red);font-weight:700;letter-spacing:.12em">🔴 KEV PATCH DEADLINE (live CISA KEV)</span></div>'
+    + items;
+}
+
+function renderIntelFeed() {
+  var count = INTEL_FEED.length;
+  document.getElementById('intelCount').textContent = count ? count + ' live' : '—';
+  if (!count) {
+    document.getElementById('intelFeed').innerHTML =
+      '<div style="padding:20px 14px;text-align:center;color:var(--muted2);font-size:12px;line-height:1.7">'
+      + (INTEL_STATE==='loading'
+          ? '<span class="spin">\u27F3</span> Pulling live CISA advisory feed\u2026'
+          : '<b style="color:var(--text)">CISA advisory feed unreachable.</b><br>No cached or sample data is shown \u2014 only verified live entries.<br><span style="font-size:10px;color:var(--muted)"><a href="#" onclick="fetchLiveIntel();return false;" style="color:var(--cyan)">retry</a></span>')
+      + '</div>';
+    return;
+  }
+  document.getElementById('intelFeed').innerHTML = INTEL_FEED.map(function(item) {
+    var srcColors = { CISA:'var(--orange)', FBI:'var(--blue)', NSA:'var(--ng)', USCERT:'var(--yellow)' };
+    var srcColor  = srcColors[item.source] || 'var(--muted2)';
+    // Severity is REAL: red = one or more of this advisory's CVEs is in CISA KEV (actively exploited).
+    // No keyword guessing. Grey = not in KEV (or KEV not yet loaded) — no severity asserted.
+    var kevHits = item.cves.filter(function(c){ return KEV_CVE_SET[c]; });
+    var ransom  = kevHits.some(function(c){ return KEV_CVE_SET[c] && KEV_CVE_SET[c].ransomware; });
+    var sevColor = kevHits.length ? 'var(--red)' : 'var(--muted)';
+    var kevTag  = kevHits.length
+      ? '<span class="intel-cve" style="background:var(--red-s);color:var(--red);border:1px solid var(--red-b)">🔴 '+kevHits.length+' in CISA KEV'+(ransom?' · ransomware':'')+'</span>'
+      : (KEV_STATE==='ok' ? '<span style="font-size:9px;color:var(--muted)">not in KEV</span>' : '');
+    return '<div class="intel-item">'
+      + '<div class="intel-sev" style="background:'+sevColor+'"></div>'
+      + '<div class="intel-body">'
+        + '<div class="intel-source" style="color:'+srcColor+';letter-spacing:.1em">'+esc(item.source)+' · advisory</div>'
+        + '<div class="intel-title">'+esc(item.title)+'</div>'
+        + (item.cves.length ? '<div>'+item.cves.map(function(c){ var k=KEV_CVE_SET[c]; return '<span class="intel-cve"'+(k?' style="color:var(--red)"':'')+'>'+esc(c)+'</span>'; }).join('')+'</div>' : '')
+        + (kevTag ? '<div style="margin-top:3px">'+kevTag+'</div>' : '')
+        + '<div class="intel-time">'+esc(item.time)+'</div>'
+      + '</div></div>';
+  }).join('');
+}
+
+function renderSectorGrid() {
+  var riskColors = {
+    critical:{ bg:'rgba(255,34,68,0.08)',  border:'rgba(255,34,68,0.3)',  dot:'var(--red)',    text:'var(--red)'    },
+    high:    { bg:'rgba(255,136,0,0.07)',   border:'rgba(255,136,0,0.25)', dot:'var(--orange)', text:'var(--orange)' },
+    medium:  { bg:'rgba(255,215,0,0.05)',   border:'rgba(255,215,0,0.2)',  dot:'var(--yellow)', text:'var(--yellow)' },
+    low:     { bg:'rgba(0,255,65,0.04)',    border:'rgba(0,255,65,0.15)',  dot:'var(--ng)',     text:'var(--muted2)' },
+  };
+  document.getElementById('sectorGrid').innerHTML = SECTORS.map(function(s) {
+    var rc = riskColors[s.risk] || riskColors.low;
+    return '<div class="sector-card" data-sector="'+s.name+'" style="background:'+rc.bg+';border-color:'+rc.border+'">'
+      + '<div class="sc-dot" style="background:'+rc.dot+';box-shadow:0 0 5px '+rc.dot+'"></div>'
+      + '<div class="sc-icon">'+s.icon+'</div>'
+      + '<div class="sc-name" style="color:'+rc.text+'">'+esc(s.name)+'</div>'
+      + '<div class="sc-risk" style="color:'+rc.dot+'">'+s.risk.toUpperCase()+'</div>'
+    + '</div>';
+  }).join('');
+}
+
+
+function renderAlertFeed() {
+  var badge = document.getElementById('alertBadge');
+    badge.textContent = 'NO LIVE SOURCE';
+    badge.style.color = 'var(--muted2)';
+    badge.style.borderColor = 'var(--border)';
+    badge.style.background = 'transparent';
+      '<div style="padding:22px 14px;text-align:center;color:var(--muted2);font-size:12px;line-height:1.7">'
+      + '<div style="font-size:22px;margin-bottom:8px;opacity:.5">\u25A1</div>'
+      + '<b style="color:var(--text)">No live detection source connected.</b><br>'
+      + 'Real alerts appear here when <a href="31_Realtime_Intrusion_Detection.html" target="_blank" style="color:var(--cyan)">Tool 31 (IDS)</a> streams events.<br>'
+      + '<span style="font-size:10px;color:var(--muted)">This panel shows only verified detections \u2014 nothing simulated.</span>'
+      + '</div>';
+    return;
+  }
+  badge.textContent = critCount + ' CRITICAL';
+    return '<div class="alert-row">'
+      + '<div class="ar-sev-dot" style="background:'+a.color+';box-shadow:0 0 5px '+a.color+'"></div>'
+      + '<div style="flex:1;min-width:0">'
+        + '<div class="ar-rule">'+esc(a.rule)+'</div>'
+        + '<div class="ar-detail">'+esc(a.detail)+'</div>'
+        + '<div><span class="ar-mitre">'+esc(a.mitre)+'</span></div>'
+      + '</div>'
+      + '<div class="ar-time">'+esc(a.time)+'</div>'
+    + '</div>';
+  }).join('');
+}
+
+function renderCommsStatus() {
+  var badge = document.getElementById('commsBadge');
+  badge.textContent = 'REFERENCE';
+  badge.style.color = 'var(--muted2)'; badge.style.borderColor = 'var(--border)'; badge.style.background = 'transparent';
+
+  document.getElementById('commsStatus').innerHTML =
+    '<div style="margin-bottom:10px;font-size:10px;color:var(--muted2)">KNOWN-ACTIVE ACTOR WATCHLIST <span style="color:var(--muted);text-transform:none">\u00b7 reference, not real-time</span></div>'
+    + ACTIVE_ACTORS.slice(0,4).map(function(a) {
+        return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:10px">'
+          + '<span style="color:var(--orange);font-size:7px">\u25CF</span>'
+          + '<span style="flex:1;color:var(--text)">'+esc(a.name)+'</span>'
+          + '<span>'+esc(a.nation)+'</span>'
+        + '</div>';
+      }).join('')
+    + '<div style="margin:12px 0 6px;font-size:10px;color:var(--muted2)">LINK / COMMS STATUS</div>'
+    + '<div style="font-size:10px;color:var(--muted);line-height:1.7;padding:4px 0">Not monitored from this dashboard \u2014 comms/link status can\u2019t be verified in-browser, so none is shown. Connect a monitored source to populate.</div>';
+
+  // Attach click listener after grid is populated
+  document.getElementById('sectorGrid').onclick = function(e) {
+    var card = e.target.closest('[data-sector]');
+    if (card) showSectorReport(card.getAttribute('data-sector'));
+  };
+}
+
+// ── LIVE KEV FETCH ────────────────────────────────────────────────────────────
+function copProxyChain(url){
+  var chain=[]; var w=null; try{ w=localStorage.getItem('ghost2210_exploit_proxy')||localStorage.getItem('ghost2210_kev_proxy'); }catch(e){}
+  if(w) chain.push(w.replace(/\/+$/,'')+'?url='+encodeURIComponent(url));
+  chain.push('https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(url));
+  chain.push('https://api.allorigins.win/raw?url='+encodeURIComponent(url));
+  chain.push(url);
+  return chain;
+}
+function copFetch(url){
+  var chain=copProxyChain(url), i=0;
+  function go(){
+    if(i>=chain.length) return Promise.reject(new Error('unreachable'));
+    var c=new AbortController(), t=setTimeout(function(){c.abort();},12000);
+    return fetch(chain[i],{signal:c.signal}).then(function(r){ clearTimeout(t); if(!r.ok) throw new Error('HTTP '+r.status); return r; })
+      .catch(function(){ clearTimeout(t); i++; return go(); });
+  }
+  return go();
+}
+async function fetchLiveKEV() {
+  try {
+    var r = await copFetch('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json');
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    var data = await r.json();
+    KEV_CVE_SET = {}; (data.vulnerabilities||[]).forEach(function(v){ KEV_CVE_SET[v.cveID] = { vendor:v.vendorProject, product:v.product, ransomware:(v.knownRansomwareCampaignUse==='Known') }; });
+    var vulns = (data.vulnerabilities || []).slice(0, 6);
+    KEV_ITEMS = vulns.map(function(v) {
+      return { id:v.cveID, vendor:v.vendorProject, product:v.product, due:v.dueDate, severity:'critical' };
+    });
+    KEV_STATE = 'ok';
+    renderKEVTicker();
+    renderIntelFeed();  // re-color intel items now that KEV membership is known
+    document.getElementById('tsKEV').textContent = (data.vulnerabilities||[]).length;
+  } catch(e) {
+    // No fabricated fallback — show honest unreachable state, never invented KEV entries.
+    KEV_ITEMS = []; KEV_STATE = 'fail';
+    renderKEVTicker();
+    document.getElementById('tsKEV').textContent = '—';
+  }
+}
+
+// ── LIVE INTEL FETCH (CISA RSS) ───────────────────────────────────────────────
+async function fetchLiveIntel() {
+  INTEL_STATE='loading'; renderIntelFeed();
+  try {
+    var r = await copFetch('https://www.cisa.gov/cybersecurity-advisories/all.xml');
+    if (!r.ok) throw new Error();
+    var text = await r.text();
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(text, 'text/xml');
+    var items = Array.from(doc.querySelectorAll('item')).slice(0, 5);
+    if (items.length > 0) {
+      INTEL_FEED = items.map(function(item) {
+        var title = (item.querySelector('title')?.textContent||'').trim();
+        var desc  = (item.querySelector('description')?.textContent||'').replace(/<[^>]+>/g,'').trim();
+        var pub   = item.querySelector('pubDate')?.textContent || '';
+        var cves  = [...new Set((title+desc).match(/CVE-\d{4}-\d{4,}/g) || [])];
+        return { source:'CISA', title:title.substring(0,80), cves:cves,
+          time: pub ? new Date(pub).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})+' UTC' : 'Today' };
+      });
+      INTEL_STATE='ok';
+      renderIntelFeed();
+      renderThreatLevel();
+    } else { INTEL_STATE='fail'; renderIntelFeed(); }
+  } catch(e) { INTEL_STATE='fail'; renderIntelFeed(); }
+}
+
+// ── REFRESH ALL ───────────────────────────────────────────────────────────────
+function refreshAll() {
+  renderThreatLevel();
+  renderKEVTicker();
+  renderIntelFeed();
+  renderSectorGrid();
+    renderAlertFeed();
+  renderCommsStatus();
+  // Try live fetches
+  fetchLiveKEV();
+  fetchLiveIntel();
+}
+
+// (removed) fake-alert generator — the COP shows only verified detections
+
+// ── BOOT ─────────────────────────────────────────────────────────────────────
+refreshAll();
+// Auto-refresh every 5 minutes
+setInterval(refreshAll, 300000);
+
+// ── EXTENDED SECTOR DATA FOR REPORTS ─────────────────────────────────────────
+var SECTOR_DETAILS = {
+  'Energy': {
+    kevCVEs: ['CVE-2024-3400 (Palo Alto PAN-OS)', 'CVE-2023-27997 (Fortinet SSL-VPN)', 'CVE-2023-20198 (Cisco IOS XE)'],
+    recentIncidents: [
+      'Volt Typhoon pre-positioned in multiple US electric utilities — CISA Advisory AA24-038A',
+      'CyberAv3ngers targeting Unitronics PLCs at energy facilities — active campaign',
+    ],
+    immediateActions: [
+      'Audit all internet-facing OT/ICS access points — remove unnecessary remote access',
+      'Patch Palo Alto PAN-OS CVE-2024-3400 immediately — KEV mandate active',
+      'Verify network segmentation between IT and OT networks',
+      'Enable MFA on all remote access to control systems',
+      'Check for Volt Typhoon TTPs: living-off-the-land, SOHO router exploitation',
+    ],
+    tools: ['Tool 04 (ATG Exposure)', 'Tool 17 (CI Threat Map)', 'Tool 31 (IDS)', 'Tool 32 (Assets)'],
+    framework: 'NERC CIP / ICS-CERT / NIST SP 800-82',
+  },
+  'Water / WWS': {
+    kevCVEs: ['CVE-2024-8310 (Tank Gauge systems)', 'CVE-2024-8630 (ATG exposure)'],
+    recentIncidents: [
+      'CISA/FBI/NSA joint advisory: ATG systems at water utilities actively targeted',
+      'Iranian CyberAv3ngers compromised Pennsylvania water authority — modified setpoints',
+      'Multiple water utilities found with internet-exposed SCADA via Shodan',
+    ],
+    immediateActions: [
+      'Search Shodan for your facility IP — check for exposed ATG or SCADA interfaces',
+      'Disconnect any internet-facing ATG systems or place behind VPN',
+      'Change all default passwords on ICS/SCADA systems immediately',
+      'Review CISA ICS Advisory ICSA-24-072-01 for Unitronics PLCs',
+      'Implement network monitoring for Modbus, DNP3, and BACnet traffic anomalies',
+    ],
+    tools: ['Tool 04 (ATG Exposure)', 'Tool 01 (IP Intel)', 'Tool 31 (IDS)', 'Tool 10 (Morning Brief)'],
+    framework: 'AWIA 2018 / CISA Water Sector Resources',
+  },
+  'Comms': {
+    kevCVEs: ['CVE-2023-20198 (Cisco IOS XE)', 'CVE-2023-27997 (Fortinet)'],
+    recentIncidents: [
+      'Salt Typhoon compromised 9 US telecom carriers — accessing call records and lawful intercept',
+      'BGP hijacking events targeting telecom routing infrastructure',
+      'Submarine cable cut in Baltic Sea — suspected sabotage',
+    ],
+    immediateActions: [
+      'Audit all network device firmware — patch Cisco IOS XE and Fortinet immediately',
+      'Review BGP routing tables for anomalies via Tool 25 (Telecom Grid)',
+      'Enable RPKI for BGP route origin validation',
+      'Audit SS7 and Diameter protocol security configurations',
+      'Establish backup satellite communications capability',
+    ],
+    tools: ['Tool 25 (Telecom Grid)', 'Tool 26 (Satellite)', 'Tool 15 (Submarine Cables)', 'Tool 01 (IP Intel)'],
+    framework: 'FCC Cybersecurity / CISA Comms Sector Plan',
+  },
+  'Healthcare': {
+    kevCVEs: ['CVE-2021-34527 (PrintNightmare)', 'CVE-2023-27997 (Fortinet)', 'CVE-2024-49138 (Windows CLFS)'],
+    recentIncidents: [
+      'Change Healthcare attack disrupted prescription processing nationwide for weeks',
+      'Hospital diversion events due to ransomware impacting patient care in multiple states',
+    ],
+    immediateActions: [
+      'Ensure offline, tested backups of all EHR and clinical systems',
+      'Segment medical device networks from corporate IT',
+      'Run Tool 32 (Asset Inventory) — identify all internet-facing medical devices',
+      'Generate ransomware IR playbook in Tool 29 — distribute to incident response team now',
+      'Verify MFA on all remote access — BlackSuit uses RDP as primary entry point',
+    ],
+    tools: ['Tool 29 (IR Playbook)', 'Tool 31 (IDS)', 'Tool 32 (Assets)', 'Tool 13 (Ransomware Tracker)'],
+    framework: 'HIPAA Security Rule / HHS 405(d) / NIST CSF',
+  },
+  'Financial': {
+    kevCVEs: ['CVE-2024-3400 (Palo Alto)', 'CVE-2023-4966 (Citrix NetScaler)'],
+    recentIncidents: [
+      'Lazarus Group stole $1.5B from Bybit via compromised developer credentials',
+      'BEC losses exceeded $2.9B in 2025 per FBI IC3 Annual Report',
+      'Scattered Spider targeting financial sector with SIM swapping and MFA bypass',
+    ],
+    immediateActions: [
+      'Strengthen MFA — ban SMS-based MFA, require hardware tokens for privileged access',
+      'Run phishing simulation (Tool 30) targeting finance team — BEC awareness is critical',
+      'Verify out-of-band wire transfer confirmation procedures are active',
+      'Monitor for Scattered Spider TTPs: help desk social engineering, SIM swap indicators',
+      'Audit all third-party financial system integrations and API access',
+    ],
+    tools: ['Tool 30 (Phishing Sim)', 'Tool 19 (Phishing Validator)', 'Tool 09 (DarkWatch)', 'Tool 29 (IR Playbook)'],
+    framework: 'FFIEC CAT / NIST CSF / PCI DSS',
+  },
+  'Defense Ind.': {
+    kevCVEs: ['CVE-2023-27997 (Fortinet)', 'CVE-2024-3400 (Palo Alto)', 'CVE-2023-4966 (Citrix)'],
+    recentIncidents: [
+      'APT29 targeting defense contractors via spearphishing and WinRAR exploitation',
+      'Lazarus Group targeting aerospace and defense with malicious job offer lures',
+      'Supply chain attacks on defense software providers increasing',
+    ],
+    immediateActions: [
+      'Review CMMC compliance status — Cybersecurity Maturity Model Certification',
+      'Audit all VPN and remote access solutions — patch all KEV entries',
+      'Brief cleared personnel on spearphishing TTPs — APT29 uses convincing lures',
+      'Verify all CUI (Controlled Unclassified Information) handling procedures',
+      'Check for unauthorized exfiltration via cloud storage (OneDrive, Google Drive, Dropbox)',
+    ],
+    tools: ['Tool 10 (Morning Brief)', 'Tool 11 (APT Profiles)', 'Tool 23 (Attack Surface)', 'Tool 31 (IDS)'],
+    framework: 'CMMC 2.0 / DFARS 252.204-7012 / NIST SP 800-171',
+  },
+  'Gov / Federal': {
+    kevCVEs: ['CVE-2024-49138 (Windows CLFS)', 'CVE-2023-44487 (HTTP/2 Rapid Reset)'],
+    recentIncidents: [
+      'APT40 (Salt Typhoon) targeting federal agency email systems',
+      'APT29 (Cozy Bear) ongoing spearphishing of government and congressional staff',
+      'Multiple agencies affected by MOVEit transfer exploitation in 2023',
+    ],
+    immediateActions: [
+      'Check BOD 23-02 compliance — all internet-facing network management interfaces',
+      'Verify DNSSEC implementation on all .gov domains via Tool 20',
+      'Apply all CISA Emergency Directives — check current list via Tool 02',
+      'Enable CISA\'s Protective DNS (PDNS) service',
+      'Review and test continuity of operations (COOP) plans',
+    ],
+    tools: ['Tool 20 (DNSSEC)', 'Tool 02 (KEV)', 'Tool 10 (Morning Brief)', 'Tool 33 (COP Dashboard)'],
+    framework: 'FISMA / FedRAMP / CISA BOD / OMB M-22-09',
+  },
+  'Transport': {
+    kevCVEs: ['CVE-2023-20198 (Cisco IOS XE)', 'CVE-2024-3400 (Palo Alto)'],
+    recentIncidents: [
+      'Port of Seattle ransomware attack disrupted operations and passenger processing',
+      'GPS spoofing incidents affecting maritime navigation in Baltic and Black Sea',
+      'Volt Typhoon targeting port and logistics infrastructure for pre-positioning',
+    ],
+    immediateActions: [
+      'Monitor AIS vessel traffic for spoofing indicators via Tool 07',
+      'Audit port operational technology networks — segregate from IT',
+      'Verify GPS/GNSS backup navigation capability at critical facilities',
+      'Check for unauthorized access to freight management and customs systems',
+      'Review MTSA (Maritime Transportation Security Act) compliance',
+    ],
+    tools: ['Tool 07 (Maritime AIS)', 'Tool 15 (Submarine Cables)', 'Tool 25 (Telecom)', 'Tool 31 (IDS)'],
+    framework: 'MTSA / TSA Cybersecurity Directives / NIST CSF',
+  },
+  'Emergency Svcs': {
+    kevCVEs: ['CVE-2021-34527 (PrintNightmare)', 'CVE-2024-49138 (Windows CLFS)'],
+    recentIncidents: [
+      'Ransomware forced multiple 911 call centers to revert to manual operations',
+      'Multiple fire departments reported ransomware impacting records and dispatch',
+    ],
+    immediateActions: [
+      'Test manual backup procedures for 911 dispatch — ransomware drills',
+      'Ensure offline backups of CAD and records management systems',
+      'Verify interoperability radio capability on Tool 28 national channels',
+      'Check FirstNet connectivity status and backup communications',
+      'Generate ransomware IR playbook via Tool 29 specific to dispatch operations',
+    ],
+    tools: ['Tool 29 (IR Playbook)', 'Tool 28 (Radio Freq)', 'Tool 25 (Telecom)', 'Tool 31 (IDS)'],
+    framework: 'SAFECOM / FCC FirstNet / CISA Emergency Comms',
+  },
+  'Food & Agri': {
+    kevCVEs: ['CVE-2023-44487 (HTTP/2 Rapid Reset)', 'CVE-2021-34527 (PrintNightmare)'],
+    recentIncidents: [
+      'JBS Foods paid $11M ransom after ransomware shut down beef processing plants',
+      'NEW Cooperative ransomware disrupted grain elevator operations during harvest',
+      'Ransomware targeting food distribution logistics increasing in 2025–2026',
+    ],
+    immediateActions: [
+      'Audit OT systems in processing facilities — many run legacy Windows',
+      'Ensure business continuity plans account for supply chain disruptions',
+      'Backup and test restoration of ERP and supply chain management systems',
+      'Brief operations staff on ransomware indicators — phishing is primary entry',
+      'Verify insurance coverage includes cyber incident business interruption',
+    ],
+    tools: ['Tool 29 (IR Playbook)', 'Tool 13 (Ransomware Tracker)', 'Tool 31 (IDS)', 'Tool 32 (Assets)'],
+    framework: 'USDA Cybersecurity / NIST CSF / FDA Food Safety',
+  },
+  'Nuclear': {
+    kevCVEs: ['CVE-2024-3400 (Palo Alto)', 'CVE-2023-27997 (Fortinet)'],
+    recentIncidents: [
+      'NRC issued advisories on cyber threats to nuclear licensees — reconnaissance detected',
+      'Nation-state actors conducting persistent reconnaissance of nuclear facility networks',
+      'Supply chain compromise risk to nuclear instrumentation systems identified',
+    ],
+    immediateActions: [
+      'Verify all network access controls comply with NRC Regulatory Guide 5.71',
+      'Conduct quarterly penetration testing of safety system networks',
+      'Ensure complete air-gap between operational and business networks',
+      'Review all vendor and contractor remote access',
+      'Report any anomalous network activity to NRC and CISA immediately',
+    ],
+    tools: ['Tool 31 (IDS)', 'Tool 32 (Assets)', 'Tool 10 (Morning Brief)', 'Tool 23 (Attack Surface)'],
+    framework: 'NRC 10 CFR 73.54 / NERC CIP / NEI 13-10',
+  },
+  'Dams': {
+    kevCVEs: ['CVE-2024-8310 (ATG/ICS systems)', 'CVE-2023-20198 (Cisco IOS XE)'],
+    recentIncidents: [
+      'CISA identified internet-exposed HMI systems at multiple dam facilities via Shodan',
+      'ICS/SCADA targeting of water control infrastructure by Iranian actors',
+      'Unauthorized access attempts detected at hydroelectric facility SCADA systems',
+    ],
+    immediateActions: [
+      'Search Shodan for your facility IP ranges — look for exposed HMI/SCADA',
+      'Verify physical access controls to all control system hardware',
+      'Test manual override and emergency shutdown procedures',
+      'Remove all unnecessary remote access to control systems',
+      'Report any cyber incidents to CISA and Army Corps of Engineers',
+    ],
+    tools: ['Tool 01 (IP Intel)', 'Tool 04 (ATG Exposure)', 'Tool 31 (IDS)', 'Tool 32 (Assets)'],
+    framework: 'FERC CIP Standards / Army Corps Cybersecurity / CISA ICS',
+  },
+  'Chemicals': {
+    kevCVEs: ['CVE-2023-27997 (Fortinet)', 'CVE-2024-3400 (Palo Alto)'],
+    recentIncidents: [
+      'Multiple chemical facilities found with internet-exposed process control systems',
+      'Ransomware targeting chemical distribution and logistics providers',
+      'CISA ChemLock advisories on physical security gaps enabling cyber access',
+    ],
+    immediateActions: [
+      'Audit all internet-facing connections to DCS and process control systems',
+      'Review CISA ChemLock program resources for chemical sector guidance',
+      'Verify emergency shutdown system integrity and air-gap status',
+      'Check for Modbus TCP exposure on process networks',
+      'Ensure chemical inventory systems have offline backup capability',
+    ],
+    tools: ['Tool 04 (ATG Exposure)', 'Tool 31 (IDS)', 'Tool 32 (Assets)', 'Tool 23 (Attack Surface)'],
+    framework: 'CFATS / EPA RMP / CISA ChemLock / ISA/IEC 62443',
+  },
+  'IT / Tech': {
+    kevCVEs: ['CVE-2024-6387 (OpenSSH)', 'CVE-2024-49138 (Windows CLFS)', 'CVE-2023-44487 (HTTP/2)'],
+    recentIncidents: [
+      'MOVEit transfer zero-day exploited against 1,000+ organizations globally',
+      '3CX supply chain attack via compromised software update mechanism',
+      'XZ Utils backdoor discovered in Linux distributions — supply chain risk',
+    ],
+    immediateActions: [
+      'Audit all third-party software and SaaS dependencies — supply chain risk',
+      'Run Tool 32 on all internet-facing assets — check CVE exposure',
+      'Verify integrity of all software build and deployment pipelines',
+      'Check GitHub Security Advisories for all dependencies in production',
+      'Enable SBOM (Software Bill of Materials) for all critical applications',
+    ],
+    tools: ['Tool 23 (Attack Surface)', 'Tool 32 (Assets)', 'Tool 21 (Port Scanner)', 'Tool 10 (Morning Brief)'],
+    framework: 'NIST SSDF / CISA SBOM / SOC 2 / ISO 27001',
+  },
+  'Manufacturing': {
+    kevCVEs: ['CVE-2021-34527 (PrintNightmare)', 'CVE-2023-27997 (Fortinet)'],
+    recentIncidents: [
+      'Ransomware caused production shutdowns at automotive suppliers in 2025',
+      'ICS/OT networks at manufacturing facilities targeted via IT network pivot',
+      'Industrial espionage targeting manufacturing IP increasing — DPRK and China actors',
+    ],
+    immediateActions: [
+      'Segment OT production networks from corporate IT networks',
+      'Audit all engineering workstation remote access',
+      'Inventory all PLCs and HMIs — check firmware currency',
+      'Backup all manufacturing process programs and configurations offline',
+      'Generate ICS/OT IR playbook via Tool 29',
+    ],
+    tools: ['Tool 29 (IR Playbook)', 'Tool 31 (IDS)', 'Tool 32 (Assets)', 'Tool 13 (Ransomware Tracker)'],
+    framework: 'NIST SP 800-82 / ISA/IEC 62443 / CISA ICS-CERT',
+  },
+  'Postal / Ship.': {
+    kevCVEs: ['CVE-2023-44487 (HTTP/2)', 'CVE-2024-49138 (Windows CLFS)'],
+    recentIncidents: [
+      'BEC attacks targeting logistics and freight forwarding companies increasing',
+      'Package delivery smishing campaigns targeting consumers at scale',
+      'Ransomware impacting regional logistics providers and customs brokers',
+    ],
+    immediateActions: [
+      'Run phishing simulation (Tool 30) with package delivery pretext for staff',
+      'Verify invoice payment authorization procedures — BEC targeting procurement',
+      'Check all third-party logistics system integrations for security posture',
+      'Enable DMARC on all company email domains via Tool 20',
+      'Train staff on smishing — mobile phishing using delivery notifications',
+    ],
+    tools: ['Tool 30 (Phishing Sim)', 'Tool 19 (Phishing Validator)', 'Tool 20 (DNSSEC)', 'Tool 09 (DarkWatch)'],
+    framework: 'USPS Cybersecurity / FMC / C-TPAT / NIST CSF',
+  },
+};
+
+function showSectorReport(sectorName) {
+  var sector = SECTORS.find(function(s){ return s.name === sectorName; });
+  var detail = SECTOR_DETAILS[sectorName] || {};
+  if (!sector) return;
+
+  var riskColors = {
+    critical:{ color:'var(--red)',    bg:'rgba(255,34,68,0.1)'  },
+    high:    { color:'var(--orange)', bg:'rgba(255,136,0,0.1)'  },
+    medium:  { color:'var(--yellow)', bg:'rgba(255,215,0,0.08)' },
+    low:     { color:'var(--ng)',     bg:'rgba(0,255,65,0.06)'  },
+  };
+  var rc = riskColors[sector.risk] || riskColors.low;
+
+  document.getElementById('smTitle').innerHTML =
+    '<span style="font-size:20px;margin-right:8px">'+sector.icon+'</span>'
+    + esc(sector.name)
+    + '<span style="font-size:12px;font-weight:400;margin-left:10px;padding:2px 8px;border-radius:3px;'
+      + 'background:'+rc.bg+';color:'+rc.color+';border:1px solid '+rc.color+'44">'
+      + sector.risk.toUpperCase() + ' RISK</span>';
+
+  var html = '';
+
+  // Risk banner
+  html += '<div class="sm-risk-banner" style="background:'+rc.bg+';border:1px solid '+rc.color+'44">'
+    + '<div style="font-size:28px">'+sector.icon+'</div>'
+    + '<div><div style="font-size:13px;font-weight:700;color:'+rc.color+'">'+esc(sector.risk.toUpperCase())+' THREAT LEVEL</div>'
+      + '<div style="font-size:12px;color:var(--muted2);margin-top:3px">'+esc(sector.threat)+'</div>'
+    + '</div></div>';
+
+  // Active threat actors
+  html += '<div class="sm-section"><div class="sm-sec-title">🏴 Active Threat Actors Targeting This Sector</div>';
+  sector.actors.forEach(function(actorName) {
+    var fullActor = ACTIVE_ACTORS.find(function(a){ return a.name.includes(actorName.split(' ')[0]) || actorName.includes(a.name.split(' ')[0]); });
+    html += '<div class="sm-actor-row">'
+      + '<span class="sm-actor-status">'+( fullActor ? fullActor.status : 'ACTIVE')+'</span>'
+      + '<span class="sm-actor-name">'+esc(actorName)+'</span>'
+      + (fullActor ? '<span class="sm-actor-nation">'+fullActor.nation+'</span>' : '')
+      + '</div>';
+  });
+  html += '</div>';
+
+  // Recent incidents
+  if (detail.recentIncidents && detail.recentIncidents.length) {
+    html += '<div class="sm-section"><div class="sm-sec-title">📰 Recent Incidents & Intelligence</div>';
+    html += '<div style="font-size:9.5px;color:var(--muted);margin-bottom:8px;line-height:1.5">⚠ Editorial threat summary compiled from public reporting &amp; CISA advisories — <b>verify each item against the cited advisory and confirm dates before briefing</b>. Not a live feed. For current items, use the live Intel Feed above or Tool 10.</div>';
+    detail.recentIncidents.forEach(function(inc) {
+      html += '<div class="sm-threat-box">'+esc(inc)+'</div>';
+    });
+    html += '</div>';
+  }
+
+  // KEV CVEs affecting sector
+  if (detail.kevCVEs && detail.kevCVEs.length) {
+    html += '<div class="sm-section"><div class="sm-sec-title">🔴 Active KEV CVEs Affecting This Sector</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:4px">'
+      + detail.kevCVEs.map(function(cve){ return '<span class="sm-kev-pill">'+esc(cve)+'</span>'; }).join('')
+      + '</div></div>';
+  }
+
+  // Immediate actions
+  if (detail.immediateActions && detail.immediateActions.length) {
+    html += '<div class="sm-section"><div class="sm-sec-title">✅ Immediate Actions Required</div>';
+    detail.immediateActions.forEach(function(action, i) {
+      html += '<div class="sm-action-item">'
+        + '<span class="sm-action-num">'+(i+1)+'.</span>'
+        + '<span>'+esc(action)+'</span>'
+      + '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Applicable tools
+  if (detail.tools && detail.tools.length) {
+    html += '<div class="sm-section"><div class="sm-sec-title">🛠️ Recommended Ghost Defense Tools</div>'
+      + '<div style="display:flex;flex-wrap:wrap">'
+      + detail.tools.map(function(t){
+          var toolNum = t.match(/Tool (\d+)/);
+          var toolFiles = {'1':'01_IP_Checker.html','2':'02_KEV_Scanner.html','4':'04_ATG_Exposure_Map.html',
+            '7':'07_Global_Ship_Traffic_Monitor.html','9':'09_DarkWatch_Credential_Monitor.html',
+            '10':'10_OSINT_Vulnerability_Readboard.html','11':'11_Threat_Actor_Profiles.html',
+            '13':'13_Ransomware_Group_Tracker.html','15':'15_Submarine_Cable_Tracker.html',
+            '17':'17_CI_Threat_Map.html','19':'19_Phishing_Email_Validator.html',
+            '20':'20_DNSSEC_Validator.html','21':'21_Port_Scanner.html',
+            '23':'23_Attack_Surface_Mapper.html','25':'25_Telecom_Grid_Monitor.html',
+            '26':'26_Satellite_Comms_Monitor.html','28':'28_Radio_Frequency_Monitor.html',
+            '29':'29_IR_Playbook_Builder.html','30':'30_Phishing_Simulation_Builder.html',
+            '31':'31_Realtime_Intrusion_Detection.html','32':'32_Asset_Inventory_Tracker.html',
+            '33':'33_Executive_COP_Dashboard.html'};
+          var file = toolNum ? toolFiles[toolNum[1]] : '#';
+          return '<a class="sm-link" href="'+(file||'#')+'" target="_blank">'+esc(t)+'</a>';
+        }).join('')
+      + '</div></div>';
+  }
+
+  // Framework
+  if (detail.framework) {
+    html += '<div class="sm-section"><div class="sm-sec-title">📋 Applicable Standards & Frameworks</div>'
+      + '<div style="font-size:11px;font-family:var(--mono);color:var(--muted2);padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:5px">'+esc(detail.framework)+'</div>'
+    + '</div>';
+  }
+
+  html += '<div style="text-align:center;padding:10px 0;font-family:var(--mono);font-size:10px;color:var(--muted)">Ghost Defense · DEFEND ALWAYS 🛡️</div>';
+
+  document.getElementById('smBody').innerHTML = html;
+  document.getElementById('sectorModal').classList.add('open');
+}
+
+function closeSectorModal() {
+  document.getElementById('sectorModal').classList.remove('open');
+}
+
+</script>
+
+<!-- SECTOR REPORT MODAL -->
+<div class="sector-modal" id="sectorModal" onclick="if(event.target===this)closeSectorModal()">
+  <div class="sector-modal-box" id="sectorModalBox">
+    <div class="sm-hdr">
+      <div class="sm-title" id="smTitle">—</div>
+      <button class="sm-close" onclick="closeSectorModal()">✕ CLOSE</button>
+    </div>
+    <div class="sm-body" id="smBody"></div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Telecom Grid Monitor — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070e;--s1:#0e0e1a;--s2:#141728;--s3:#1c2035;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);
+  --text:#eeedf8;--muted:#6b6a84;--muted2:#9998b8;
+  --green:#2fd98a;--green-s:rgba(47,217,138,0.1);--green-b:rgba(47,217,138,0.28);
+  --red:#ff4d4d;--red-s:rgba(255,77,77,0.1);--red-b:rgba(255,77,77,0.3);
+  --orange:#ff8c42;--orange-s:rgba(255,140,66,0.1);--orange-b:rgba(255,140,66,0.28);
+  --yellow:#ffd166;--yellow-s:rgba(255,209,102,0.1);--yellow-b:rgba(255,209,102,0.25);
+  --blue:#4cc9f0;--blue-s:rgba(76,201,240,0.1);--blue-b:rgba(76,201,240,0.28);
+  --purple:#b48eff;--purple-s:rgba(180,142,255,0.1);--purple-b:rgba(180,142,255,0.28);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html{background:var(--bg)}
+body{font-family:var(--sans);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:13px 24px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:30px;height:30px;background:var(--blue-s);border:1px solid var(--blue-b);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.brand-name{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.brand-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.status-pill{font-family:var(--mono);font-size:10px;padding:4px 10px;border-radius:4px;
+  display:flex;align-items:center;gap:5px;letter-spacing:.06em}
+.pill-live{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.topbar-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.refresh-btn{background:var(--s2);border:1px solid var(--border2);border-radius:7px;
+  color:var(--muted2);font-family:var(--sans);font-size:12px;padding:6px 14px;
+  cursor:pointer;transition:all .15s}
+.refresh-btn:hover{color:var(--blue);border-color:var(--blue-b)}
+.last-update{font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+/* GRID LAYOUT */
+.page-grid{display:grid;grid-template-columns:300px 1fr;flex:1;height:calc(100vh - 57px)}
+
+/* LEFT SIDEBAR */
+.sidebar{border-right:1px solid var(--border);overflow-y:auto;background:var(--bg);display:flex;flex-direction:column;gap:0}
+.sidebar-section{border-bottom:1px solid var(--border)}
+.sidebar-title{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);
+  font-family:var(--mono);padding:10px 14px;background:var(--s1)}
+
+/* PROVIDER LIST */
+.provider-item{display:flex;align-items:center;gap:10px;padding:10px 14px;
+  border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
+.provider-item:hover{background:var(--s2)}
+.provider-item:last-child{border-bottom:none}
+.prov-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.prov-name{font-size:12px;font-weight:500;flex:1}
+.prov-status{font-size:10px;font-family:var(--mono);font-weight:700;padding:2px 6px;border-radius:3px}
+.st-operational{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.st-degraded{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.st-outage{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.st-checking{background:var(--s3);color:var(--muted);border:1px solid var(--border2)}
+
+/* REGION FILTER */
+.region-grid{display:flex;flex-wrap:wrap;gap:5px;padding:10px 14px}
+.region-chip{font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:4px;
+  background:var(--s2);border:1px solid var(--border2);color:var(--muted2);cursor:pointer;transition:all .12s}
+.region-chip.active{background:var(--blue-s);color:var(--blue);border-color:var(--blue-b)}
+
+/* MAIN PANEL */
+.main-panel{overflow-y:auto;display:flex;flex-direction:column;background:var(--bg)}
+
+/* GLOBAL STATUS BAR */
+.global-bar{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:10px;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--s1)}
+.gstat-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
+.gstat-num{font-family:var(--mono);font-size:22px;font-weight:500;margin-bottom:3px}
+.gstat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+
+/* OUTAGE FEED */
+.feed-wrap{padding:16px 20px;display:flex;flex-direction:column;gap:10px}
+.feed-title{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);
+  font-family:var(--mono);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.outage-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden;
+  transition:border-color .15s}
+.outage-card.critical{border-color:var(--red-b)}
+.outage-card.major{border-color:var(--orange-b)}
+.outage-card.minor{border-color:var(--yellow-b)}
+.outage-card.resolved{border-color:var(--green-b);opacity:.7}
+.outage-hdr{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}
+.outage-sev{font-size:10px;font-family:var(--mono);font-weight:700;padding:2px 8px;border-radius:4px;white-space:nowrap}
+.sev-critical{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.sev-major{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.sev-minor{background:var(--yellow-s);color:var(--yellow);border:1px solid var(--yellow-b)}
+.sev-resolved{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.outage-title{font-size:13px;font-weight:600;flex:1}
+.outage-time{font-size:10px;color:var(--muted);font-family:var(--mono)}
+.outage-body{display:none;padding:12px 14px;border-top:1px solid var(--border)}
+.outage-body.open{display:block}
+.outage-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.ometa{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:8px 10px}
+.ometa-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.ometa-val{font-size:12px;font-family:var(--mono);color:var(--text)}
+.impact-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.itag{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:3px;
+  background:var(--s3);color:var(--muted2);border:1px solid var(--border2)}
+
+/* BGP / ROUTING SECTION */
+.bgp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;padding:12px 20px}
+.bgp-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.bgp-asn{font-family:var(--mono);font-size:11px;color:var(--blue);font-weight:500;margin-bottom:3px}
+.bgp-name{font-size:12px;font-weight:500;margin-bottom:5px}
+.bgp-bar-track{height:5px;background:var(--s3);border-radius:3px;overflow:hidden;margin-bottom:4px}
+.bgp-bar-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.bgp-stat{font-size:10px;color:var(--muted2);font-family:var(--mono)}
+
+/* CONNECTIVITY CHECK */
+.conn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;padding:12px 20px}
+.conn-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;
+  display:flex;align-items:center;gap:10px}
+.conn-icon{font-size:18px;flex-shrink:0}
+.conn-name{font-size:12px;font-weight:500}
+.conn-latency{font-family:var(--mono);font-size:11px;color:var(--muted2);margin-top:2px}
+.conn-status{font-size:10px;font-family:var(--mono);font-weight:700;margin-top:3px}
+
+/* CONTINUITY CHECKLIST */
+.checklist-wrap{padding:12px 20px;display:flex;flex-direction:column;gap:6px}
+.chk-item{display:flex;align-items:flex-start;gap:10px;background:var(--s2);
+  border:1px solid var(--border);border-radius:7px;padding:9px 12px}
+.chk-item.ok{border-color:var(--green-b)}
+.chk-item.warn{border-color:var(--orange-b)}
+.chk-item.fail{border-color:var(--red-b)}
+.chk-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.ok .chk-dot{background:var(--green)}.warn .chk-dot{background:var(--orange)}.fail .chk-dot{background:var(--red)}
+.chk-label{font-size:12px;font-weight:600;margin-bottom:2px}
+.chk-detail{font-size:11px;color:var(--muted2);font-family:var(--mono);line-height:1.5}
+
+/* SECTION HEADER */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:10px 20px;border-bottom:1px solid var(--border);border-top:1px solid var(--border);
+  background:var(--s1)}
+.sec-hdr-title{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted2);font-family:var(--mono)}
+.sec-hdr-badge{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:4px}
+
+/* EXPORT */
+.export-row{display:flex;gap:8px;padding:14px 20px;border-top:1px solid var(--border);flex-wrap:wrap}
+.exp-btn{display:flex;align-items:center;gap:5px;font-size:12px;font-family:var(--sans);
+  font-weight:600;padding:7px 14px;border-radius:7px;cursor:pointer;transition:all .15s;border:1px solid}
+.exp-csv{background:var(--green-s);color:var(--green);border-color:var(--green-b)}
+.exp-html{background:var(--blue-s);color:var(--blue);border-color:var(--blue-b)}
+.exp-btn svg{width:12px;height:12px}
+
+/* SPINNER */
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.1);
+  border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.pulse{animation:pulse 2s infinite}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .3s ease both}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+@media(max-width:860px){
+  .page-grid{grid-template-columns:1fr;height:auto}
+  .sidebar{border-right:none;border-bottom:1px solid var(--border);max-height:300px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">📡</div>
+    <div>
+      <div class="brand-name">Telecom Grid Monitor</div>
+      <div class="brand-sub">Ghost Defense · Tool 25</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="status-pill pill-live"><span class="pulse" style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block"></span>LIVE MONITORING</span>
+    <span class="last-update" id="lastUpdate">Updating…</span>
+    <button class="refresh-btn" onclick="runAllChecks()">↻ Refresh</button>
+  </div>
+</div>
+
+<div class="page-grid">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- Region Filter -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Region Filter</div>
+      <div class="region-grid">
+        <span class="region-chip active" onclick="setRegion('all',this)">All</span>
+        <span class="region-chip" onclick="setRegion('na',this)">North America</span>
+        <span class="region-chip" onclick="setRegion('eu',this)">Europe</span>
+        <span class="region-chip" onclick="setRegion('ap',this)">Asia-Pacific</span>
+        <span class="region-chip" onclick="setRegion('sa',this)">South America</span>
+        <span class="region-chip" onclick="setRegion('me',this)">Middle East</span>
+        <span class="region-chip" onclick="setRegion('af',this)">Africa</span>
+      </div>
+    </div>
+
+    <!-- Major Providers -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Major Telecom Providers</div>
+      <div id="providerList"></div>
+    </div>
+
+    <!-- Backbone Networks -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Internet Backbone / IXPs</div>
+      <div id="backboneList"></div>
+    </div>
+
+    <!-- DNS Resolvers -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Global DNS Resolvers</div>
+      <div id="dnsList"></div>
+    </div>
+
+  </div>
+
+  <!-- MAIN PANEL -->
+  <div class="main-panel" id="mainPanel">
+
+    <!-- Global Status -->
+    <div class="global-bar" id="globalBar">
+      <div class="gstat-card"><div class="gstat-num" id="statOperational" style="color:var(--green)">—</div><div class="gstat-lbl">Operational</div></div>
+      <div class="gstat-card"><div class="gstat-num" id="statDegraded" style="color:var(--orange)">—</div><div class="gstat-lbl">Degraded</div></div>
+      <div class="gstat-card"><div class="gstat-num" id="statOutage" style="color:var(--red)">—</div><div class="gstat-lbl">Outages</div></div>
+      <div class="gstat-card"><div class="gstat-num" id="statLatency" style="color:var(--blue)">—</div><div class="gstat-lbl">Avg Latency</div></div>
+      <div class="gstat-card"><div class="gstat-num" id="statDNS" style="color:var(--text)">—</div><div class="gstat-lbl">DNS Resolvers</div></div>
+    </div>
+
+    <!-- Connectivity Checks -->
+    <div class="sec-hdr">
+      <span class="sec-hdr-title">📶 Live Connectivity Checks</span>
+      <span class="sec-hdr-badge" id="connBadge" style="background:var(--blue-s);color:var(--blue);border:1px solid var(--blue-b)">Checking…</span>
+    </div>
+    <div class="conn-grid" id="connGrid"></div>
+    <div style="margin-top:8px;font-size:10px;color:var(--muted);font-family:var(--mono);line-height:1.5">Reachability is probed from your browser (no-cors). A failed check means <b>this browser</b> could not confirm the host &mdash; cross-origin rules, your local network, or a proxy can cause that. It is <b>not</b> proof the site is globally down. Exact HTTP status cannot be read cross-origin; confirmed outages come from the provider status feeds below.</div>
+
+    <!-- BGP / ASN Status -->
+    <div class="sec-hdr">
+      <span class="sec-hdr-title">🌐 Major ASN / BGP Health</span>
+      <span class="sec-hdr-badge" style="background:var(--s3);color:var(--muted2);border:1px solid var(--border2)">Via RIPE NCC / BGPView</span>
+    </div>
+    <div class="bgp-grid" id="bgpGrid"></div>
+
+    <!-- Active Outage Feed -->
+    <div class="sec-hdr">
+      <span class="sec-hdr-title">⚠ Active Incidents & Outages</span>
+      <span class="sec-hdr-badge" id="outageCount" style="background:var(--s3);color:var(--muted2);border:1px solid var(--border2)">Loading…</span>
+    </div>
+    <div class="feed-wrap" id="outageFeed"></div>
+
+    <!-- Continuity Readiness Checklist -->
+    <div class="sec-hdr">
+      <span class="sec-hdr-title">✅ Communications Continuity Readiness</span>
+      <span class="sec-hdr-badge" id="contBadge" style="background:var(--s3);color:var(--muted2);border:1px solid var(--border2)">Assessing…</span>
+    </div>
+    <div class="checklist-wrap" id="continuityList"></div>
+
+    <!-- Export -->
+    <div class="export-row">
+      <button class="exp-btn exp-csv" onclick="exportCSV()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export Status CSV</button>
+      <button class="exp-btn exp-html" onclick="exportHTML()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Incident Report</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── PROVIDER DATA ─────────────────────────────────────────────────────────────
+var PROVIDERS = [
+  // North America
+  { name:'AT&T',          asn:'AS7018',  region:'na', url:'https://www.att.com/help/network-status/', icon:'📱' },
+  { name:'Verizon',       asn:'AS701',   region:'na', url:'https://www.verizon.com/support/network-status/', icon:'📱' },
+  { name:'T-Mobile',      asn:'AS21928', region:'na', url:'https://status.t-mobile.com', icon:'📱' },
+  { name:'Comcast',       asn:'AS7922',  region:'na', url:'https://www.xfinity.com/support/status', icon:'🌐' },
+  { name:'Charter/Spectrum',asn:'AS20115',region:'na', url:'https://www.spectrum.com/support/outages', icon:'🌐' },
+  { name:'CenturyLink/Lumen',asn:'AS209',region:'na', url:'https://www.lumen.com', icon:'🌐' },
+  // Europe
+  { name:'Deutsche Telekom',asn:'AS3320',region:'eu', url:'https://www.telekom.de', icon:'🇩🇪' },
+  { name:'BT Group',      asn:'AS2856',  region:'eu', url:'https://www.bt.com/help/network-status', icon:'🇬🇧' },
+  { name:'Orange',        asn:'AS3215',  region:'eu', url:'https://www.orange.com', icon:'🇫🇷' },
+  { name:'Vodafone EU',   asn:'AS1273',  region:'eu', url:'https://www.vodafone.com', icon:'🇪🇺' },
+  // Asia-Pacific
+  { name:'NTT',           asn:'AS2914',  region:'ap', url:'https://www.ntt.com', icon:'🇯🇵' },
+  { name:'China Telecom', asn:'AS4134',  region:'ap', url:'https://www.chinatelecom.com.cn', icon:'🇨🇳' },
+  { name:'SingTel',       asn:'AS7473',  region:'ap', url:'https://www.singtel.com', icon:'🇸🇬' },
+  // Global Backbone
+  { name:'Cogent',        asn:'AS174',   region:'na', url:'https://www.cogentco.com', icon:'🌍' },
+  { name:'Level3/Lumen',  asn:'AS3356',  region:'na', url:'https://www.lumen.com', icon:'🌍' },
+  { name:'GTT',           asn:'AS3257',  region:'eu', url:'https://www.gtt.net', icon:'🌍' },
+];
+
+var BACKBONE = [
+  { name:'Cloudflare',    asn:'AS13335', check:'1.1.1.1',      icon:'🟠' },
+  { name:'Google',        asn:'AS15169', check:'8.8.8.8',       icon:'🔵' },
+  { name:'Amazon AWS',    asn:'AS16509', check:'205.251.196.1', icon:'🟡' },
+  { name:'Microsoft Azure',asn:'AS8075', check:'13.64.0.0',     icon:'🔷' },
+  { name:'Akamai',        asn:'AS20940', check:'23.32.0.0',     icon:'🟣' },
+  { name:'HE.net',        asn:'AS6939',  check:'216.218.186.2', icon:'🌐' },
+];
+
+var DNS_RESOLVERS = [
+  { name:'Cloudflare 1.1.1.1', url:'https://1.1.1.1/dns-query', check:'cloudflare-dns.com' },
+  { name:'Google 8.8.8.8',     url:'https://dns.google/resolve', check:'dns.google' },
+  { name:'Quad9 9.9.9.9',      url:'https://dns.quad9.net/dns-query', check:'dns.quad9.net' },
+  { name:'OpenDNS',            url:'https://doh.opendns.com/dns-query', check:'doh.opendns.com' },
+];
+
+// Connectivity endpoints to check
+var CONN_CHECKS = [
+  { name:'Cloudflare DNS', host:'1.1.1.1',            icon:'🟠', type:'dns' },
+  { name:'Google DNS',     host:'8.8.8.8',            icon:'🔵', type:'dns' },
+  { name:'Quad9 DNS',      host:'9.9.9.9',            icon:'🟣', type:'dns' },
+  { name:'CISA.gov',       host:'cisa.gov',           icon:'🏛️', type:'web' },
+  { name:'NVD/NIST',       host:'nvd.nist.gov',       icon:'🔒', type:'web' },
+  { name:'RIPE NCC',       host:'www.ripe.net',       icon:'🌍', type:'web' },
+  { name:'Internet Archive',host:'archive.org',       icon:'📚', type:'web' },
+  { name:'Cloudflare CDN', host:'cloudflare.com',     icon:'☁️', type:'web' },
+  { name:'AWS',            host:'aws.amazon.com',     icon:'🟡', type:'web' },
+  { name:'Azure',          host:'azure.microsoft.com',icon:'🔷', type:'web' },
+  { name:'Google Cloud',   host:'cloud.google.com',   icon:'🔵', type:'web' },
+  { name:'GitHub',         host:'github.com',         icon:'🐙', type:'web' },
+];
+
+// BGP ASNs to check via BGPView API
+var BGP_ASNS = [
+  { asn:13335, name:'Cloudflare',     color:'var(--orange)' },
+  { asn:15169, name:'Google',         color:'var(--blue)' },
+  { asn:16509, name:'Amazon',         color:'var(--yellow)' },
+  { asn:8075,  name:'Microsoft',      color:'var(--blue)' },
+  { asn:174,   name:'Cogent',         color:'var(--green)' },
+  { asn:3356,  name:'Lumen/Level3',   color:'var(--purple)' },
+  { asn:2914,  name:'NTT',            color:'var(--blue)' },
+  { asn:7018,  name:'AT&T',           color:'var(--orange)' },
+  { asn:701,   name:'Verizon',        color:'var(--red)' },
+  { asn:3320,  name:'Deutsche Telekom',color:'var(--text)' },
+  { asn:20940, name:'Akamai',         color:'var(--purple)' },
+  { asn:6939,  name:'HE.net',         color:'var(--green)' },
+];
+
+// ── STATE ──────────────────────────────────────────────────────────────────────
+var results = { providers:{}, connectivity:{}, bgp:{}, dns:{}, outages:[] };
+var activeRegion = 'all';
+var checkInterval = null;
+
+// ── HELPERS ────────────────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function fetchT(url, ms, opts) {
+  return new Promise(function(resolve, reject) {
+    var done = false;
+    var t = setTimeout(function(){ if(!done){done=true;reject(new Error('timeout'));} }, ms);
+    fetch(url, opts||{}).then(function(r){ if(!done){done=true;clearTimeout(t);resolve(r);} })
+      .catch(function(e){ if(!done){done=true;clearTimeout(t);reject(e);} });
+  });
+}
+
+function timeAgo(date) {
+  var sec = Math.round((new Date() - date) / 1000);
+  if (sec < 60) return sec + 's ago';
+  if (sec < 3600) return Math.round(sec/60) + 'm ago';
+  return Math.round(sec/3600) + 'h ago';
+}
+
+function fmtMs(ms) {
+  if (ms < 0) return 'timeout';
+  if (ms < 1000) return ms + 'ms';
+  return (ms/1000).toFixed(1) + 's';
+}
+
+// ── RENDER SIDEBAR ─────────────────────────────────────────────────────────────
+function renderSidebar() {
+  var filtered = activeRegion === 'all' ? PROVIDERS : PROVIDERS.filter(function(p){ return p.region === activeRegion; });
+
+  document.getElementById('providerList').innerHTML = filtered.slice(0,10).map(function(p) {
+    var r = results.providers[p.asn] || { status:'checking' };
+    var dotColor = r.status==='operational'?'var(--green)':r.status==='degraded'?'var(--orange)':r.status==='outage'?'var(--red)':'var(--muted)';
+    var stCls = r.status==='operational'?'st-operational':r.status==='degraded'?'st-degraded':r.status==='outage'?'st-outage':'st-checking';
+    var stLabel = r.status==='operational'?'OK':r.status==='degraded'?'DEGR':r.status==='outage'?'DOWN':'...';
+    return '<div class="provider-item" onclick="window.open(\''+p.url+'\',\'_blank\')" title="'+p.asn+'">'
+      + '<span class="prov-dot" style="background:'+dotColor+'"></span>'
+      + '<span style="font-size:14px">'+p.icon+'</span>'
+      + '<span class="prov-name">'+p.name+'<br><span style="font-family:var(--mono);font-size:9px;color:var(--muted)">'+p.asn+'</span></span>'
+      + '<span class="prov-status '+stCls+'">'+stLabel+'</span>'
+      + '</div>';
+  }).join('');
+
+  document.getElementById('backboneList').innerHTML = BACKBONE.map(function(b) {
+    var r = results.bgp[b.asn] || { status:'checking' };
+    var stCls = r.status==='ok'?'st-operational':r.status==='warn'?'st-degraded':'st-checking';
+    var stLabel = r.status==='ok'?'OK':r.status==='warn'?'WARN':'...';
+    return '<div class="provider-item">'
+      + '<span style="font-size:14px">'+b.icon+'</span>'
+      + '<span class="prov-name">'+b.name+'<br><span style="font-family:var(--mono);font-size:9px;color:var(--muted)">'+b.asn+'</span></span>'
+      + '<span class="prov-status '+stCls+'">'+stLabel+'</span>'
+      + '</div>';
+  }).join('');
+
+  document.getElementById('dnsList').innerHTML = DNS_RESOLVERS.map(function(d) {
+    var r = results.dns[d.name] || { status:'checking', latency:-1 };
+    var stCls = r.status==='ok'?'st-operational':r.status==='fail'?'st-outage':'st-checking';
+    var stLabel = r.status==='ok'?( r.latency>0?r.latency+'ms':'OK'):r.status==='fail'?'FAIL':'...';
+    return '<div class="provider-item">'
+      + '<span style="font-size:13px">🔒</span>'
+      + '<span class="prov-name" style="font-size:11px">'+d.name+'</span>'
+      + '<span class="prov-status '+stCls+'">'+stLabel+'</span>'
+      + '</div>';
+  }).join('');
+}
+
+function setRegion(r, btn) {
+  activeRegion = r;
+  document.querySelectorAll('.region-chip').forEach(function(c){ c.classList.remove('active'); });
+  btn.classList.add('active');
+  renderSidebar();
+}
+
+// ── CONNECTIVITY CHECKS ────────────────────────────────────────────────────────
+async function checkConnectivity() {
+  var grid = document.getElementById('connGrid');
+  grid.innerHTML = CONN_CHECKS.map(function(c) {
+    return '<div class="conn-card fade-in" id="conn-'+c.host.replace(/\./g,'_')+'">'
+      + '<span class="conn-icon">'+c.icon+'</span>'
+      + '<div><div class="conn-name">'+c.name+'</div>'
+      + '<div class="conn-latency"><span class="spinner"></span></div>'
+      + '<div class="conn-status" style="color:var(--muted)">Checking…</div>'
+      + '</div></div>';
+  }).join('');
+
+  var latencies = [];
+  var online = 0, offline = 0;
+
+  await Promise.allSettled(CONN_CHECKS.map(async function(check) {
+    var start = Date.now();
+    var elId = 'conn-' + check.host.replace(/\./g,'_');
+    try {
+      var url = check.type === 'dns'
+        ? 'https://cloudflare-dns.com/dns-query?name='+encodeURIComponent(check.host)+'&type=A'
+        : 'https://'+check.host+'/';
+      var resp = await fetchT(url, 8000, check.type==='dns'?{ headers:{'Accept':'application/dns-json'} }:{ mode:'no-cors' });
+      var lat = Date.now() - start;
+      var ok = (check.type==='dns') ? (resp.ok || resp.status < 500) : true; // no-cors web: resolved = reachable (status is opaque)
+      latencies.push(lat);
+      if (ok) online++;
+      results.connectivity[check.host] = { status: ok?'ok':'degraded', latency: lat };
+      var el = document.getElementById(elId);
+      if (el) {
+        var color = lat < 200 ? 'var(--green)' : lat < 800 ? 'var(--orange)' : 'var(--red)';
+        var stText = ok ? (lat < 200 ? 'FAST' : lat < 800 ? 'SLOW' : 'HIGH LAT') : 'DEGRADED';
+        var stColor = ok ? color : 'var(--orange)';
+        el.querySelector('.conn-latency').textContent = fmtMs(lat);
+        el.querySelector('.conn-status').textContent = stText;
+        el.querySelector('.conn-status').style.color = stColor;
+      }
+    } catch(e) {
+      offline++;
+      results.connectivity[check.host] = { status:'unverified', latency:-1 };
+      var el = document.getElementById(elId);
+      if (el) {
+        el.querySelector('.conn-latency').textContent = 'no response';
+        el.querySelector('.conn-status').textContent = 'UNVERIFIED';
+        el.querySelector('.conn-status').style.color = 'var(--orange)';
+        el.querySelector('.conn-status').title = 'This browser could not confirm the host (cross-origin/network). Not necessarily a real outage — verify independently.';
+      }
+    }
+  }));
+
+  var avgLat = latencies.length ? Math.round(latencies.reduce(function(a,b){return a+b;},0)/latencies.length) : 0;
+  document.getElementById('statLatency').textContent = avgLat ? avgLat+'ms' : '—';
+  var allDown = (online===0 && offline>0);
+  document.getElementById('connBadge').textContent = online+' reachable / '+offline+' unverified';
+  document.getElementById('connBadge').style.background = allDown ? 'var(--red-s)' : offline > 0 ? 'var(--orange-s)' : 'var(--green-s)';
+  document.getElementById('connBadge').style.color = allDown ? 'var(--red)' : offline > 0 ? 'var(--orange)' : 'var(--green)';
+  document.getElementById('connBadge').style.border = '1px solid '+(allDown ? 'var(--red-b)' : offline > 0 ? 'var(--orange-b)' : 'var(--green-b)');
+}
+
+// ── BGP / ASN CHECKS ──────────────────────────────────────────────────────────
+async function checkBGP() {
+  var grid = document.getElementById('bgpGrid');
+  grid.innerHTML = BGP_ASNS.map(function(a) {
+    return '<div class="bgp-card fade-in" id="bgp-'+a.asn+'">'
+      + '<div class="bgp-asn">AS'+a.asn+'</div>'
+      + '<div class="bgp-name">'+a.name+'</div>'
+      + '<div class="bgp-bar-track"><div class="bgp-bar-fill" style="width:0%;background:'+a.color+'"></div></div>'
+      + '<div class="bgp-stat"><span class="spinner"></span></div>'
+      + '</div>';
+  }).join('');
+
+  // Use RIPE NCC RIS API for prefix counts (public, no auth)
+  await Promise.allSettled(BGP_ASNS.map(async function(asn) {
+    try {
+      var r = await fetchT('https://stat.ripe.net/data/ris-peers/data.json?resource=AS'+asn.asn, 8000);
+      if (!r.ok) throw new Error('failed');
+      var d = await r.json();
+      var peerCount = d.data && d.data.peers ? d.data.peers.length : 0;
+      // Also get prefix count
+      var r2 = await fetchT('https://stat.ripe.net/data/announced-prefixes/data.json?resource=AS'+asn.asn, 6000);
+      var prefixCount = 0;
+      if (r2.ok) {
+        var d2 = await r2.json();
+        prefixCount = d2.data && d2.data.prefixes ? d2.data.prefixes.length : 0;
+      }
+      results.bgp[asn.asn] = { status:'ok', peers:peerCount, prefixes:prefixCount };
+      var el = document.getElementById('bgp-'+asn.asn);
+      if (el) {
+        var health = Math.min(100, peerCount > 0 ? 85 + Math.min(15, peerCount/10) : 0);
+        el.querySelector('.bgp-bar-fill').style.width = health + '%';
+        el.querySelector('.bgp-stat').innerHTML =
+          '<span style="color:var(--green)">✓</span> '
+          + (peerCount > 0 ? peerCount+' peers' : 'OK')
+          + (prefixCount > 0 ? ' · '+prefixCount+' prefixes' : '');
+      }
+    } catch(e) {
+      results.bgp[asn.asn] = { status:'unknown', peers:0, prefixes:0 };
+      var el = document.getElementById('bgp-'+asn.asn);
+      if (el) {
+        el.querySelector('.bgp-bar-fill').style.width = '0%';
+        el.querySelector('.bgp-stat').innerHTML = '<span style="color:var(--muted)">Data unavailable</span>';
+      }
+    }
+  }));
+
+  renderSidebar();
+}
+
+// ── DNS RESOLVER CHECKS ────────────────────────────────────────────────────────
+async function checkDNS() {
+  var operational = 0;
+  await Promise.allSettled(DNS_RESOLVERS.map(async function(resolver) {
+    var start = Date.now();
+    try {
+      var r = await fetchT(resolver.url + '?name=example.com&type=A', 5000,
+        { headers:{ 'Accept':'application/dns-json' } });
+      var lat = Date.now() - start;
+      if (r.ok) {
+        operational++;
+        results.dns[resolver.name] = { status:'ok', latency:lat };
+      } else {
+        results.dns[resolver.name] = { status:'fail', latency:-1 };
+      }
+    } catch(e) {
+      results.dns[resolver.name] = { status:'fail', latency:-1 };
+    }
+  }));
+  document.getElementById('statDNS').textContent = operational + '/' + DNS_RESOLVERS.length;
+  document.getElementById('statDNS').style.color = operational === DNS_RESOLVERS.length ? 'var(--green)' : operational > 0 ? 'var(--orange)' : 'var(--red)';
+  renderSidebar();
+}
+
+// ── OUTAGE FEED ────────────────────────────────────────────────────────────────
+// Aggregate status from public status pages via a combination of
+// connectivity checks and known-down detection heuristics
+async function fetchOutages() {
+  var feed = document.getElementById('outageFeed');
+  feed.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--muted);font-family:var(--mono)"><span class="spinner"></span> Checking status pages…</div>';
+
+  var incidents = [];
+
+  // Check public status APIs
+  var statusChecks = [
+    { name:'Cloudflare', url:'https://www.cloudflarestatus.com/api/v2/summary.json',    parseKey:'status.description' },
+    { name:'AWS',        url:'https://status.aws.amazon.com/data.json',                 parseKey:'status' },
+    { name:'GitHub',     url:'https://www.githubstatus.com/api/v2/summary.json',        parseKey:'status.description' },
+    { name:'Google Cloud',url:'https://status.cloud.google.com/incidents.json',         parseKey:'incidents' },
+  ];
+
+  await Promise.allSettled(statusChecks.map(async function(s) {
+    try {
+      var r = await fetchT(s.url, 6000);
+      if (!r.ok) return;
+      var d = await r.json();
+
+      // Cloudflare / GitHub status
+      if (s.name === 'Cloudflare' || s.name === 'GitHub') {
+        var status = d.status && d.status.description;
+        var indicator = d.status && d.status.indicator;
+        if (indicator && indicator !== 'none') {
+          var components = d.components ? d.components.filter(function(c){ return c.status !== 'operational'; }) : [];
+          incidents.push({
+            provider: s.name,
+            title: status || 'Service Disruption',
+            severity: indicator === 'major' ? 'major' : 'minor',
+            status: 'ongoing',
+            affected: components.map(function(c){ return c.name; }).slice(0,4),
+            description: 'Status: ' + status + (components.length ? ' — Affected: ' + components.map(function(c){return c.name;}).slice(0,3).join(', ') : ''),
+            source: s.url,
+            time: new Date()
+          });
+        } else {
+          // Check active incidents
+          var activeIncidents = d.incidents ? d.incidents.filter(function(i){ return i.status !== 'resolved'; }) : [];
+          activeIncidents.forEach(function(inc) {
+            incidents.push({
+              provider: s.name,
+              title: inc.name,
+              severity: inc.impact || 'minor',
+              status: inc.status,
+              affected: [],
+              description: inc.incident_updates && inc.incident_updates[0] ? inc.incident_updates[0].body.substring(0,200) : '',
+              source: s.url,
+              time: new Date(inc.created_at || new Date())
+            });
+          });
+        }
+      }
+
+      // Google Cloud incidents
+      if (s.name === 'Google Cloud' && Array.isArray(d)) {
+        var recent = d.filter(function(i){ return !i.end; }).slice(0,3);
+        recent.forEach(function(inc) {
+          incidents.push({
+            provider: 'Google Cloud',
+            title: inc.external_desc || 'Service Disruption',
+            severity: 'major',
+            status: 'ongoing',
+            affected: inc.affected_products ? inc.affected_products.map(function(p){ return p.title; }) : [],
+            description: (inc.updates && inc.updates[0]) ? inc.updates[0].text.substring(0,200) : '',
+            source: s.url,
+            time: new Date(inc.begin || new Date())
+          });
+        });
+      }
+
+    } catch(e) { /* skip unreachable status pages */ }
+  }));
+
+  // Cross-reference with our connectivity checks — anything that timed out
+  Object.keys(results.connectivity).forEach(function(host) {
+    if (results.connectivity[host].status === 'offline') {
+      incidents.push({
+        provider: host,
+        title: 'Connectivity Failure — ' + host,
+        severity: 'critical',
+        status: 'ongoing',
+        affected: [host],
+        description: 'Direct connectivity check timed out. Host may be unreachable from your location.',
+        source: 'local-check',
+        time: new Date()
+      });
+    }
+  });
+
+  results.outages = incidents;
+
+  // Update count badge
+  var badge = document.getElementById('outageCount');
+  badge.textContent = incidents.length + ' incident' + (incidents.length !== 1 ? 's' : '');
+  badge.style.background = incidents.length > 3 ? 'var(--red-s)' : incidents.length > 0 ? 'var(--orange-s)' : 'var(--green-s)';
+  badge.style.color = incidents.length > 3 ? 'var(--red)' : incidents.length > 0 ? 'var(--orange)' : 'var(--green)';
+  badge.style.border = '1px solid '+(incidents.length > 3 ? 'var(--red-b)' : incidents.length > 0 ? 'var(--orange-b)' : 'var(--green-b)');
+
+  if (!incidents.length) {
+    feed.innerHTML = '<div style="padding:20px;text-align:center;color:var(--green);font-family:var(--mono);font-size:13px">✓ No active incidents detected across monitored providers</div>';
+    return;
+  }
+
+  feed.innerHTML = incidents.map(function(inc, i) {
+    var sevCls = inc.severity === 'critical' ? 'sev-critical' : inc.severity === 'major' ? 'sev-major' : inc.severity === 'resolved' ? 'sev-resolved' : 'sev-minor';
+    var cardCls = inc.severity === 'critical' ? 'critical' : inc.severity === 'major' ? 'major' : inc.severity === 'resolved' ? 'resolved' : 'minor';
+    var tags = inc.affected.slice(0,4).map(function(a){ return '<span class="itag">'+esc(a)+'</span>'; }).join('');
+    return '<div class="outage-card '+cardCls+' fade-in">'
+      + '<div class="outage-hdr" onclick="togOutage('+i+')">'
+        + '<span class="outage-sev '+sevCls+'">'+inc.severity.toUpperCase()+'</span>'
+        + '<span class="outage-title">'+esc(inc.provider)+' — '+esc(inc.title)+'</span>'
+        + '<span class="outage-time">'+timeAgo(inc.time)+'</span>'
+      + '</div>'
+      + '<div class="outage-body" id="outage-'+i+'">'
+        + '<div class="outage-meta">'
+          + '<div class="ometa"><div class="ometa-label">Status</div><div class="ometa-val">'+esc(inc.status)+'</div></div>'
+          + '<div class="ometa"><div class="ometa-label">Provider</div><div class="ometa-val">'+esc(inc.provider)+'</div></div>'
+        + '</div>'
+        + (inc.description ? '<div style="font-size:12px;color:var(--muted2);line-height:1.6;margin-bottom:8px">'+esc(inc.description)+'</div>' : '')
+        + (tags ? '<div class="impact-tags">'+tags+'</div>' : '')
+        + (inc.source !== 'local-check' ? '<div style="margin-top:8px"><a href="'+esc(inc.source)+'" target="_blank" rel="noopener" style="font-size:11px;color:var(--blue);text-decoration:none">View Status Page →</a></div>' : '')
+      + '</div>'
+      + '</div>';
+  }).join('');
+
+  // Update global stats
+  updateGlobalStats();
+}
+
+function togOutage(i) {
+  var el = document.getElementById('outage-' + i);
+  if (el) el.classList.toggle('open');
+}
+
+// ── CONTINUITY READINESS ──────────────────────────────────────────────────────
+function assessContinuity() {
+  var checks = [];
+  var connResults = results.connectivity;
+  var dnsResults  = results.dns;
+
+  // Primary internet
+  var onlineCount = Object.values(connResults).filter(function(r){ return r.status === 'ok'; }).length;
+  var unverCount  = Object.values(connResults).filter(function(r){ return r.status === 'unverified'; }).length;
+  var totalCount  = Object.keys(connResults).length;
+  if (totalCount === 0) {
+    checks.push({ status:'warn', label:'Internet Connectivity', detail:'Connectivity checks still running…' });
+  } else if (onlineCount === totalCount) {
+    checks.push({ status:'ok',   label:'Internet Connectivity', detail:'All '+totalCount+' hosts reachable from this browser — internet access confirmed' });
+  } else if (onlineCount > 0) {
+    checks.push({ status:'ok',   label:'Internet Connectivity', detail:onlineCount+'/'+totalCount+' hosts reachable from this browser; '+unverCount+' could not be verified (cross-origin/network limits). A failed browser probe is NOT proof of an outage — your connection is up.' });
+  } else {
+    checks.push({ status:'warn', label:'Internet Connectivity', detail:'No hosts could be verified from this browser. This typically means a local network/proxy issue or that cross-origin probes are blocked — not a confirmed provider outage. Check your own link and the status feeds below.' });
+  }
+
+  // DNS resolution
+  var dnsOk = Object.values(dnsResults).filter(function(r){ return r.status === 'ok'; }).length;
+  var dnsTotal = Object.keys(dnsResults).length || DNS_RESOLVERS.length;
+  if (dnsOk === 0 && dnsTotal > 0) {
+    checks.push({ status:'fail', label:'DNS Resolution', detail:'CRITICAL: All DNS resolvers unreachable — name resolution failed. Network communications severely impacted.' });
+  } else if (dnsOk < dnsTotal) {
+    checks.push({ status:'warn', label:'DNS Resolution', detail:dnsOk+'/'+dnsTotal+' resolvers operational — some redundancy lost. Monitor closely.' });
+  } else {
+    checks.push({ status:'ok', label:'DNS Resolution', detail:dnsOk+' resolver'+(dnsOk>1?'s':'')+' operational — DNS redundancy intact' });
+  }
+
+  // Cloud providers
+  var cloudHosts = ['aws.amazon.com','azure.microsoft.com','cloud.google.com','cloudflare.com'];
+  var cloudOk = cloudHosts.filter(function(h){ return connResults[h] && connResults[h].status === 'ok'; }).length;
+  var cloudUnver = cloudHosts.filter(function(h){ return connResults[h] && connResults[h].status === 'unverified'; }).length;
+  if (cloudOk === cloudHosts.length) {
+    checks.push({ status:'ok', label:'Cloud Infrastructure', detail:'AWS, Azure, Google Cloud, and Cloudflare all reachable from this browser' });
+  } else {
+    checks.push({ status:'warn', label:'Cloud Infrastructure', detail:cloudOk+'/'+cloudHosts.length+' cloud hosts confirmed reachable from this browser; '+cloudUnver+' could not be verified (cross-origin probes to these hosts are routinely blocked). This is NOT evidence of a cloud outage — consult the authoritative provider status feeds below.' });
+  }
+
+  // Active incidents
+  var critical = results.outages.filter(function(o){ return o.severity === 'critical'; }).length;
+  var major    = results.outages.filter(function(o){ return o.severity === 'major'; }).length;
+  if (critical === 0 && major === 0) {
+    checks.push({ status:'ok',   label:'Active Incidents', detail:'No critical or major incidents detected across monitored providers' });
+  } else if (critical === 0) {
+    checks.push({ status:'warn', label:'Active Incidents', detail:major+' major incident'+(major>1?'s':'')+' active — monitor and prepare contingencies' });
+  } else {
+    checks.push({ status:'fail', label:'Active Incidents', detail:'CRITICAL: '+critical+' critical + '+major+' major incident'+(major>1?'s':'')+' active — activate continuity procedures' });
+  }
+
+  // Latency health
+  var lats = Object.values(connResults).filter(function(r){ return r.latency > 0; }).map(function(r){ return r.latency; });
+  var avgLat = lats.length ? Math.round(lats.reduce(function(a,b){return a+b;},0)/lats.length) : 0;
+  if (avgLat === 0) {
+    checks.push({ status:'warn', label:'Network Latency', detail:'Latency data not yet available' });
+  } else if (avgLat < 300) {
+    checks.push({ status:'ok',   label:'Network Latency', detail:'Average latency '+avgLat+'ms — normal network conditions' });
+  } else if (avgLat < 1000) {
+    checks.push({ status:'warn', label:'Network Latency', detail:'Average latency '+avgLat+'ms — elevated, possible congestion or routing issues' });
+  } else {
+    checks.push({ status:'fail', label:'Network Latency', detail:'CRITICAL: Average latency '+avgLat+'ms — severe network degradation, check routing' });
+  }
+
+  // Continuity recommendations
+  checks.push({ status:'info', label:'Alternate Comms — Readiness Check', detail:'Verify: Satellite comms (Starlink/VSAT) · HAM/shortwave radio · Cellular on alternate carrier · Out-of-band management (OOBM) · Physical courier protocols' });
+  checks.push({ status:'info', label:'Emergency Contact Tree', detail:'Maintain offline contact lists for: ISP NOC · Cloud provider support · CISA emergency line (888-282-0870) · Sector ISAC' });
+
+  document.getElementById('continuityList').innerHTML = checks.map(function(c) {
+    var status = c.status === 'info' ? 'info' : c.status;
+    var dotColor = status==='ok'?'var(--green)':status==='warn'?'var(--orange)':status==='fail'?'var(--red)':'var(--blue)';
+    var borderColor = status==='ok'?'var(--green-b)':status==='warn'?'var(--orange-b)':status==='fail'?'var(--red-b)':'var(--blue-b)';
+    return '<div class="chk-item '+status+'" style="border-color:'+borderColor+'">'
+      + '<span class="chk-dot" style="background:'+dotColor+'"></span>'
+      + '<div><div class="chk-label">'+esc(c.label)+'</div>'
+      + '<div class="chk-detail">'+esc(c.detail)+'</div></div>'
+      + '</div>';
+  }).join('');
+
+  var failCount = checks.filter(function(c){ return c.status==='fail'; }).length;
+  var warnCount = checks.filter(function(c){ return c.status==='warn'; }).length;
+  var badge = document.getElementById('contBadge');
+  badge.textContent = failCount > 0 ? failCount+' CRITICAL' : warnCount > 0 ? warnCount+' WARNINGS' : 'ALL CLEAR';
+  badge.style.background = failCount > 0 ? 'var(--red-s)' : warnCount > 0 ? 'var(--orange-s)' : 'var(--green-s)';
+  badge.style.color = failCount > 0 ? 'var(--red)' : warnCount > 0 ? 'var(--orange)' : 'var(--green)';
+  badge.style.border = '1px solid '+(failCount > 0 ? 'var(--red-b)' : warnCount > 0 ? 'var(--orange-b)' : 'var(--green-b)');
+}
+
+function updateGlobalStats() {
+  var allResults = Object.values(results.connectivity);
+  var op   = allResults.filter(function(r){ return r.status==='ok'; }).length;
+  var deg  = allResults.filter(function(r){ return r.status==='degraded'; }).length;
+  var down = allResults.filter(function(r){ return r.status==='offline'; }).length;
+  document.getElementById('statOperational').textContent = op;
+  document.getElementById('statDegraded').textContent    = deg;
+  document.getElementById('statOutage').textContent      = down;
+}
+
+// ── MAIN RUN ──────────────────────────────────────────────────────────────────
+async function runAllChecks() {
+  document.getElementById('lastUpdate').textContent = 'Refreshing…';
+  renderSidebar();
+
+  await Promise.all([
+    checkConnectivity(),
+    checkDNS(),
+    checkBGP(),
+  ]);
+
+  await fetchOutages();
+  assessContinuity();
+  updateGlobalStats();
+  renderSidebar();
+
+  document.getElementById('lastUpdate').textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+function exportCSV() {
+  var rows = [['host_or_provider','status','latency_ms','type'].join(',')];
+  Object.keys(results.connectivity).forEach(function(host) {
+    var r = results.connectivity[host];
+    rows.push(['"'+host+'"','"'+r.status+'"',r.latency,'"connectivity"'].join(','));
+  });
+  DNS_RESOLVERS.forEach(function(d) {
+    var r = results.dns[d.name] || { status:'unknown', latency:-1 };
+    rows.push(['"'+d.name+'"','"'+r.status+'"',r.latency,'"dns"'].join(','));
+  });
+  results.outages.forEach(function(o) {
+    rows.push(['"'+o.provider+'"','"'+o.severity+'"','0','"incident"'].join(','));
+  });
+  var blob = new Blob([rows.join('\n')], { type:'text/csv' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'telecom-status-'+new Date().toISOString().split('T')[0]+'.csv'; a.click();
+}
+
+function exportHTML() {
+  var now = new Date();
+  var timeStr = now.toUTCString();
+  function safe(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  var onlineCount  = Object.values(results.connectivity).filter(function(r){ return r.status==='ok'; }).length;
+  var offlineCount = Object.values(results.connectivity).filter(function(r){ return r.status==='offline'; }).length;
+  var dnsOk = Object.values(results.dns).filter(function(r){ return r.status==='ok'; }).length;
+  var incCount = results.outages.length;
+
+  var connRows = Object.keys(results.connectivity).map(function(host,i) {
+    var r = results.connectivity[host]; var sc = r.status==='ok'?'#16a34a':r.status==='offline'?'#dc2626':'#ea580c';
+    return '<tr style="background:'+(i%2===0?'#f9fafb':'#fff')+'">'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:11px">'+safe(host)+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb"><span style="background:'+sc+'22;color:'+sc+';font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px">'+r.status.toUpperCase()+'</span></td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:11px;color:#6b7280">'+fmtMs(r.latency)+'</td>'
+      +'</tr>';
+  }).join('');
+
+  var incRows = results.outages.map(function(o,i) {
+    var sc = o.severity==='critical'?'#dc2626':o.severity==='major'?'#ea580c':'#ca8a04';
+    return '<tr style="background:'+(i%2===0?'#f9fafb':'#fff')+'">'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#1d4ed8">'+safe(o.provider)+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb"><span style="color:'+sc+';font-size:10px;font-weight:700">'+safe(o.severity.toUpperCase())+'</span></td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-size:11px">'+safe(o.title)+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280">'+safe(o.status)+'</td>'
+      +'</tr>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telecom Grid Status Report</title>'
+    +'<style>body{font-family:Calibri,Arial,sans-serif;margin:0;background:#f3f4f6;color:#111}'
+    +'@media print{body{background:#fff}}</style></head><body>'
+    +'<div style="background:#0f172a;padding:20px 40px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div><div style="font-size:20px;font-weight:bold;color:#00ff41;letter-spacing:3px">GHOST DEFENSE</div>'
+        +'<div style="color:#9ca3af;font-size:12px;letter-spacing:2px;margin-top:2px">TELECOM GRID STATUS REPORT</div></div>'
+      +'<div style="text-align:right;color:#9ca3af;font-size:11px">'+safe(timeStr)+'<br>DEFEND ALWAYS 🛡️</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:16px 40px">'
+    +[[onlineCount,'Online','#16a34a'],[offlineCount,'Offline',offlineCount>0?'#dc2626':'#6b7280'],
+      [dnsOk+'/'+DNS_RESOLVERS.length,'DNS Resolvers',dnsOk<DNS_RESOLVERS.length?'#ea580c':'#16a34a'],
+      [incCount,'Active Incidents',incCount>0?'#dc2626':'#16a34a']].map(function(s){
+      return '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:12px;text-align:center">'
+        +'<div style="font-size:22px;font-weight:700;color:'+s[2]+'">'+s[0]+'</div>'
+        +'<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-top:3px">'+s[1]+'</div></div>';
+    }).join('')+'</div>'
+    +'<div style="margin:0 40px 14px;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb">'
+      +'<div style="background:#1e293b;padding:9px 16px"><span style="color:#fff;font-weight:bold;font-size:12px">Connectivity Check Results</span></div>'
+      +'<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f1f5f9">'
+        +'<th style="padding:7px 10px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Host</th>'
+        +'<th style="padding:7px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Status</th>'
+        +'<th style="padding:7px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Latency</th>'
+      +'</tr></thead><tbody>'+connRows+'</tbody></table>'
+    +'</div>'
+    +(incCount?'<div style="margin:0 40px 14px;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb">'
+      +'<div style="background:#1e293b;padding:9px 16px"><span style="color:#fff;font-weight:bold;font-size:12px">Active Incidents</span></div>'
+      +'<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f1f5f9">'
+        +'<th style="padding:7px 10px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Provider</th>'
+        +'<th style="padding:7px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Severity</th>'
+        +'<th style="padding:7px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Title</th>'
+        +'<th style="padding:7px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Status</th>'
+      +'</tr></thead><tbody>'+incRows+'</tbody></table></div>':'')
+    +'<div style="background:#0f172a;padding:12px 40px;color:#9ca3af;font-size:11px;display:flex;justify-content:space-between">'
+      +'<span>Sources: Cloudflare DoH · RIPE NCC · Public Status Pages · Direct Connectivity Checks</span>'
+      +'<span>Ghost Defense · DEFEND ALWAYS</span>'
+    +'</div></body></html>';
+
+  var blob = new Blob([html],{type:'text/html'});
+  var a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='telecom-grid-report-'+now.toISOString().split('T')[0]+'.html'; a.click();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+renderSidebar();
+runAllChecks();
+// Auto-refresh every 5 minutes
+checkInterval = setInterval(runAllChecks, 5 * 60 * 1000);
+</script>
+</body>
+</html>

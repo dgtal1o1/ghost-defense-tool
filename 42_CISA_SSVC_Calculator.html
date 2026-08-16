@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CISA SSVC CALCULATOR // Ghost Defense</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000;--panel:#050f05;--panel-2:#091209;
+    --line:rgba(0,255,65,.10);--line-2:rgba(0,255,65,.18);
+    --grn:#00ff41;--grn-dim:#00cc33;--cyan:#00d4ff;--cyan-dim:#0090b3;
+    --txt:#c8e6cc;--mut:#5f7a63;--mut-2:#3f5443;
+    --red:#ff3333;--amber:#ff9500;--yellow:#ffe14d;--purple:#c77dff;
+    --mono:'IBM Plex Mono','Share Tech Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}html,body{margin:0;padding:0}
+  body{background:radial-gradient(900px 500px at 80% -10%,rgba(0,255,65,.05),transparent 60%),var(--bg);
+    color:var(--txt);font-family:var(--mono);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased;min-height:100vh}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:linear-gradient(rgba(0,255,65,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,65,.03) 1px,transparent 1px);
+    background-size:42px 42px;mask-image:radial-gradient(120% 100% at 50% 0,#000 35%,transparent 90%)}
+  .wrap{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:16px 18px 60px}
+  a{color:var(--cyan);text-decoration:none}a:hover{color:var(--grn)}
+
+  header.cmd{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border:1px solid var(--line-2);
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));padding:12px 16px;border-radius:4px}
+  .brand{display:flex;align-items:center;gap:12px;min-width:0}
+  .ghost{width:42px;height:42px;flex:none;border:1px solid var(--grn);border-radius:3px;display:grid;place-items:center;
+    background:rgba(0,255,65,.05);box-shadow:0 0 18px rgba(0,255,65,.15) inset}
+  .ghost svg{width:26px;height:26px}
+  .titles h1{font-size:15.5px;margin:0;letter-spacing:2px;color:var(--grn);font-weight:700;text-shadow:0 0 14px rgba(0,255,65,.35)}
+  .titles .sub{font-size:10.5px;color:var(--mut);letter-spacing:1.5px;margin-top:2px}
+  .titles .sub b{color:var(--grn-dim)}
+  .spacer{flex:1 1 auto}
+  .btn{font-family:var(--mono);font-size:11px;letter-spacing:1.2px;cursor:pointer;background:transparent;color:var(--grn);
+    border:1px solid var(--grn-dim);padding:8px 13px;border-radius:3px;transition:.15s;text-transform:uppercase;white-space:nowrap}
+  .btn:hover{background:rgba(0,255,65,.12);box-shadow:0 0 12px rgba(0,255,65,.25)}
+  .btn:active{transform:translateY(1px)}
+  .btn.cy{color:var(--cyan);border-color:var(--cyan-dim)}.btn.cy:hover{background:rgba(0,212,255,.1)}
+  .status{display:flex;align-items:center;gap:8px;font-size:10.5px;letter-spacing:.8px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--mut);box-shadow:0 0 8px currentColor}
+  .dot.live{background:var(--grn)}
+
+  .main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:14px;margin-top:14px}
+  .panel{border:1px solid var(--line);background:var(--panel);border-radius:4px}
+  .panel .ph{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 13px;border-bottom:1px solid var(--line);
+    font-size:10.5px;letter-spacing:1.5px;color:var(--grn-dim);text-transform:uppercase}
+  .panel .ph .r{color:var(--mut);font-size:10px;text-transform:none}
+  .panel .body{padding:14px}
+
+  .frow{display:flex;gap:10px;margin-bottom:13px}
+  .frow .fld{flex:1}
+  label.lb{display:block;font-size:10px;color:var(--mut);letter-spacing:1px;margin:0 0 6px;text-transform:uppercase}
+  input[type=text]{width:100%;font-family:var(--mono);font-size:12.5px;background:#030703;color:var(--txt);
+    border:1px solid var(--line-2);border-radius:3px;padding:9px 11px}
+  input:focus{outline:none;border-color:var(--grn-dim)}
+
+  .dp{margin-bottom:13px;padding-bottom:13px;border-bottom:1px solid rgba(0,255,65,.06)}
+  .dp .dph{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  .dp .dpn{font-size:11.5px;color:var(--txt);font-weight:600;letter-spacing:.5px}
+  .dp .tagm{font-size:8.5px;font-weight:700;letter-spacing:.5px;padding:1px 6px;border-radius:3px}
+  .tm-auto{background:rgba(0,212,255,.12);color:var(--cyan);border:1px solid rgba(0,212,255,.4)}
+  .tm-human{background:rgba(255,149,0,.12);color:var(--amber);border:1px solid rgba(255,149,0,.4)}
+  .opts{display:flex;gap:7px;flex-wrap:wrap}
+  .opt{flex:1 1 auto;min-width:80px;text-align:center;font-size:11px;letter-spacing:.5px;padding:8px 6px;border-radius:3px;cursor:pointer;
+    border:1px solid var(--line-2);color:var(--mut);background:#030703;transition:.12s;user-select:none}
+  .opt:hover{border-color:var(--grn-dim);color:var(--txt)}
+  .opt.sel{background:rgba(0,255,65,.14);border-color:var(--grn);color:var(--grn);font-weight:600;box-shadow:0 0 10px rgba(0,255,65,.15)}
+  .opt.selh{background:rgba(255,149,0,.14);border-color:var(--amber);color:var(--amber);font-weight:600;box-shadow:0 0 10px rgba(255,149,0,.12)}
+  .dp .hint{font-size:9.5px;color:var(--mut-2);margin-top:6px;line-height:1.5}
+  .autobadge{font-size:9px;font-weight:700;color:var(--cyan);border:1px solid rgba(0,212,255,.4);background:rgba(0,212,255,.1);padding:1px 6px;border-radius:3px;margin-left:auto}
+
+  .cvss-row{display:flex;gap:8px;margin-top:8px}
+  .cvss-row input{flex:1;font-size:11px;padding:7px 9px}
+  .mini{font-size:10px;padding:7px 10px}
+
+  /* decision card */
+  .dcard{border:1px solid var(--line-2);border-radius:5px;padding:15px;background:var(--panel-2);margin-top:4px}
+  .dcard .mw{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:var(--mut);margin-bottom:11px;
+    padding-bottom:11px;border-bottom:1px solid var(--line)}
+  .dcard .mw b{color:var(--txt)}
+  .dcard .dec{display:flex;align-items:center;gap:14px}
+  .dcard .decbox{flex:none;min-width:120px;text-align:center;padding:14px 10px;border-radius:4px;border:2px solid}
+  .dcard .decbox .dl{font-size:26px;font-weight:700;line-height:1;letter-spacing:1px}
+  .dcard .decbox .dt{font-size:9px;letter-spacing:1px;margin-top:6px;text-transform:uppercase;opacity:.85}
+  .dcard .decmean{flex:1;font-size:11px;color:var(--mut);line-height:1.55}
+  .vec{margin-top:12px;font-size:11px;color:var(--cyan);background:#020602;border:1px solid var(--line-2);border-radius:3px;
+    padding:8px 11px;word-break:break-all;display:flex;align-items:center;gap:9px}
+  .vec .vcopy{margin-left:auto;flex:none}
+
+  .d-act{border-color:var(--red);background:rgba(255,51,51,.08)}.d-act .dl{color:var(--red)}
+  .d-attend{border-color:var(--amber);background:rgba(255,149,0,.08)}.d-attend .dl{color:var(--amber)}
+  .d-trackstar{border-color:var(--yellow);background:rgba(255,225,77,.07)}.d-trackstar .dl{color:var(--yellow)}
+  .d-track{border-color:var(--grn-dim);background:rgba(0,255,65,.06)}.d-track .dl{color:var(--grn)}
+
+  .mit{margin-top:12px;border:1px dashed var(--line-2);border-radius:4px;padding:0 12px;max-height:0;overflow:hidden;transition:max-height .25s,padding .25s}
+  .mit.open{max-height:260px;padding:12px}
+  .mit .note{font-size:9.5px;color:var(--mut-2);line-height:1.55;margin-bottom:10px}
+  .mit .note b{color:var(--amber)}
+  .mitrow{display:flex;gap:8px;margin-bottom:9px}.mitrow .fld{flex:1}
+  select{width:100%;font-family:var(--mono);font-size:11.5px;background:#030703;color:var(--txt);border:1px solid var(--line-2);border-radius:3px;padding:8px 9px}
+  select:focus{outline:none;border-color:var(--grn-dim)}
+
+  /* register + alerts */
+  .alerts{border:1px solid rgba(255,51,51,.4);background:rgba(255,51,51,.06);border-radius:4px;margin-bottom:14px;display:none}
+  .alerts.on{display:block}
+  .alerts .ah{padding:9px 13px;border-bottom:1px solid rgba(255,51,51,.25);font-size:10.5px;letter-spacing:1px;color:var(--red);text-transform:uppercase;font-weight:700}
+  .alerts .ab{padding:6px 13px 10px}
+  .alert-i{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid rgba(255,51,51,.12);font-size:11px}
+  .alert-i:last-child{border-bottom:none}
+  .alert-i .ac{color:var(--cyan);font-weight:600}
+  .arrow{color:var(--red);font-weight:700}
+
+  .kpis{display:flex;gap:9px;margin-bottom:13px;flex-wrap:wrap}
+  .kpi{flex:1 1 70px;border:1px solid var(--line);border-radius:4px;padding:8px 10px;background:var(--panel-2);text-align:center}
+  .kpi .n{font-size:20px;font-weight:700}.kpi .l{font-size:8.5px;color:var(--mut);letter-spacing:.5px;margin-top:4px;text-transform:uppercase}
+
+  .tbl-scroll{max-height:460px;overflow:auto}
+  table{width:100%;border-collapse:collapse;font-size:11px}
+  thead th{position:sticky;top:0;z-index:2;background:var(--panel-2);text-align:left;padding:8px 9px;font-size:9px;
+    letter-spacing:.5px;color:var(--mut);text-transform:uppercase;border-bottom:1px solid var(--line-2);white-space:nowrap}
+  tbody td{padding:8px 9px;border-bottom:1px solid rgba(0,255,65,.05);vertical-align:middle}
+  tbody tr:hover{background:rgba(0,255,65,.04)}
+  tbody tr.weap{background:rgba(255,51,51,.05)}
+  .dbadge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.3px;white-space:nowrap}
+  .db-act{background:rgba(255,51,51,.16);color:var(--red);border:1px solid rgba(255,51,51,.4)}
+  .db-attend{background:rgba(255,149,0,.14);color:var(--amber);border:1px solid rgba(255,149,0,.4)}
+  .db-trackstar{background:rgba(255,225,77,.12);color:var(--yellow);border:1px solid rgba(255,225,77,.35)}
+  .db-track{background:rgba(0,255,65,.1);color:var(--grn);border:1px solid rgba(0,255,65,.3)}
+  .rcve{color:var(--cyan);font-weight:600}.rasset{color:var(--mut);font-size:10px}
+  .xbtn{cursor:pointer;color:var(--mut-2);border:none;background:none;font-size:14px}.xbtn:hover{color:var(--red)}
+  .wbtn{cursor:pointer;font-size:9px;color:var(--red);border:1px solid rgba(255,51,51,.35);background:rgba(255,51,51,.08);border-radius:3px;padding:2px 6px}
+  .empty{padding:34px;text-align:center;color:var(--mut)}.empty b{color:var(--grn-dim);display:block;margin-bottom:6px;letter-spacing:1.5px}
+
+  details.ref{margin-top:14px;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+  details.ref summary{padding:10px 13px;cursor:pointer;font-size:10.5px;letter-spacing:1.5px;color:var(--grn-dim);text-transform:uppercase;list-style:none}
+  details.ref summary::-webkit-details-marker{display:none}
+  details.ref summary::before{content:"▸ ";color:var(--mut)}details.ref[open] summary::before{content:"▾ "}
+  .ref .body{padding:0 13px 13px}
+  .ref table{font-size:10px}.ref td,.ref th{padding:4px 8px}
+
+  footer{margin-top:22px;border-top:1px solid var(--line);padding-top:14px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;font-size:10px;color:var(--mut-2);letter-spacing:.5px}
+  footer b{color:var(--grn-dim)}
+  @media(max-width:1000px){.main{grid-template-columns:1fr}}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="cmd">
+    <div class="brand">
+      <div class="ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#00ff41" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 20V10a8 8 0 0 1 16 0v10l-2.5-2-2.5 2-3-2-3 2L4 20Z"/>
+          <circle cx="9" cy="11" r="1.1" fill="#00ff41" stroke="none"/><circle cx="15" cy="11" r="1.1" fill="#00ff41" stroke="none"/>
+        </svg>
+      </div>
+      <div class="titles">
+        <h1>CISA SSVC CALCULATOR</h1>
+        <div class="sub">GHOST DEFENSE // TOOL 42 &nbsp;·&nbsp; <b>DEFEND ALWAYS</b> &nbsp;·&nbsp; DECISION TREE + WEAPONIZATION TRANSITION WATCH</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="status"><span class="dot" id="kevDot"></span><span id="kevStatus">NO KEV LOADED</span></div>
+    <label class="btn" style="cursor:pointer" title="Import CISA KEV JSON/CSV — auto-sets Exploitation=Active for listed CVEs and drives escalation detection">📁 IMPORT KEV<input type="file" id="kevFile" accept=".json,.csv,.txt" style="display:none"></label>
+    <button class="btn cy" id="exportBtn">↓ EXPORT REGISTER</button>
+  </header>
+
+  <div class="main">
+    <!-- ASSESSMENT FORM -->
+    <div class="panel">
+      <div class="ph"><span>ASSESSMENT</span><span class="r">walk the four CISA decision points</span></div>
+      <div class="body">
+        <div class="frow">
+          <div class="fld"><label class="lb">CVE ID</label><input type="text" id="cve" spellcheck="false" placeholder="CVE-2024-3400"></div>
+          <div class="fld"><label class="lb">Asset / system (scopes mission)</label><input type="text" id="asset" spellcheck="false" placeholder="perimeter-fw-01"></div>
+        </div>
+
+        <!-- Exploitation -->
+        <div class="dp">
+          <div class="dph"><span class="dpn">1 · Exploitation</span><span class="tagm tm-auto">KEV-DERIVED</span><span class="autobadge" id="explBadge" style="display:none"></span></div>
+          <div class="opts" data-dp="expl">
+            <div class="opt" data-v="none">NONE</div><div class="opt" data-v="poc">PUBLIC PoC</div><div class="opt" data-v="active">ACTIVE</div>
+          </div>
+          <div class="hint">Present state only. In KEV → <b>Active</b>. Public exploit (Metasploit/ExploitDB) or well-known method → <b>Public PoC</b>. Import KEV to auto-set. Only <b>Active</b> can reach <b>Act</b>.</div>
+        </div>
+
+        <!-- Automatable -->
+        <div class="dp">
+          <div class="dph"><span class="dpn">2 · Automatable</span><span class="tagm tm-human">HUMAN</span></div>
+          <div class="opts" data-dp="auto">
+            <div class="opt" data-v="no">NO</div><div class="opt" data-v="yes">YES</div>
+          </div>
+          <div class="hint">Can recon→weaponize→deliver→exploit be reliably automated (wormable)? One effective barrier (auth, not internet-exposed, ASLR) = <b>No</b>. Unauth RCE / command injection = likely <b>Yes</b>. Consider chaining.</div>
+        </div>
+
+        <!-- Technical Impact -->
+        <div class="dp">
+          <div class="dph"><span class="dpn">3 · Technical Impact</span><span class="tagm tm-auto">CVSS-SUGGESTED</span><span class="autobadge" id="techBadge" style="display:none"></span></div>
+          <div class="opts" data-dp="tech">
+            <div class="opt" data-v="partial">PARTIAL</div><div class="opt" data-v="total">TOTAL</div>
+          </div>
+          <div class="cvss-row"><input type="text" id="cvssVec" spellcheck="false" placeholder="paste CVSS v3 vector for a suggestion, e.g. CVSS:3.1/AV:N/AC:L/.../C:H/I:H/A:H"><button class="btn cy mini" id="cvssBtn">SUGGEST</button></div>
+          <div class="hint"><b>Total</b> = full control of the component or total info disclosure. <b>Partial</b> = limited control / info exposure; DoS is Partial. Suggestion from CVSS is advisory — you confirm.</div>
+        </div>
+
+        <!-- Mission Prevalence -->
+        <div class="dp">
+          <div class="dph"><span class="dpn">4a · Mission Prevalence</span><span class="tagm tm-human">HUMAN</span></div>
+          <div class="opts" data-dp="mission">
+            <div class="opt" data-v="minimal">MINIMAL</div><div class="opt" data-v="support">SUPPORT</div><div class="opt" data-v="essential">ESSENTIAL</div>
+          </div>
+          <div class="hint">Role of this asset in mission-essential functions. <b>Essential</b> = directly provides an MEF. <b>Support</b> = supports MEFs for ≥2 entities. Prevalence, not impact. Set per asset; reused when you re-enter the same asset.</div>
+        </div>
+
+        <!-- Well-being -->
+        <div class="dp" style="border-bottom:none;padding-bottom:0">
+          <div class="dph"><span class="dpn">4b · Public Well-Being Impact</span><span class="tagm tm-human">HUMAN</span></div>
+          <div class="opts" data-dp="wellbeing">
+            <div class="opt" data-v="minimal">MINIMAL</div><div class="opt" data-v="material">MATERIAL</div><div class="opt" data-v="irreversible">IRREVERSIBLE</div>
+          </div>
+          <div class="hint">Harm to humans if compromised — physical, environmental, financial, psychological. <b>Material</b> = injury/major externalities/bankruptcies. <b>Irreversible</b> = fatalities, ecosystem collapse, social-system destabilization.</div>
+        </div>
+
+        <div style="text-align:right;margin-top:10px"><button class="btn cy mini" id="mitToggle">⚙ MITIGATION STATUS (non-scoring)</button></div>
+        <div class="mit" id="mit">
+          <div class="note"><b>Tracked, not scored.</b> Per the CISA guide, mitigation availability/difficulty/type do not change the SSVC decision — captured for VM records only.</div>
+          <div class="mitrow">
+            <div class="fld"><label class="lb">Availability</label><select id="mAvail"><option value="">—</option><option value="available">Available</option><option value="unavailable">Unavailable</option></select></div>
+            <div class="fld"><label class="lb">Change difficulty</label><select id="mDiff"><option value="">—</option><option value="low">Low</option><option value="high">High</option></select></div>
+            <div class="fld"><label class="lb">Type</label><select id="mType"><option value="">—</option><option value="fix">Fix (patch)</option><option value="workaround">Workaround</option></select></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OUTPUT + REGISTER -->
+    <div>
+      <div class="panel" style="margin-bottom:14px">
+        <div class="ph"><span>DECISION</span><span class="r" id="decMeta">select all four points</span></div>
+        <div class="body">
+          <div class="dcard">
+            <div class="mw"><span>Mission &amp; Well-being band <b id="mwBand">—</b> <span style="color:var(--mut-2)">(Table 8)</span></span><span id="mwDetail" style="color:var(--mut-2)"></span></div>
+            <div class="dec">
+              <div class="decbox d-track" id="decBox"><div class="dl" id="decLabel">—</div><div class="dt" id="decTier">awaiting input</div></div>
+              <div class="decmean" id="decMean">Choose Exploitation, Automatable, Technical Impact, Mission, and Well-being to resolve the CISA SSVC decision.</div>
+            </div>
+            <div class="vec" id="vecWrap" style="display:none"><span id="vecStr"></span><button class="btn cy mini vcopy" id="copyVec">COPY</button></div>
+          </div>
+          <div style="text-align:right;margin-top:12px"><button class="btn" id="saveBtn">＋ SAVE TO REGISTER</button></div>
+        </div>
+      </div>
+
+      <div class="alerts" id="alerts">
+        <div class="ah">⚠ Escalations — decision changed after exploitation update</div>
+        <div class="ab" id="alertsBody"></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><span>ASSESSMENT REGISTER</span><span class="r" id="regMeta">0 saved</span></div>
+        <div class="body">
+          <div class="kpis" id="kpis"></div>
+          <div class="tbl-scroll">
+            <table>
+              <thead><tr><th>CVE / ASSET</th><th>E</th><th>A</th><th>T</th><th>M&amp;W</th><th>DECISION</th><th></th></tr></thead>
+              <tbody id="regBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <details class="ref">
+    <summary>CISA SSVC reference — Table 9 (36 branches) &amp; Table 8 (mission × well-being)</summary>
+    <div class="body">
+      <p style="font-size:10.5px;color:var(--mut);line-height:1.6">Encoded verbatim from the CISA SSVC Guide (Nov 2022). Only <b style="color:var(--grn)">Active</b> exploitation reaches <b style="color:var(--red)">Act</b>. Mission &amp; Well-being is derived from Mission Prevalence × Public Well-Being via Table 8, then Exploitation × Automatable × Technical Impact × (M&amp;W band) resolves the decision via Table 9.</p>
+      <div id="refTables"></div>
+    </div>
+  </details>
+
+  <footer>
+    <div>Encodes CISA SSVC Guide (Nov 2022) · Table 8 + Table 9 verbatim · Exploitation auto-derived from CISA KEV · mitigation tracked, not scored</div>
+    <div><b>GHOST DEFENSE</b> · DEFEND ALWAYS · STATIC HTML · NO INFRA</div>
+  </footer>
+</div>
+
+<script>
+//============ GHOST DEFENSE — CISA SSVC CALCULATOR (Tool 42) ============
+const $=id=>document.getElementById(id);
+
+// ---- Table 8: Mission Prevalence × Public Well-Being -> band ----
+const TABLE8={
+  minimal:  {minimal:"low",    material:"medium", irreversible:"high"},
+  support:  {minimal:"medium", material:"medium", irreversible:"high"},
+  essential:{minimal:"high",   material:"high",   irreversible:"high"}
+};
+
+// ---- Table 9: Exploitation | Automatable | Technical | M&W -> Decision (36 rows, verbatim) ----
+const T9_ROWS=[
+ ["none","no","partial","low","Track"],["none","no","partial","medium","Track"],["none","no","partial","high","Track"],
+ ["none","no","total","low","Track"],["none","no","total","medium","Track"],["none","no","total","high","Track*"],
+ ["none","yes","partial","low","Track"],["none","yes","partial","medium","Track"],["none","yes","partial","high","Attend"],
+ ["none","yes","total","low","Track"],["none","yes","total","medium","Track"],["none","yes","total","high","Attend"],
+ ["poc","no","partial","low","Track"],["poc","no","partial","medium","Track"],["poc","no","partial","high","Track*"],
+ ["poc","no","total","low","Track"],["poc","no","total","medium","Track*"],["poc","no","total","high","Attend"],
+ ["poc","yes","partial","low","Track"],["poc","yes","partial","medium","Track"],["poc","yes","partial","high","Attend"],
+ ["poc","yes","total","low","Track"],["poc","yes","total","medium","Track*"],["poc","yes","total","high","Attend"],
+ ["active","no","partial","low","Track"],["active","no","partial","medium","Track"],["active","no","partial","high","Attend"],
+ ["active","no","total","low","Track"],["active","no","total","medium","Attend"],["active","no","total","high","Act"],
+ ["active","yes","partial","low","Attend"],["active","yes","partial","medium","Attend"],["active","yes","partial","high","Act"],
+ ["active","yes","total","low","Attend"],["active","yes","total","medium","Act"],["active","yes","total","high","Act"]
+];
+const TABLE9={}; T9_ROWS.forEach(r=>TABLE9[r[0]+"|"+r[1]+"|"+r[2]+"|"+r[3]]=r[4]);
+
+function mwBand(mission,wellbeing){ return (TABLE8[mission]||{})[wellbeing]||null; }
+function decide(expl,auto,tech,mw){ return TABLE9[expl+"|"+auto+"|"+tech+"|"+mw]||null; }
+const DEC_RANK={"Track":0,"Track*":1,"Attend":2,"Act":3};
+const DEC_CLASS={"Track":"track","Track*":"trackstar","Attend":"attend","Act":"act"};
+const DEC_MEAN={
+  "Track":"No action beyond standard update timelines. Continue to track; reassess if new information appears.",
+  "Track*":"Track, but specific characteristics warrant closer monitoring for change — this is a prime candidate to escalate the moment exploitation moves.",
+  "Attend":"Remediate sooner than standard timelines. Supervisory-level attention; may involve notification and requests for information.",
+  "Act":"Remediate as soon as possible. Supervisory AND leadership attention — convene, decide the response, execute."
+};
+
+// ---- state ----
+let sel={expl:null,auto:null,tech:null,mission:null,wellbeing:null};
+let KEVSET=new Set();
+let REGISTER=load("ghost2210_ssvc_register",[]);
+let ASSETS=load("ghost2210_ssvc_assets",{});   // asset -> {mission,wellbeing}
+let explAuto=false;
+
+function load(k,d){ try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;} }
+function save(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
+
+// ---- option selection ----
+document.querySelectorAll(".opts").forEach(box=>{
+  const dp=box.dataset.dp;
+  box.querySelectorAll(".opt").forEach(o=>o.onclick=()=>{
+    sel[dp]=o.dataset.v;
+    box.querySelectorAll(".opt").forEach(x=>x.classList.remove("sel","selh"));
+    o.classList.add(["auto","mission","wellbeing"].includes(dp)&&dp!=="expl"&&dp!=="tech"?"selh":"sel");
+    if(dp==="expl"){ explAuto=false; $("explBadge").style.display="none"; }
+    if(dp==="mission"||dp==="wellbeing") rememberAsset();
+    compute();
+  });
+});
+// human-input highlight color
+function paintHuman(){ ["auto","mission","wellbeing"].forEach(dp=>{ const b=document.querySelector('.opts[data-dp="'+dp+'"]'); b.querySelectorAll(".opt.sel").forEach(o=>{o.classList.remove("sel");o.classList.add("selh");}); }); }
+
+function setOpt(dp,v){
+  sel[dp]=v; const box=document.querySelector('.opts[data-dp="'+dp+'"]');
+  box.querySelectorAll(".opt").forEach(x=>{ x.classList.toggle(["auto","mission","wellbeing"].includes(dp)?"selh":"sel", x.dataset.v===v); if(x.dataset.v!==v)x.classList.remove("sel","selh"); });
+}
+
+// ---- CVE -> KEV auto-fill exploitation ----
+$("cve").addEventListener("input",()=>{ autoExpl(); recallAsset(); });
+$("asset").addEventListener("input",recallAsset);
+function normCve(s){ return (s||"").trim().toUpperCase(); }
+function autoExpl(){
+  const c=normCve($("cve").value);
+  if(KEVSET.size && /^CVE-\d{4}-\d+$/.test(c) && KEVSET.has(c)){
+    setOpt("expl","active"); explAuto=true;
+    $("explBadge").style.display="inline-block"; $("explBadge").textContent="KEV → ACTIVE";
+    compute();
+  } else if(explAuto){ // was auto, no longer matches
+    explAuto=false; $("explBadge").style.display="none";
+  }
+}
+function recallAsset(){
+  const a=$("asset").value.trim().toLowerCase();
+  if(a && ASSETS[a]){
+    if(ASSETS[a].mission){ setOpt("mission",ASSETS[a].mission); sel.mission=ASSETS[a].mission; }
+    if(ASSETS[a].wellbeing){ setOpt("wellbeing",ASSETS[a].wellbeing); sel.wellbeing=ASSETS[a].wellbeing; }
+    compute();
+  }
+}
+function rememberAsset(){
+  const a=$("asset").value.trim().toLowerCase(); if(!a) return;
+  ASSETS[a]=ASSETS[a]||{}; if(sel.mission)ASSETS[a].mission=sel.mission; if(sel.wellbeing)ASSETS[a].wellbeing=sel.wellbeing;
+  save("ghost2210_ssvc_assets",ASSETS);
+}
+
+// ---- CVSS -> Technical Impact suggestion ----
+$("cvssBtn").onclick=()=>{
+  const v=$("cvssVec").value.toUpperCase();
+  const g=k=>{const m=v.match(new RegExp("/"+k+":([NLH])"));return m?m[1]:null;};
+  const C=g("C"),I=g("I"),A=g("A"),S=(v.match(/\/S:([UC])/)||[])[1];
+  if(!C&&!I&&!A){ alert("Couldn't parse a CVSS v3 vector. Expecting a string like CVSS:3.1/AV:N/.../C:H/I:H/A:H"); return; }
+  const total = C==="H"||I==="H"||S==="C";
+  setOpt("tech",total?"total":"partial"); sel.tech=total?"total":"partial";
+  $("techBadge").style.display="inline-block";
+  $("techBadge").textContent="CVSS → "+(total?"TOTAL":"PARTIAL"); $("techBadge").className="autobadge";
+  compute();
+};
+
+// ---- compute + render decision ----
+function vecStr(){
+  const E={none:"N",poc:"P",active:"A"}[sel.expl], A={no:"N",yes:"Y"}[sel.auto], T={partial:"P",total:"T"}[sel.tech];
+  const band=mwBand(sel.mission,sel.wellbeing), M={low:"L",medium:"M",high:"H"}[band];
+  return "CISAv1/E:"+E+"/A:"+A+"/T:"+T+"/M:"+M+"/"+new Date().toISOString().replace(/\.\d+Z$/,"Z")+"/";
+}
+function compute(){
+  paintHuman();
+  const need=["expl","auto","tech","mission","wellbeing"].filter(k=>!sel[k]);
+  const band=mwBand(sel.mission,sel.wellbeing);
+  $("mwBand").textContent=band?band.toUpperCase():"—";
+  $("mwDetail").textContent=(sel.mission&&sel.wellbeing)?("mission "+sel.mission+" × well-being "+sel.wellbeing):"";
+  if(need.length){
+    $("decMeta").textContent="need: "+need.join(", ");
+    $("decLabel").textContent="—"; $("decTier").textContent="awaiting input";
+    $("decBox").className="decbox d-track"; $("decMean").textContent="Choose all five inputs to resolve the CISA SSVC decision.";
+    $("vecWrap").style.display="none"; return;
+  }
+  const dec=decide(sel.expl,sel.auto,sel.tech,band);
+  $("decMeta").textContent="resolved · Table 9";
+  $("decLabel").textContent=dec; $("decTier").textContent=({Track:"routine",["Track*"]:"monitor closely",Attend:"expedite",Act:"immediate"})[dec];
+  $("decBox").className="decbox d-"+DEC_CLASS[dec];
+  $("decMean").textContent=DEC_MEAN[dec];
+  $("vecWrap").style.display="flex"; $("vecStr").textContent=vecStr();
+}
+$("copyVec").onclick=()=>{ navigator.clipboard&&navigator.clipboard.writeText($("vecStr").textContent); $("copyVec").textContent="COPIED"; setTimeout(()=>$("copyVec").textContent="COPY",1200); };
+$("mitToggle").onclick=()=>$("mit").classList.toggle("open");
+
+// ---- register ----
+$("saveBtn").onclick=()=>{
+  const need=["expl","auto","tech","mission","wellbeing"].filter(k=>!sel[k]);
+  if(need.length){ alert("Complete all five decision points first ("+need.join(", ")+")."); return; }
+  const cve=normCve($("cve").value)||"(no CVE)";
+  const band=mwBand(sel.mission,sel.wellbeing);
+  const rec={
+    id:Date.now()+"-"+Math.random().toString(36).slice(2,6),
+    cve, asset:$("asset").value.trim(),
+    expl:sel.expl,auto:sel.auto,tech:sel.tech,mission:sel.mission,wellbeing:sel.wellbeing,band,
+    decision:decide(sel.expl,sel.auto,sel.tech,band), vector:vecStr(),
+    mit:{avail:$("mAvail").value,diff:$("mDiff").value,type:$("mType").value},
+    ts:new Date().toISOString()
+  };
+  // replace existing same cve+asset
+  REGISTER=REGISTER.filter(r=>!(r.cve===rec.cve&&r.asset===rec.asset));
+  REGISTER.unshift(rec); save("ghost2210_ssvc_register",REGISTER);
+  rememberAsset(); renderRegister();
+};
+
+function reresolve(rec){ // recompute decision from stored human inputs + current exploitation
+  const band=mwBand(rec.mission,rec.wellbeing);
+  return decide(rec.expl,rec.auto,rec.tech,band);
+}
+function renderRegister(escalations){
+  $("regMeta").textContent=REGISTER.length+" saved";
+  const counts={Track:0,"Track*":0,Attend:0,Act:0};
+  REGISTER.forEach(r=>counts[r.decision]=(counts[r.decision]||0)+1);
+  $("kpis").innerHTML=[
+    ["Act",counts.Act,"var(--red)"],["Attend",counts.Attend,"var(--amber)"],
+    ["Track*",counts["Track*"],"var(--yellow)"],["Track",counts.Track,"var(--grn)"]
+  ].map(([l,n,c])=>`<div class="kpi"><div class="n" style="color:${c}">${n}</div><div class="l">${l}</div></div>`).join("");
+  if(!REGISTER.length){ $("regBody").innerHTML='<tr><td colspan="7"><div class="empty"><b>REGISTER EMPTY</b>Assess a CVE and SAVE. Stored assessments are re-checked when you import updated KEV.</div></td></tr>'; return; }
+  const ch={none:"N",poc:"P",active:"A",no:"N",yes:"Y",partial:"P",total:"T"};
+  $("regBody").innerHTML=REGISTER.map(r=>`
+    <tr class="${r.expl==='active'&&r.tech==='total'?'weap':''}">
+      <td><div class="rcve">${esc(r.cve)}</div>${r.asset?`<div class="rasset">${esc(r.asset)}</div>`:''}</td>
+      <td>${ch[r.expl]}</td><td>${ch[r.auto]}</td><td>${ch[r.tech]}</td><td>${(r.band||'').charAt(0).toUpperCase()}</td>
+      <td><span class="dbadge db-${DEC_CLASS[r.decision]}">${r.decision}</span></td>
+      <td style="white-space:nowrap;text-align:right">
+        <button class="wbtn" data-w="${r.id}" title="Mark this CVE Active/weaponized in the wild and re-resolve">⚡ ACTIVE</button>
+        <button class="xbtn" data-x="${r.id}">×</button></td>
+    </tr>`).join("");
+  $("regBody").querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>{ REGISTER=REGISTER.filter(r=>r.id!==b.dataset.x); save("ghost2210_ssvc_register",REGISTER); renderRegister(); });
+  $("regBody").querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>markActive(b.dataset.w));
+  // escalation alerts
+  const al=$("alerts"),ab=$("alertsBody");
+  if(escalations&&escalations.length){
+    al.classList.add("on");
+    ab.innerHTML=escalations.map(e=>`<div class="alert-i"><span class="ac">${esc(e.cve)}</span>${e.asset?`<span class="rasset">${esc(e.asset)}</span>`:''}
+      <span class="dbadge db-${DEC_CLASS[e.from]}">${e.from}</span><span class="arrow">→</span><span class="dbadge db-${DEC_CLASS[e.to]}">${e.to}</span>
+      <span style="color:var(--mut);font-size:10px">${esc(e.reason)}</span></div>`).join("");
+  } else { al.classList.remove("on"); ab.innerHTML=""; }
+}
+
+function markActive(id){
+  const r=REGISTER.find(x=>x.id===id); if(!r) return;
+  if(r.expl==="active"){ alert(r.cve+" is already Active."); return; }
+  const from=r.decision, oldExpl=r.expl; r.expl="active";
+  const to=reresolve(r); r.decision=to; r.vector=r.vector.replace(/E:[NPA]/,"E:A"); r.ts=new Date().toISOString();
+  save("ghost2210_ssvc_register",REGISTER);
+  const esc0=[]; if(DEC_RANK[to]>DEC_RANK[from]) esc0.push({cve:r.cve,asset:r.asset,from,to,reason:"weaponized/Active in the wild ("+oldExpl+"→active)"});
+  renderRegister(esc0);
+}
+
+// ---- KEV import: auto-fill + bulk escalation sweep ----
+function importKev(file){
+  const reader=new FileReader();
+  reader.onload=()=>{ try{
+    const t=reader.result.trim(); let ids=[];
+    if(t[0]==="{"||t[0]==="["){ const j=JSON.parse(t); const arr=j.vulnerabilities||(Array.isArray(j)?j:[]);
+      ids=arr.map(o=>(o.cveID||o.cve||"").toUpperCase()).filter(Boolean); }
+    else { ids=(t.match(/CVE-\d{4}-\d+/gi)||[]).map(s=>s.toUpperCase()); }
+    if(!ids.length) throw new Error("no CVE IDs found");
+    KEVSET=new Set(ids);
+    $("kevDot").className="dot live"; $("kevStatus").textContent="KEV · "+KEVSET.size+" CVEs";
+    autoExpl();
+    // sweep register: any stored assessment now in KEV but not marked Active -> escalate
+    const escalations=[];
+    REGISTER.forEach(r=>{
+      if(KEVSET.has(r.cve) && r.expl!=="active"){
+        const from=r.decision; r.expl="active"; const to=reresolve(r);
+        r.decision=to; r.vector=r.vector.replace(/E:[NPA]/,"E:A");
+        if(DEC_RANK[to]>DEC_RANK[from]) escalations.push({cve:r.cve,asset:r.asset,from,to,reason:"now listed in CISA KEV"});
+      }
+    });
+    if(escalations.length) save("ghost2210_ssvc_register",REGISTER);
+    renderRegister(escalations);
+    if(escalations.length) window.scrollTo({top:0});
+  }catch(e){ alert("KEV import failed: "+e.message); } };
+  reader.readAsText(file);
+}
+$("kevFile").addEventListener("change",e=>{ if(e.target.files[0])importKev(e.target.files[0]); e.target.value=""; });
+
+// ---- export ----
+$("exportBtn").onclick=()=>{
+  if(!REGISTER.length){ alert("Register is empty."); return; }
+  const L=["GHOST DEFENSE — CISA SSVC ASSESSMENT REGISTER","DEFEND ALWAYS","Generated: "+new Date().toISOString(),"",
+    "cve,asset,exploitation,automatable,technical_impact,mission,wellbeing,mw_band,decision,vector,mitigation_avail,mitigation_diff,mitigation_type"];
+  REGISTER.forEach(r=>L.push([r.cve,q(r.asset),r.expl,r.auto,r.tech,r.mission,r.wellbeing,r.band,r.decision,q(r.vector),r.mit.avail,r.mit.diff,r.mit.type].join(",")));
+  const acts=REGISTER.filter(r=>r.decision==="Act"),att=REGISTER.filter(r=>r.decision==="Attend");
+  L.push(""); L.push("== PATCH QUEUE (Act = ASAP) =="); acts.forEach(r=>L.push("  "+r.cve+"  "+(r.asset||"")+"  "+r.vector));
+  L.push(""); L.push("== EXPEDITE (Attend) =="); att.forEach(r=>L.push("  "+r.cve+"  "+(r.asset||"")+"  "+r.vector));
+  const blob=new Blob([L.join("\n")],{type:"text/plain"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="ghost2210_ssvc_register_"+new Date().toISOString().slice(0,10)+".csv"; a.click();
+};
+function q(s){s=String(s||"");return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+// ---- reference tables ----
+(function(){
+  let h='<table style="margin-bottom:14px"><thead><tr><th>Mission ↓ / Well-being →</th><th>Minimal</th><th>Material</th><th>Irreversible</th></tr></thead><tbody>';
+  ["minimal","support","essential"].forEach(m=>{ h+='<tr><td style="color:var(--txt)">'+m+'</td>'+["minimal","material","irreversible"].map(w=>'<td>'+TABLE8[m][w].toUpperCase()+'</td>').join("")+'</tr>'; });
+  h+='</tbody></table><table><thead><tr><th>#</th><th>Exploit</th><th>Auto</th><th>Tech</th><th>M&W</th><th>Decision</th></tr></thead><tbody>';
+  T9_ROWS.forEach((r,i)=>{ h+='<tr><td style="color:var(--mut-2)">'+(i+1)+'</td><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td><td><span class="dbadge db-'+DEC_CLASS[r[4]]+'">'+r[4]+'</span></td></tr>'; });
+  h+='</tbody></table>'; $("refTables").innerHTML=h;
+})();
+
+// ---- boot ----
+renderRegister();
+</script>
+</body>
+</html>

@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KEV + SSVC Catalog — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06080c;--s1:#0a0e16;--s2:#0f1520;--s3:#151c2a;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);
+  --text:#e8f0f8;--muted:#4a6080;--muted2:#7090b0;
+  --green:#00e676;--green-s:rgba(0,230,118,0.08);--green-b:rgba(0,230,118,0.25);
+  --red:#ff3d57;--red-s:rgba(255,61,87,0.1);--red-b:rgba(255,61,87,0.3);
+  --orange:#ff9100;--orange-s:rgba(255,145,0,0.1);--orange-b:rgba(255,145,0,0.28);
+  --yellow:#ffd740;--yellow-s:rgba(255,215,64,0.08);--yellow-b:rgba(255,215,64,0.25);
+  --blue:#448aff;--blue-s:rgba(68,138,255,0.08);--blue-b:rgba(68,138,255,0.25);
+  --cyan:#00e5ff;--cyan-s:rgba(0,229,255,0.08);--cyan-b:rgba(0,229,255,0.25);
+  --purple:#e040fb;--purple-s:rgba(224,64,251,0.08);--purple-b:rgba(224,64,251,0.25);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html,body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+body{display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:9px 20px;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:100;flex-shrink:0}
+.brand{display:flex;align-items:center;gap:9px}
+.brand-icon{width:28px;height:28px;background:var(--red-s);border:1px solid var(--red-b);
+  border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.brand-name{font-size:13px;font-weight:700}
+.brand-sub{font-size:9px;color:var(--muted2);font-family:var(--mono)}
+.tb-sep{width:1px;height:22px;background:var(--border2);flex-shrink:0}
+.tb-stat{text-align:center;min-width:64px}
+.tb-stat-n{font-family:var(--mono);font-size:15px;font-weight:700}
+.tb-stat-l{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.tb-btn{font-family:var(--mono);font-size:11px;padding:5px 11px;border-radius:5px;
+  cursor:pointer;border:1px solid;transition:all .15s;white-space:nowrap}
+.tb-btn:disabled{opacity:.5;cursor:not-allowed}
+.search-inp{background:var(--s2);border:1px solid var(--border2);border-radius:5px;
+  color:var(--text);font-family:var(--mono);font-size:11px;padding:5px 10px;
+  outline:none;width:200px}
+.search-inp:focus{border-color:var(--cyan-b)}
+.search-inp::placeholder{color:var(--muted)}
+.sel{background:var(--s2);border:1px solid var(--border2);border-radius:5px;
+  color:var(--text);font-family:var(--mono);font-size:11px;padding:5px 8px;outline:none;cursor:pointer}
+
+/* EXPORT BAR */
+.export-bar{background:var(--s1);border-bottom:1px solid var(--border);padding:7px 20px;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0}
+.export-label{font-size:10px;font-family:var(--mono);color:var(--muted2);text-transform:uppercase;letter-spacing:.08em}
+.exp-btn{font-family:var(--mono);font-size:11px;padding:5px 14px;border-radius:5px;
+  cursor:pointer;border:1px solid;transition:all .15s;font-weight:700}
+.exp-csv{background:var(--green-s);color:var(--green);border-color:var(--green-b)}
+.exp-csaf{background:var(--blue-s);color:var(--blue);border-color:var(--blue-b)}
+.exp-vex{background:var(--purple-s);color:var(--purple);border-color:var(--purple-b)}
+.exp-openeox{background:var(--orange-s);color:var(--orange);border-color:var(--orange-b)}
+.exp-csv:hover{background:rgba(0,230,118,0.15)}
+.exp-csaf:hover{background:rgba(68,138,255,0.15)}
+.exp-vex:hover{background:rgba(224,64,251,0.15)}
+.exp-openeox:hover{background:rgba(255,145,0,0.15)}
+.sel-count{font-size:11px;font-family:var(--mono);color:var(--muted2);margin-left:auto}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* TABLE */
+.tbl-wrap{flex:1;overflow:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{position:sticky;top:0;background:var(--s2);padding:8px 12px;font-family:var(--mono);
+  font-size:10px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;
+  border-bottom:1px solid var(--border2);white-space:nowrap;cursor:pointer;user-select:none;z-index:10}
+.tbl th:hover{color:var(--text)}
+.tbl th .sort-arrow{margin-left:4px;opacity:.4}
+.tbl th.sorted .sort-arrow{opacity:1;color:var(--cyan)}
+.tbl td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:hover td{background:rgba(255,255,255,0.02)}
+.tbl tr.selected td{background:rgba(0,229,255,0.04)}
+.cb{cursor:pointer;accent-color:var(--cyan);width:14px;height:14px}
+
+/* BADGES */
+.cve-id{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--red);cursor:pointer}
+.cve-id:hover{text-decoration:underline}
+.vendor-badge{font-size:10px;font-family:var(--mono);color:var(--muted2)}
+.kev-date{font-family:var(--mono);font-size:10px;color:var(--muted2)}
+.due-date{font-family:var(--mono);font-size:10px}
+.due-overdue{color:var(--red);font-weight:700}
+.due-soon{color:var(--orange)}
+.due-ok{color:var(--green)}
+.desc-cell{max-width:280px;font-size:11px;color:var(--muted2);line-height:1.4;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* SSVC BADGES */
+.ssvc-act{background:rgba(255,34,68,.15);color:#ff2244;border:2px solid rgba(255,34,68,.5);
+  font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;font-family:var(--mono);white-space:nowrap}
+.ssvc-attend{background:var(--orange-s);color:var(--orange);border:2px solid var(--orange-b);
+  font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;font-family:var(--mono);white-space:nowrap}
+.ssvc-trackplus{background:var(--yellow-s);color:var(--yellow);border:2px solid var(--yellow-b);
+  font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;font-family:var(--mono);white-space:nowrap}
+.ssvc-track{background:var(--green-s);color:var(--green);border:1px solid var(--green-b);
+  font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;font-family:var(--mono);white-space:nowrap}
+
+/* DETAIL PANEL */
+.detail-panel{width:360px;background:var(--s1);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.dp-hdr{padding:10px 14px;background:var(--s2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.dp-title{font-size:11px;font-weight:700;font-family:var(--mono);color:var(--text)}
+.dp-close{cursor:pointer;color:var(--muted2);font-size:16px;line-height:1;background:none;border:none;color:var(--muted2)}
+.dp-body{flex:1;overflow-y:auto;padding:14px}
+.dp-cve{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--red);margin-bottom:4px}
+.dp-vendor{font-size:13px;font-weight:600;margin-bottom:10px}
+.dp-section{margin-bottom:14px}
+.dp-sec-title{font-size:9px;font-family:var(--mono);font-weight:700;color:var(--muted2);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.dp-desc{font-size:12px;color:var(--muted2);line-height:1.7}
+.dp-field{display:flex;justify-content:space-between;padding:5px 0;
+  border-bottom:1px solid var(--border);font-size:11px}
+.dp-field-label{color:var(--muted2);font-family:var(--mono)}
+.dp-field-val{font-family:var(--mono);font-weight:600;text-align:right}
+.dp-action{background:var(--s2);border:1px solid var(--border);border-radius:6px;
+  padding:10px 12px;font-size:11px;color:var(--muted2);line-height:1.7;margin-top:6px;
+  border-left:3px solid var(--orange)}
+.ssvc-detail{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:6px}
+.ssvc-decision-big{font-family:var(--mono);font-size:22px;font-weight:900;margin-bottom:4px}
+.ssvc-rationale{font-size:11px;color:var(--muted2);line-height:1.6}
+.ssvc-factors{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.ssvc-factor{display:flex;justify-content:space-between;font-size:10px;font-family:var(--mono)}
+.sf-label{color:var(--muted2)}
+.sf-val{font-weight:700}
+
+/* STATUS BAR */
+.statusbar{padding:5px 20px;background:var(--s1);border-top:1px solid var(--border);
+  display:flex;align-items:center;gap:16px;font-size:10px;font-family:var(--mono);color:var(--muted2);flex-shrink:0}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 4px var(--green);display:inline-block;margin-right:5px}
+
+/* LOADING */
+.loading-row td{text-align:center;padding:40px;color:var(--muted);font-family:var(--mono)}
+.spin{animation:spin .8s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">🔴</div>
+    <div>
+      <div class="brand-name">KEV + SSVC Catalog</div>
+      <div class="brand-sub">Ghost Defense · Tool 39 · CISA Known Exploited Vulnerabilities · SSVC Prioritization</div>
+    </div>
+  </div>
+  <div class="tb-sep"></div>
+  <div class="tb-stat"><div class="tb-stat-n" id="statTotal" style="color:var(--red)">—</div><div class="tb-stat-l">Total KEV</div></div>
+  <div class="tb-stat"><div class="tb-stat-n" id="statAct" style="color:#ff2244">—</div><div class="tb-stat-l">ACT</div></div>
+  <div class="tb-stat"><div class="tb-stat-n" id="statAttend" style="color:var(--orange)">—</div><div class="tb-stat-l">ATTEND</div></div>
+  <div class="tb-stat"><div class="tb-stat-n" id="statFiltered" style="color:var(--cyan)">—</div><div class="tb-stat-l">Showing</div></div>
+  <div class="tb-stat"><div class="tb-stat-n" id="statSelected" style="color:var(--yellow)">0</div><div class="tb-stat-l">Selected</div></div>
+  <div class="tb-sep"></div>
+  <input class="search-inp" id="searchInp" placeholder="Search CVE, vendor, product…">
+  <select class="sel" id="ssvcFilter">
+    <option value="all">All SSVC</option>
+    <option value="ACT">ACT</option>
+    <option value="ATTEND">ATTEND</option>
+    <option value="TRACK*">TRACK*</option>
+    <option value="TRACK">TRACK</option>
+  </select>
+  <select class="sel" id="vendorFilter"><option value="all">All Vendors</option></select>
+  <select class="sel" id="yearFilter"><option value="all">All Years</option></select>
+  <button class="tb-btn" id="proxyBtn" style="background:var(--s2);color:var(--muted2);border-color:var(--border2)" title="Configure proxy URL for KEV fetch">⚙ PROXY</button>
+  <button class="tb-btn" id="refreshBtn" style="background:var(--green-s);color:var(--green);border-color:var(--green-b)">⟳ REFRESH</button>
+  <label class="tb-btn" id="importLabel" style="background:var(--cyan-s);color:var(--cyan);border-color:var(--cyan-b);cursor:pointer">
+    📂 IMPORT JSON / CSV
+    <input type="file" id="importFile" accept=".json,.csv" style="display:none">
+  </label>
+  <span id="importStatus" style="font-family:var(--mono);font-size:10px;color:var(--muted2)"></span>
+  <button class="tb-btn" id="selAllBtn" style="background:var(--s2);color:var(--muted2);border-color:var(--border2)">☑ SELECT ALL</button>
+</div>
+
+<!-- EXPORT BAR -->
+<div class="export-bar">
+  <span class="export-label">Export:</span>
+  <button class="exp-btn exp-csv"     id="expCSV">📊 CSV</button>
+  <button class="exp-btn exp-csaf"    id="expCSAF">🔵 CSAF 2.0</button>
+  <button class="exp-btn exp-vex"     id="expVEX">🟣 VEX (CSAF)</button>
+  <button class="exp-btn exp-openeox" id="expOpenEoX">🟠 OpenEoX</button>
+  <span class="sel-count" id="selCount">Select entries to export (or export all)</span>
+</div>
+
+<!-- MAIN -->
+<div class="main" style="display:flex;flex-direction:row;overflow:hidden;flex:1">
+
+  <!-- TABLE -->
+  <div class="tbl-wrap" id="tblWrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th style="width:36px"><input type="checkbox" class="cb" id="selectAll"></th>
+          <th data-col="cveID">CVE ID <span class="sort-arrow">↕</span></th>
+          <th data-col="vendorProject">Vendor <span class="sort-arrow">↕</span></th>
+          <th data-col="product">Product <span class="sort-arrow">↕</span></th>
+          <th data-col="ssvc">SSVC <span class="sort-arrow">↕</span></th>
+          <th data-col="dateAdded">Added <span class="sort-arrow">↕</span></th>
+          <th data-col="dueDate">Due Date <span class="sort-arrow">↕</span></th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody id="tblBody">
+        <tr class="loading-row"><td colspan="8"><span class="spin">⟳</span> Loading CISA KEV catalog…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- DETAIL PANEL -->
+  <div class="detail-panel" id="detailPanel" style="display:none">
+    <div class="dp-hdr">
+      <span class="dp-title">VULNERABILITY DETAIL</span>
+      <button class="dp-close" id="dpClose">✕</button>
+    </div>
+    <div class="dp-body" id="dpBody"></div>
+  </div>
+
+</div>
+
+<!-- STATUS BAR -->
+<div class="statusbar">
+  <span><span class="status-dot"></span><span id="statusText">Ready</span></span>
+  <span>Source: CISA KEV Catalog · cisa.gov/known-exploited-vulnerabilities</span>
+  <span>SSVC v2.0 · CISA Framework</span>
+  <span id="lastUpdated" style="margin-left:auto"></span>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+//  GHOST DEFENSE — KEV + SSVC CATALOG  (Tool 39)
+//  Live CISA KEV · SSVC scoring · CSV / CSAF / VEX / OpenEoX export
+// ═══════════════════════════════════════════════════════════════════════════════
+
+var allVulns    = [];
+var filtered    = [];
+var selected    = new Set();
+var detailCVE   = null;
+var sortCol     = 'ssvc';
+var sortDir     = 1;
+var searchText  = '';
+var ssvcFilter  = 'all';
+var vendorFilter= 'all';
+var yearFilter  = 'all';
+
+// ── SSVC ENGINE ───────────────────────────────────────────────────────────────
+// CISA SSVC Decision Tree v2.0
+// Inputs: Exploitation, Automatable, Mission Impact
+// Output: ACT / ATTEND / TRACK+ / TRACK
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  CISA SSVC v2.0 — Faithful implementation per CISA SSVC Guide (Nov 2022)
+//  Decision Points: Exploitation · Automatable · Technical Impact ·
+//                   Mission Prevalence · Public Well-Being Impact
+//  Reference: CISA Stakeholder-Specific Vulnerability Categorization Guide
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function calcSSVC(vuln) {
+  var desc    = (vuln.shortDescription||'').toLowerCase();
+  var ra      = (vuln.requiredAction||'').toLowerCase();
+  var product = (vuln.product||'').toLowerCase();
+  var vendor  = (vuln.vendorProject||'').toLowerCase();
+  var fullText= desc + ' ' + ra + ' ' + product + ' ' + vendor;
+
+  // ── DECISION POINT 1: EXPLOITATION ─────────────────────────────────────────
+  // Values: none | poc | active
+  // Source: CISA SSVC Guide Table 2
+  // "Active" = shared, observable, reliable evidence of use in the wild
+  // All KEV entries have confirmed exploitation, so minimum is "poc"
+  // Ransomware campaign use or specific active exploitation language = "active"
+  var exploitation;
+  var ransomware = vuln.knownRansomwareCampaignUse || '';
+  if (ransomware && ransomware !== 'Unknown' && ransomware !== '') {
+    // CISA explicitly flagged ransomware campaign use = active by definition
+    exploitation = 'active';
+  } else if (/actively exploit|active exploit|in the wild|mass exploit|widespread exploit|nation.state|apt|actively being exploit/i.test(fullText)) {
+    exploitation = 'active';
+  } else {
+    // All KEV entries have at minimum a known PoC or method of exploitation
+    // per CISA's criteria for KEV inclusion
+    exploitation = 'poc';
+  }
+
+  // ── DECISION POINT 2: AUTOMATABLE ──────────────────────────────────────────
+  // Values: yes | no
+  // Source: CISA SSVC Guide Table 4
+  // "Yes" = Steps 1-4 of kill chain (recon, weaponize, deliver, exploit)
+  //          can be reliably automated
+  // Key signal: unauthenticated RCE or command injection → likely yes
+  // Barriers that prevent automation: auth required, not internet-exposed,
+  //   ASLR/exploit prevention, requires physical access
+  var automatable;
+  var autoYes = /unauthenticated|remote code exec|rce|command inject|sql inject|default credential|default password|no auth|without auth|pre.auth|preauth|heap overflow|buffer overflow|zero.click|wormable|mass exploit|shodan/i.test(fullText);
+  var autoNo  = /local|physical access|requires authentication|requires valid|must be authenticated|authenticated attacker|low privilege|adjacent network only|not internet/i.test(fullText);
+  if (autoYes && !autoNo) automatable = 'yes';
+  else if (autoNo && !autoYes) automatable = 'no';
+  else if (autoYes && autoNo) automatable = 'no'; // barriers present even if RCE
+  else automatable = 'no'; // conservative default per CISA guidance
+
+  // ── DECISION POINT 3: TECHNICAL IMPACT ─────────────────────────────────────
+  // Values: partial | total
+  // Source: CISA SSVC Guide Table 3
+  // "Total" = adversary gets total control over software behavior or
+  //            total disclosure of all information on the system
+  // "Partial" = limited control or low stochastic opportunity for total control
+  var technicalImpact;
+  var totalImpact = /remote code exec|rce|command inject|arbitrary code|privilege escalat|root|system privileges|full control|complete control|takeover|authentication bypass|code execution|arbitrary command|admin access|root access/i.test(fullText);
+  var partialOnly = /denial.of.service|dos|information disclos|memory disclos|path traversal|directory traversal|open redirect|cross.site|xss|csrf|clickjack|weak cipher|timing attack/i.test(fullText);
+  if (totalImpact) technicalImpact = 'total';
+  else if (partialOnly) technicalImpact = 'partial';
+  else technicalImpact = 'total'; // KEV entries tend toward high severity; default total
+
+  // ── DECISION POINT 4: MISSION PREVALENCE ───────────────────────────────────
+  // Values: minimal | support | essential
+  // Source: CISA SSVC Guide Table 5
+  // "Essential" = directly provides capabilities constituting at least one MEF
+  // "Support" = supports MEFs for 2+ entities
+  // "Minimal" = used within entities but not mission-essential
+  var missionPrevalence;
+  var essential = /scada|ics|plc|industrial control|operational technology|ot|firewall|vpn|network device|router|switch|domain controller|active directory|exchange server|email server|dns server|authentication|identity|sso|ldap|radius|pki|certificate authority|load balanc|critical infrastructure|power grid|water|nuclear|aviation|maritime|rail|hospital|healthcare|ehr|medical device|emergency|911|public safety|financial system|banking|payment/i.test(fullText);
+  var support   = /web server|application server|database|erp|crm|collaboration|vpn client|remote access|backup|monitoring|siem|logging|patch management|asset management|itam|cmdb/i.test(fullText);
+  if (essential) missionPrevalence = 'essential';
+  else if (support) missionPrevalence = 'support';
+  else missionPrevalence = 'minimal';
+
+  // ── DECISION POINT 5: PUBLIC WELL-BEING IMPACT ─────────────────────────────
+  // Values: minimal | material | irreversible
+  // Source: CISA SSVC Guide Table 6 and Table 8 (combined with Mission Prevalence)
+  // "Irreversible" = multiple fatalities likely, ecosystem collapse, etc.
+  // "Material" = physical distress, financial losses, widespread psychological harm
+  // "Minimal" = below threshold for all aspects
+  var wellbeing;
+  var irreversible = /fatality|fatalities|life.safety|physical harm|cyber.physical|safety system|safety margin|power grid|nuclear|water treatment|hospital|patient safety|life.critical|safety.critical/i.test(fullText);
+  var material     = /financial loss|bankruptcy|data breach|pii|personal data|health record|phi|payment card|credit card|ransomware|extortion|occupational safety|environmental damage|property damage/i.test(fullText);
+  if (irreversible) wellbeing = 'irreversible';
+  else if (material) wellbeing = 'material';
+  else wellbeing = 'minimal';
+
+  // ── MISSION & WELL-BEING COMBINED ──────────────────────────────────────────
+  // Source: CISA SSVC Guide Table 8
+  // Combines Mission Prevalence + Public Well-Being Impact → low/medium/high
+  var mwMatrix = {
+    'minimal-minimal':'low',  'minimal-material':'medium', 'minimal-irreversible':'high',
+    'support-minimal':'medium','support-material':'medium', 'support-irreversible':'high',
+    'essential-minimal':'high','essential-material':'high', 'essential-irreversible':'high',
+  };
+  var missionWellbeing = mwMatrix[missionPrevalence+'-'+wellbeing] || 'medium';
+
+  // ── DECISION TREE LOOKUP ────────────────────────────────────────────────────
+  // Source: CISA SSVC Guide Table 9 — all 36 rows
+  // Key: exploitation-automatable-technicalImpact-missionWellbeing → decision
+  var decisionTable = {
+    'none-no-partial-low':    'TRACK',
+    'none-no-partial-medium': 'TRACK',
+    'none-no-partial-high':   'TRACK',
+    'none-no-total-low':      'TRACK',
+    'none-no-total-medium':   'TRACK',
+    'none-no-total-high':     'TRACK',
+    'none-yes-partial-low':   'TRACK',
+    'none-yes-partial-medium':'TRACK',
+    'none-yes-partial-high':  'ATTEND',
+    'none-yes-total-low':     'TRACK',
+    'none-yes-total-medium':  'TRACK',
+    'none-yes-total-high':    'ATTEND',
+    'poc-no-partial-low':     'TRACK',
+    'poc-no-partial-medium':  'TRACK',
+    'poc-no-partial-high':    'TRACK*',
+    'poc-no-total-low':       'TRACK',
+    'poc-no-total-medium':    'TRACK*',
+    'poc-no-total-high':      'ATTEND',
+    'poc-yes-partial-low':    'TRACK',
+    'poc-yes-partial-medium': 'TRACK',
+    'poc-yes-partial-high':   'ATTEND',
+    'poc-yes-total-low':      'TRACK',
+    'poc-yes-total-medium':   'TRACK*',
+    'poc-yes-total-high':     'ATTEND',
+    'active-no-partial-low':  'TRACK',
+    'active-no-partial-medium':'TRACK',
+    'active-no-partial-high': 'ATTEND',
+    'active-no-total-low':    'TRACK',
+    'active-no-total-medium': 'ATTEND',
+    'active-no-total-high':   'ACT',
+    'active-yes-partial-low': 'ATTEND',
+    'active-yes-partial-medium':'ATTEND',
+    'active-yes-partial-high':'ACT',
+    'active-yes-total-low':   'ATTEND',
+    'active-yes-total-medium':'ACT',
+    'active-yes-total-high':  'ACT',
+  };
+
+  var key      = exploitation+'-'+automatable+'-'+technicalImpact+'-'+missionWellbeing;
+  var decision = decisionTable[key] || 'TRACK';
+
+  // ── CSS CLASS AND TIMEFRAME ─────────────────────────────────────────────────
+  var cssClass, timeframe, rationale;
+  if (decision === 'ACT') {
+    cssClass  = 'ssvc-act';
+    timeframe = 'IMMEDIATELY';
+    rationale = 'ACT: Active exploitation ('+exploitation+'), automatable='+automatable+', technical impact='+technicalImpact+', mission & well-being='+missionWellbeing+'. Remediate as soon as possible. Leadership involvement required. Internal groups should meet to determine response.';
+  } else if (decision === 'ATTEND') {
+    cssClass  = 'ssvc-attend';
+    timeframe = 'SOONER THAN NORMAL';
+    rationale = 'ATTEND: Exploitation='+exploitation+', automatable='+automatable+', technical impact='+technicalImpact+', mission & well-being='+missionWellbeing+'. Requires attention from supervisory-level individuals. Remediate sooner than standard update timelines.';
+  } else if (decision === 'TRACK*') {
+    cssClass  = 'ssvc-trackplus';
+    timeframe = 'STANDARD (MONITOR)';
+    rationale = 'TRACK*: Exploitation='+exploitation+', automatable='+automatable+', technical impact='+technicalImpact+', mission & well-being='+missionWellbeing+'. Specific characteristics require closer monitoring. Remediate within standard timelines but monitor for changes.';
+  } else {
+    cssClass  = 'ssvc-track';
+    timeframe = 'STANDARD';
+    rationale = 'TRACK: Exploitation='+exploitation+', automatable='+automatable+', technical impact='+technicalImpact+', mission & well-being='+missionWellbeing+'. No action required at this time. Reassess if new information becomes available. Remediate within standard update timelines.';
+  }
+
+  return {
+    decision, timeframe, rationale, cssClass,
+    // All five decision points for full transparency
+    exploitation,
+    automatable,
+    technicalImpact,
+    missionPrevalence,
+    wellbeing,
+    missionWellbeing,
+    decisionKey: key,
+  };
+}
+
+// SSVC sort order for table sorting
+var SSVC_ORDER = { 'ACT':0, 'ATTEND':1, 'TRACK*':2, 'TRACK':3 };
+
+// ── FETCH KEV ─────────────────────────────────────────────────────────────────
+async function fetchKEV() {
+  setStatus('Fetching CISA KEV catalog…');
+  var KEV_URL = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
+  var configuredProxy = localStorage.getItem('ghost2210_kev_proxy') || '';
+
+  var data = null;
+  var urls = [];
+
+  if (configuredProxy) {
+    // Use configured proxy Worker first — most reliable
+    urls.push(configuredProxy.replace(/\/$/, ''));
+  }
+  // Always include public proxies as fallback
+  urls = urls.concat([
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(KEV_URL),
+    'https://corsproxy.io/?' + encodeURIComponent(KEV_URL),
+    'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(KEV_URL),
+  ]);
+
+  for (var i = 0; i < urls.length; i++) {
+    try {
+      var ctrl = new AbortController();
+      setTimeout(function(){ ctrl.abort(); }, 12000);
+      setStatus('Fetching KEV'+(i>0?' via proxy '+i:'')+'…');
+      var r = await fetch(urls[i], { signal: ctrl.signal });
+      if (!r.ok) continue;
+      var text = await r.text();
+      if (!text || !text.includes('vulnerabilities')) continue;
+      data = JSON.parse(text);
+      if (data && data.vulnerabilities && data.vulnerabilities.length) break;
+    } catch(e) { /* try next */ }
+  }
+
+  if (!data || !data.vulnerabilities || !data.vulnerabilities.length) {
+    setStatus('⚠ Could not fetch live KEV — use 📂 IMPORT JSON to load the catalog manually');
+    document.getElementById('tblBody').innerHTML =
+      '<tr class="loading-row"><td colspan="8">'
+      + '⚠ CISA KEV direct fetch blocked by browser CORS policy.<br><br>'
+      + '1. Download the catalog: <a href="https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json" '
+      + 'target="_blank" style="color:var(--cyan)">known_exploited_vulnerabilities.json</a><br>'
+      + '2. Click <strong>📂 IMPORT JSON / CSV</strong> in the topbar to load it'
+      + '</td></tr>';
+    return;
+  }
+
+  allVulns = data.vulnerabilities.map(function(v) {
+    v.ssvc = calcSSVC(v);
+    return v;
+  });
+  document.getElementById('lastUpdated').textContent = 'Catalog date: '+(data.catalogVersion||'live')+'  ·  Updated: '+new Date().toLocaleTimeString();
+  setStatus('Loaded '+allVulns.length+' KEV entries');
+  buildFilters();
+  applyFilters();
+  updateStats();
+}
+
+// ── FILTERS ───────────────────────────────────────────────────────────────────
+function buildFilters() {
+  // Vendor filter
+  var vendors = [...new Set(allVulns.map(function(v){ return v.vendorProject; }))].sort();
+  var vSel = document.getElementById('vendorFilter');
+  vSel.innerHTML = '<option value="all">All Vendors</option>' + vendors.map(function(v){
+    return '<option value="'+esc(v)+'">'+esc(v)+'</option>';
+  }).join('');
+
+  // Year filter
+  var years = [...new Set(allVulns.map(function(v){ return (v.dateAdded||'').substring(0,4); }))].sort().reverse();
+  var ySel  = document.getElementById('yearFilter');
+  ySel.innerHTML = '<option value="all">All Years</option>' + years.map(function(y){
+    return '<option value="'+esc(y)+'">'+esc(y)+'</option>';
+  }).join('');
+}
+
+function applyFilters() {
+  var s = searchText.toLowerCase();
+  filtered = allVulns.filter(function(v) {
+    if (ssvcFilter !== 'all' && v.ssvc.decision !== ssvcFilter) return false;
+    if (vendorFilter !== 'all' && v.vendorProject !== vendorFilter) return false;
+    if (yearFilter !== 'all' && (v.dateAdded||'').substring(0,4) !== yearFilter) return false;
+    if (s && !(
+      (v.cveID||'').toLowerCase().includes(s) ||
+      (v.vendorProject||'').toLowerCase().includes(s) ||
+      (v.product||'').toLowerCase().includes(s) ||
+      (v.shortDescription||'').toLowerCase().includes(s) ||
+      (v.vulnerabilityName||'').toLowerCase().includes(s)
+    )) return false;
+    return true;
+  });
+
+  // Sort
+  filtered.sort(function(a,b) {
+    var av = sortCol==='ssvc' ? SSVC_ORDER[a.ssvc.decision] : (a[sortCol]||'');
+    var bv = sortCol==='ssvc' ? SSVC_ORDER[b.ssvc.decision] : (b[sortCol]||'');
+    if (av < bv) return -sortDir;
+    if (av > bv) return  sortDir;
+    return 0;
+  });
+
+  renderTable();
+  document.getElementById('statFiltered').textContent = filtered.length;
+  updateSelCount();
+}
+
+function updateStats() {
+  var act    = allVulns.filter(function(v){ return v.ssvc.decision==='ACT'; }).length;
+  var attend = allVulns.filter(function(v){ return v.ssvc.decision==='ATTEND'; }).length;
+  document.getElementById('statTotal').textContent  = allVulns.length;
+  document.getElementById('statAct').textContent    = act;
+  document.getElementById('statAttend').textContent = attend;
+}
+
+// ── RENDER TABLE ──────────────────────────────────────────────────────────────
+function renderTable() {
+  if (!filtered.length) {
+    document.getElementById('tblBody').innerHTML = '<tr class="loading-row"><td colspan="8">No entries match current filters</td></tr>';
+    return;
+  }
+  var today = new Date();
+  document.getElementById('tblBody').innerHTML = filtered.map(function(v) {
+    var isSel  = selected.has(v.cveID);
+    var ssvc   = v.ssvc;
+    var due    = v.dueDate ? new Date(v.dueDate) : null;
+    var dueStr = '—', dueCls = '';
+    if (due) {
+      var diff = Math.floor((due-today)/86400000);
+      dueStr = v.dueDate;
+      if (diff < 0)  { dueCls='due-overdue'; dueStr='⚠ '+v.dueDate; }
+      else if (diff < 14) { dueCls='due-soon'; }
+      else dueCls='due-ok';
+    }
+    return '<tr class="'+(isSel?'selected':'')+'" data-cveid="'+esc(v.cveID)+'">'
+      + '<td><input type="checkbox" class="cb row-cb" data-cveid="'+esc(v.cveID)+'" '+(isSel?'checked':'')+' ></td>'
+      + '<td><span class="cve-id" data-cveid="'+esc(v.cveID)+'">'+esc(v.cveID)+'</span></td>'
+      + '<td><span class="vendor-badge">'+esc(v.vendorProject||'—')+'</span></td>'
+      + '<td style="font-size:11px;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(v.product||'—')+'</td>'
+      + '<td><span class="'+ssvc.cssClass+'">'+ssvc.decision+' — '+ssvc.timeframe+'</span></td>'
+      + '<td><span class="kev-date">'+esc(v.dateAdded||'—')+'</span></td>'
+      + '<td><span class="due-date '+dueCls+'">'+esc(dueStr)+'</span></td>'
+      + '<td><span class="desc-cell" title="'+esc(v.shortDescription||'')+'">'+esc((v.shortDescription||'').substring(0,80))+'…</span></td>'
+    + '</tr>';
+  }).join('');
+}
+
+// ── DETAIL PANEL ──────────────────────────────────────────────────────────────
+function showDetail(cveID) {
+  var v = allVulns.find(function(x){ return x.cveID===cveID; });
+  if (!v) return;
+  detailCVE = v;
+  var ssvc  = v.ssvc;
+  var decColor = ssvc.decision==='ACT'?'#ff2244':ssvc.decision==='ATTEND'?'var(--orange)':ssvc.decision==='TRACK+'?'var(--yellow)':'var(--green)';
+
+  document.getElementById('dpBody').innerHTML =
+    '<div class="dp-cve">'+esc(v.cveID)+'</div>'
+    + '<div class="dp-vendor">'+esc(v.vendorProject)+' — '+esc(v.product)+'</div>'
+
+    + '<div class="ssvc-detail">'
+      + '<div class="dp-sec-title">SSVC Decision</div>'
+      + '<div class="ssvc-decision-big" style="color:'+decColor+'">'+ssvc.decision+' — '+ssvc.timeframe+'</div>'
+      + '<div class="ssvc-rationale">'+esc(ssvc.rationale)+'</div>'
+      + '<div class="ssvc-factors">'
+        + '<div class="ssvc-factor"><span class="sf-label">1. Exploitation</span><span class="sf-val" style="color:'+(ssvc.exploitation==='active'?'var(--red)':ssvc.exploitation==='poc'?'var(--orange)':'var(--green)')+'">'+ssvc.exploitation.toUpperCase()+'</span></div>'
+        + '<div class="ssvc-factor"><span class="sf-label">2. Automatable</span><span class="sf-val" style="color:'+(ssvc.automatable==='yes'?'var(--red)':'var(--green)')+'">'+ssvc.automatable.toUpperCase()+'</span></div>'
+        + '<div class="ssvc-factor"><span class="sf-label">3. Technical Impact</span><span class="sf-val" style="color:'+(ssvc.technicalImpact==='total'?'var(--red)':'var(--yellow)')+'">'+ssvc.technicalImpact.toUpperCase()+'</span></div>'
+        + '<div class="ssvc-factor"><span class="sf-label">4. Mission Prevalence</span><span class="sf-val" style="color:'+(ssvc.missionPrevalence==='essential'?'var(--red)':ssvc.missionPrevalence==='support'?'var(--orange)':'var(--green)')+'">'+ssvc.missionPrevalence.toUpperCase()+'</span></div>'
+        + '<div class="ssvc-factor"><span class="sf-label">5. Public Well-Being</span><span class="sf-val" style="color:'+(ssvc.wellbeing==='irreversible'?'var(--red)':ssvc.wellbeing==='material'?'var(--orange)':'var(--green)')+'">'+ssvc.wellbeing.toUpperCase()+'</span></div>'
+        + '<div class="ssvc-factor" style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px"><span class="sf-label">Mission & Well-Being</span><span class="sf-val" style="color:'+(ssvc.missionWellbeing==='high'?'var(--red)':ssvc.missionWellbeing==='medium'?'var(--orange)':'var(--green)')+'">'+ssvc.missionWellbeing.toUpperCase()+'</span></div>'
+        + '<div class="ssvc-factor" style="margin-top:2px"><span class="sf-label" style="color:var(--muted);font-size:9px">Decision key: '+ssvc.decisionKey+'</span></div>'
+      + '</div>'
+    + '</div>'
+
+    + '<div class="dp-section" style="margin-top:12px">'
+      + '<div class="dp-sec-title">Vulnerability Details</div>'
+      + '<div class="dp-field"><span class="dp-field-label">Date Added</span><span class="dp-field-val">'+esc(v.dateAdded||'—')+'</span></div>'
+      + '<div class="dp-field"><span class="dp-field-label">Due Date</span><span class="dp-field-val '+(v.dueDate&&new Date(v.dueDate)<new Date()?'due-overdue':'')+'">'+esc(v.dueDate||'—')+'</span></div>'
+      + '<div class="dp-field"><span class="dp-field-label">Ransomware Use</span><span class="dp-field-val" style="color:'+(v.knownRansomwareCampaignUse&&v.knownRansomwareCampaignUse!=='Unknown'?'var(--red)':'var(--muted2)')+'">'+esc(v.knownRansomwareCampaignUse||'Unknown')+'</span></div>'
+      + '<div class="dp-field"><span class="dp-field-label">Vulnerability Name</span><span class="dp-field-val" style="font-size:10px;max-width:180px;text-align:right">'+esc(v.vulnerabilityName||'—')+'</span></div>'
+    + '</div>'
+
+    + '<div class="dp-section">'
+      + '<div class="dp-sec-title">Description</div>'
+      + '<div class="dp-desc">'+esc(v.shortDescription||'No description available')+'</div>'
+    + '</div>'
+
+    + '<div class="dp-section">'
+      + '<div class="dp-sec-title">Required Action</div>'
+      + '<div class="dp-action">'+esc(v.requiredAction||'See CISA advisory for required action.')+'</div>'
+    + '</div>'
+
+    + '<div class="dp-section">'
+      + '<div class="dp-sec-title">References</div>'
+      + '<a href="https://nvd.nist.gov/vuln/detail/'+esc(v.cveID)+'" target="_blank" style="display:block;font-family:var(--mono);font-size:11px;color:var(--cyan);margin-bottom:4px">→ NVD: '+esc(v.cveID)+'</a>'
+      + '<a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank" style="display:block;font-family:var(--mono);font-size:11px;color:var(--cyan)">→ CISA KEV Catalog</a>'
+    + '</div>';
+
+  document.getElementById('detailPanel').style.display = 'flex';
+}
+
+// ── EXPORT FUNCTIONS ──────────────────────────────────────────────────────────
+function getExportSet() {
+  return selected.size > 0
+    ? allVulns.filter(function(v){ return selected.has(v.cveID); })
+    : filtered;
+}
+
+// CSV
+function exportCSV() {
+  var items = getExportSet();
+  var rows  = [['CVE ID','Vendor','Product','Vulnerability Name','Date Added','Due Date','Ransomware Use','SSVC Decision','SSVC Timeframe','SSVC Exploitation','SSVC Automatable','SSVC Mission Impact','SSVC Rationale','Description','Required Action'].join(',')];
+  items.forEach(function(v) {
+    var ssvc = v.ssvc;
+    rows.push([
+      v.cveID,
+      '"'+(v.vendorProject||'').replace(/"/g,"'")+'"',
+      '"'+(v.product||'').replace(/"/g,"'")+'"',
+      '"'+(v.vulnerabilityName||'').replace(/"/g,"'")+'"',
+      v.dateAdded||'',
+      v.dueDate||'',
+      v.knownRansomwareCampaignUse||'Unknown',
+      ssvc.decision,
+      ssvc.timeframe,
+      ssvc.exploitation,
+      ssvc.automatable,
+      ssvc.missionImpact,
+      '"'+ssvc.rationale.replace(/"/g,"'")+'"',
+      '"'+(v.shortDescription||'').replace(/"/g,"'")+'"',
+      '"'+(v.requiredAction||'').replace(/"/g,"'")+'"',
+    ].join(','));
+  });
+  download('kev-ssvc-'+today()+'.csv', rows.join('\n'), 'text/csv');
+  setStatus('Exported '+items.length+' entries as CSV');
+}
+
+// CSAF 2.0 — Common Security Advisory Framework
+function exportCSAF() {
+  var items = getExportSet();
+  var doc = {
+    document: {
+      category: 'csaf_base',
+      csaf_version: '2.0',
+      distribution: { tlp: { label: 'CLEAR', url: 'https://www.first.org/tlp/' } },
+      publisher: {
+        category: 'coordinator',
+        name: 'Ghost Defense — CISA KEV + SSVC Report',
+        namespace: 'https://ghost2210.pages.dev'
+      },
+      title: 'CISA Known Exploited Vulnerabilities — SSVC Assessment Report',
+      tracking: {
+        current_release_date: new Date().toISOString(),
+        id: 'GHOST2210-KEV-SSVC-'+today(),
+        initial_release_date: new Date().toISOString(),
+        revision_history: [{ date: new Date().toISOString(), number: '1', summary: 'Initial release' }],
+        status: 'final',
+        version: '1'
+      }
+    },
+    product_tree: {
+      branches: items.map(function(v) {
+        return {
+          category: 'vendor',
+          name: v.vendorProject||'Unknown',
+          branches: [{
+            category: 'product_name',
+            name: v.product||'Unknown',
+            product: {
+              product_id: v.cveID.replace(/-/g,'_'),
+              name: (v.vendorProject||'Unknown')+' '+( v.product||'Unknown')
+            }
+          }]
+        };
+      })
+    },
+    vulnerabilities: items.map(function(v) {
+      var ssvc = v.ssvc;
+      return {
+        cve: v.cveID,
+        title: v.vulnerabilityName || v.cveID,
+        notes: [
+          { category: 'description', text: v.shortDescription||'' },
+          { category: 'general',     text: 'Required Action: '+(v.requiredAction||'') },
+          { category: 'general',     text: 'SSVC Decision: '+ssvc.decision+' ('+ssvc.timeframe+') — '+ssvc.rationale },
+          { category: 'general',     text: 'SSVC Factors — Exploitation: '+ssvc.exploitation+' | Automatable: '+ssvc.automatable+' | Mission Impact: '+ssvc.missionImpact }
+        ],
+        product_status: {
+          known_affected: [v.cveID.replace(/-/g,'_')]
+        },
+        remediations: [{
+          category: 'vendor_fix',
+          date: v.dueDate||'',
+          details: v.requiredAction||'Apply vendor patch per CISA KEV guidance.',
+          product_ids: [v.cveID.replace(/-/g,'_')]
+        }],
+        threats: [{
+          category: 'exploit_status',
+          details: 'Actively exploited in the wild per CISA KEV. SSVC decision: '+ssvc.decision+'.',
+          product_ids: [v.cveID.replace(/-/g,'_')]
+        }],
+        scores: [{
+          cvss_v3: { version: '3.1', vectorString: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H', baseScore: 9.8, baseSeverity: 'CRITICAL' },
+          products: [v.cveID.replace(/-/g,'_')]
+        }],
+        references: [
+          { category: 'external', summary: 'CISA KEV Entry', url: 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog' },
+          { category: 'external', summary: 'NVD Entry', url: 'https://nvd.nist.gov/vuln/detail/'+v.cveID }
+        ]
+      };
+    })
+  };
+  download('kev-ssvc-csaf-'+today()+'.json', JSON.stringify(doc, null, 2), 'application/json');
+  setStatus('Exported '+items.length+' entries as CSAF 2.0');
+}
+
+// VEX — Vulnerability Exploitability eXchange (CSAF VEX profile)
+function exportVEX() {
+  var items = getExportSet();
+  var doc = {
+    document: {
+      category: 'csaf_vex',
+      csaf_version: '2.0',
+      distribution: { tlp: { label: 'CLEAR' } },
+      publisher: {
+        category: 'coordinator',
+        name: 'Ghost Defense',
+        namespace: 'https://ghost2210.pages.dev'
+      },
+      title: 'VEX — CISA KEV Exploitability Statements with SSVC',
+      tracking: {
+        current_release_date: new Date().toISOString(),
+        id: 'GHOST2210-VEX-'+today(),
+        initial_release_date: new Date().toISOString(),
+        revision_history: [{ date: new Date().toISOString(), number: '1', summary: 'Initial VEX statement' }],
+        status: 'final',
+        version: '1'
+      }
+    },
+    product_tree: {
+      full_product_names: items.map(function(v) {
+        return {
+          product_id: v.cveID.replace(/-/g,'_'),
+          name: (v.vendorProject||'Unknown')+' '+( v.product||'Unknown')
+        };
+      })
+    },
+    vulnerabilities: items.map(function(v) {
+      var ssvc = v.ssvc;
+      // VEX status: all KEV entries are "known_affected" with active exploitation
+      return {
+        cve: v.cveID,
+        notes: [{
+          category: 'general',
+          text: 'CISA KEV confirmed active exploitation. SSVC: '+ssvc.decision+' ('+ssvc.timeframe+'). '+ssvc.rationale
+        }],
+        product_status: {
+          known_affected: [v.cveID.replace(/-/g,'_')]
+        },
+        threats: [
+          {
+            category: 'exploit_status',
+            details: 'Known exploited in the wild per CISA KEV catalog. Date added: '+( v.dateAdded||'unknown')+'.',
+            product_ids: [v.cveID.replace(/-/g,'_')]
+          },
+          {
+            category: 'impact',
+            details: 'SSVC Assessment — Decision: '+ssvc.decision+' | Timeframe: '+ssvc.timeframe+' | Exploitation: '+ssvc.exploitation+' | Automatable: '+ssvc.automatable+' | Mission Impact: '+ssvc.missionImpact,
+            product_ids: [v.cveID.replace(/-/g,'_')]
+          }
+        ],
+        remediations: [{
+          category: 'vendor_fix',
+          details: v.requiredAction||'Apply vendor patch per CISA KEV.',
+          date: v.dueDate||'',
+          product_ids: [v.cveID.replace(/-/g,'_')]
+        }]
+      };
+    })
+  };
+  download('kev-ssvc-vex-'+today()+'.json', JSON.stringify(doc, null, 2), 'application/json');
+  setStatus('Exported '+items.length+' entries as VEX (CSAF profile)');
+}
+
+// OpenEoX — End of Life / End of Support lifecycle data format
+function exportOpenEoX() {
+  var items = getExportSet();
+  var doc = {
+    openeox_version: '1.0',
+    metadata: {
+      generated: new Date().toISOString(),
+      generator: 'Ghost Defense KEV+SSVC Catalog',
+      description: 'OpenEoX lifecycle data derived from CISA Known Exploited Vulnerabilities with SSVC prioritization',
+      tlp: 'CLEAR'
+    },
+    components: items.map(function(v) {
+      var ssvc = v.ssvc;
+      return {
+        id: v.cveID,
+        name: v.vulnerabilityName||v.cveID,
+        vendor: v.vendorProject||'Unknown',
+        product: v.product||'Unknown',
+        cve_id: v.cveID,
+        lifecycle: {
+          status: 'vulnerable_eol_risk',
+          kev_date_added: v.dateAdded||null,
+          kev_due_date: v.dueDate||null,
+          ransomware_campaign_use: v.knownRansomwareCampaignUse||'Unknown'
+        },
+        ssvc: {
+          version: '2.0',
+          decision: ssvc.decision,
+          timeframe: ssvc.timeframe,
+          factors: {
+            exploitation: ssvc.exploitation,
+            automatable: ssvc.automatable,
+            mission_impact: ssvc.missionImpact
+          },
+          rationale: ssvc.rationale
+        },
+        remediation: {
+          required_action: v.requiredAction||'',
+          due_date: v.dueDate||null,
+          overdue: v.dueDate ? new Date(v.dueDate) < new Date() : false
+        },
+        description: v.shortDescription||'',
+        references: [
+          { type:'cisa_kev', url:'https://www.cisa.gov/known-exploited-vulnerabilities-catalog' },
+          { type:'nvd',      url:'https://nvd.nist.gov/vuln/detail/'+v.cveID }
+        ]
+      };
+    })
+  };
+  download('kev-ssvc-openeox-'+today()+'.json', JSON.stringify(doc, null, 2), 'application/json');
+  setStatus('Exported '+items.length+' entries as OpenEoX');
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function download(filename, content, type) {
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = filename;
+  a.click();
+}
+function today() { return new Date().toISOString().split('T')[0]; }
+function setStatus(msg) { document.getElementById('statusText').textContent = msg; }
+function updateSelCount() {
+  var count = selected.size;
+  document.getElementById('statSelected').textContent = count;
+  document.getElementById('selCount').textContent = count > 0
+    ? 'Exporting '+count+' selected entries'
+    : 'Exporting all '+filtered.length+' filtered entries';
+}
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── CSV PARSER ───────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(function(l){ return l.trim(); });
+  if (!lines.length) throw new Error('Empty CSV file');
+
+  // Parse header row — handle quoted fields
+  function parseLine(line) {
+    var fields = [], field = '', inQuote = false;
+    for (var i = 0; i < line.length; i++) {
+      var ch = line[i];
+      if (ch === '"') {
+        if (inQuote && line[i+1] === '"') { field += '"'; i++; }
+        else inQuote = !inQuote;
+      } else if (ch === ',' && !inQuote) {
+        fields.push(field.trim()); field = '';
+      } else {
+        field += ch;
+      }
+    }
+    fields.push(field.trim());
+    return fields;
+  }
+
+  var headers = parseLine(lines[0]).map(function(h){ return h.toLowerCase().replace(/[\s_-]+/g,''); });
+
+  // Map common CSV column names to KEV field names
+  var colMap = {
+    'cveid':'cveID', 'cve':'cveID', 'id':'cveID',
+    'vendor':'vendorProject', 'vendorproject':'vendorProject', 'company':'vendorProject',
+    'product':'product', 'productname':'product',
+    'vulnerabilityname':'vulnerabilityName', 'name':'vulnerabilityName', 'vulnname':'vulnerabilityName',
+    'shortdescription':'shortDescription', 'description':'shortDescription', 'desc':'shortDescription',
+    'requiredaction':'requiredAction', 'action':'requiredAction', 'remediation':'requiredAction',
+    'dateadded':'dateAdded', 'added':'dateAdded', 'addeddate':'dateAdded',
+    'duedate':'dueDate', 'due':'dueDate', 'patchdeadline':'dueDate',
+    'knownransomwarecampaignuse':'knownRansomwareCampaignUse', 'ransomware':'knownRansomwareCampaignUse',
+    'ssvcdecision':'ssvc_decision', 'ssvc':'ssvc_decision', 'decision':'ssvc_decision',
+  };
+
+  var mapped = headers.map(function(h){ return colMap[h] || h; });
+
+  var vulns = [];
+  for (var i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    var vals = parseLine(lines[i]);
+    var obj  = {};
+    mapped.forEach(function(field, idx){ obj[field] = (vals[idx]||'').trim(); });
+    // Must have at least a CVE ID
+    if (!obj.cveID) continue;
+    vulns.push(obj);
+  }
+  if (!vulns.length) throw new Error('No valid CVE entries found in CSV');
+  return vulns;
+}
+
+// ── IMPORT KEV FROM FILE ─────────────────────────────────────────────────────
+function importKEV(file) {
+  if (!file) return;
+  var status = document.getElementById('importStatus');
+  status.textContent = '⟳ Reading file…';
+  status.style.color = 'var(--muted2)';
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var vulns = [];
+      var data  = null;  // declared at top — used by both branches
+      var isCsv = file.name.toLowerCase().endsWith('.csv');
+
+      if (isCsv) {
+        // Parse as CSV
+        vulns = parseCSV(e.target.result);
+      } else {
+        // Parse as JSON
+        data = JSON.parse(e.target.result);
+        if (Array.isArray(data)) {
+          vulns = data;
+        } else if (data.vulnerabilities && Array.isArray(data.vulnerabilities)) {
+          vulns = data.vulnerabilities;
+        } else {
+          throw new Error('Unrecognized JSON format — expected CISA KEV JSON');
+        }
+        if (!vulns.length) throw new Error('No vulnerabilities found in file');
+        var first = vulns[0];
+        if (!first.cveID && !first.CVE && !first.id) {
+          throw new Error('File does not appear to be a KEV catalog — missing cveID field');
+        }
+      }
+
+      // Normalize field names in case of minor format differences
+      allVulns = vulns.map(function(v) {
+        var normalized = {
+          cveID:                     v.cveID || v.CVE || v.id || '',
+          vendorProject:             v.vendorProject || v.vendor || '',
+          product:                   v.product || '',
+          vulnerabilityName:         v.vulnerabilityName || v.name || '',
+          shortDescription:          v.shortDescription || v.description || '',
+          requiredAction:            v.requiredAction || v.action || '',
+          dueDate:                   v.dueDate || v.due_date || '',
+          dateAdded:                 v.dateAdded || v.date_added || '',
+          knownRansomwareCampaignUse:v.knownRansomwareCampaignUse || v.ransomware || 'Unknown',
+        };
+        normalized.ssvc = calcSSVC(normalized);
+        return normalized;
+      });
+
+      // Update catalog version display if available
+      var version = (typeof data !== 'undefined' && data && (data.catalogVersion || data.version)) || file.name;
+      document.getElementById('lastUpdated').textContent =
+        'Imported: '+file.name+' · '+allVulns.length+' entries · '+new Date().toLocaleTimeString();
+
+      buildFilters();
+      applyFilters();
+      updateStats();
+
+      status.textContent = '✓ Imported '+allVulns.length+' entries from '+file.name;
+      status.style.color = 'var(--green)';
+      setStatus('Imported '+allVulns.length+' KEV entries from '+file.name);
+
+      // Clear status after 5 seconds
+      setTimeout(function(){ status.textContent = ''; }, 5000);
+
+    } catch(err) {
+      status.textContent = '✗ '+err.message;
+      status.style.color = 'var(--red)';
+      setStatus('Import failed: '+err.message);
+    }
+  };
+  reader.onerror = function() {
+    status.textContent = '✗ Failed to read file';
+    status.style.color = 'var(--red)';
+  };
+  reader.readAsText(file);
+}
+
+// ── EVENT DELEGATION ──────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+
+  // Refresh
+  document.getElementById('refreshBtn').addEventListener('click', fetchKEV);
+
+  // Proxy modal
+  var proxyModal = document.getElementById('proxyModal');
+  document.getElementById('proxyBtn').addEventListener('click', function() {
+    var saved = localStorage.getItem('ghost2210_kev_proxy') || '';
+    document.getElementById('proxyUrlInp').value = saved;
+    proxyModal.style.display = 'flex';
+  });
+  document.getElementById('proxyCancelBtn').addEventListener('click', function() {
+    proxyModal.style.display = 'none';
+  });
+  document.getElementById('proxyClearBtn').addEventListener('click', function() {
+    localStorage.removeItem('ghost2210_kev_proxy');
+    document.getElementById('proxyUrlInp').value = '';
+    document.getElementById('proxyBtn').textContent = '⚙ PROXY';
+    document.getElementById('proxyBtn').style.color = 'var(--muted2)';
+    proxyModal.style.display = 'none';
+  });
+  document.getElementById('proxySaveBtn').addEventListener('click', function() {
+    var url = document.getElementById('proxyUrlInp').value.trim();
+    if (url) {
+      localStorage.setItem('ghost2210_kev_proxy', url);
+      document.getElementById('proxyBtn').textContent = '⚙ PROXY ✓';
+      document.getElementById('proxyBtn').style.color = 'var(--green)';
+    }
+    proxyModal.style.display = 'none';
+    fetchKEV();
+  });
+  // Update proxy button state on load
+  if (localStorage.getItem('ghost2210_kev_proxy')) {
+    document.getElementById('proxyBtn').textContent = '⚙ PROXY ✓';
+    document.getElementById('proxyBtn').style.color = 'var(--green)';
+  }
+  // Close modal on backdrop click
+  proxyModal.addEventListener('click', function(e) {
+    if (e.target === proxyModal) proxyModal.style.display = 'none';
+  });
+  document.getElementById('importFile').addEventListener('change', function() {
+    if (this.files && this.files[0]) importKEV(this.files[0]);
+    this.value = ''; // Reset so same file can be re-imported
+  });
+
+  // Export buttons
+  document.getElementById('expCSV').addEventListener('click', exportCSV);
+  document.getElementById('expCSAF').addEventListener('click', exportCSAF);
+  document.getElementById('expVEX').addEventListener('click', exportVEX);
+  document.getElementById('expOpenEoX').addEventListener('click', exportOpenEoX);
+
+  // Detail panel close
+  document.getElementById('dpClose').addEventListener('click', function() {
+    document.getElementById('detailPanel').style.display = 'none';
+  });
+
+  // Select all checkbox
+  document.getElementById('selectAll').addEventListener('change', function() {
+    if (this.checked) filtered.forEach(function(v){ selected.add(v.cveID); });
+    else selected.clear();
+    renderTable();
+    updateSelCount();
+  });
+
+  // Select all button
+  document.getElementById('selAllBtn').addEventListener('click', function() {
+    if (selected.size === filtered.length) {
+      selected.clear();
+      this.textContent = '☑ SELECT ALL';
+    } else {
+      filtered.forEach(function(v){ selected.add(v.cveID); });
+      this.textContent = '☐ DESELECT ALL';
+    }
+    renderTable();
+    updateSelCount();
+  });
+
+  // Search
+  var searchTimer;
+  document.getElementById('searchInp').addEventListener('input', function() {
+    searchText = this.value.trim();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(applyFilters, 250);
+  });
+
+  // Filters
+  document.getElementById('ssvcFilter').addEventListener('change', function() { ssvcFilter=this.value; applyFilters(); });
+  document.getElementById('vendorFilter').addEventListener('change', function() { vendorFilter=this.value; applyFilters(); });
+  document.getElementById('yearFilter').addEventListener('change', function() { yearFilter=this.value; applyFilters(); });
+
+  // Table clicks — event delegation
+  document.getElementById('tblBody').addEventListener('click', function(e) {
+    // CVE ID click — show detail
+    var cveLink = e.target.closest('.cve-id[data-cveid]');
+    if (cveLink) { showDetail(cveLink.dataset.cveid); return; }
+
+    // Checkbox click
+    var cb = e.target.closest('.row-cb[data-cveid]');
+    if (cb) {
+      if (cb.checked) selected.add(cb.dataset.cveid);
+      else selected.delete(cb.dataset.cveid);
+      var row = cb.closest('tr');
+      if (row) row.classList.toggle('selected', cb.checked);
+      updateSelCount();
+      return;
+    }
+
+    // Row click (not checkbox, not CVE ID) — select/deselect
+    var row = e.target.closest('tr[data-cveid]');
+    if (row && !e.target.closest('.cve-id') && !e.target.closest('.row-cb')) {
+      var id = row.dataset.cveid;
+      if (selected.has(id)) selected.delete(id);
+      else selected.add(id);
+      renderTable();
+      updateSelCount();
+    }
+  });
+
+  // Column sort
+  document.querySelectorAll('.tbl th[data-col]').forEach(function(th) {
+    th.addEventListener('click', function() {
+      var col = this.dataset.col;
+      if (sortCol === col) sortDir *= -1;
+      else { sortCol=col; sortDir=1; }
+      document.querySelectorAll('.tbl th').forEach(function(h){ h.classList.remove('sorted'); });
+      this.classList.add('sorted');
+      this.querySelector('.sort-arrow').textContent = sortDir===1?'↑':'↓';
+      applyFilters();
+    });
+  });
+
+  fetchKEV();
+});
+</script>
+<!-- PROXY CONFIG MODAL -->
+<div id="proxyModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;
+  display:none;align-items:center;justify-content:center">
+  <div style="background:var(--s1);border:1px solid var(--border2);border-radius:10px;
+    padding:24px;width:480px;max-width:90vw">
+    <div style="font-size:14px;font-weight:700;margin-bottom:6px">⚙ KEV Proxy Configuration</div>
+    <div style="font-size:11px;color:var(--muted2);font-family:var(--mono);margin-bottom:16px;line-height:1.7">
+      CISA KEV is blocked by CORS in the browser.<br>
+      Deploy the Ghost Defense KEV Proxy Worker and enter its URL here.<br>
+      Worker URL format: <span style="color:var(--cyan)">https://ghost2210-kev-proxy.YOUR-SUBDOMAIN.workers.dev</span>
+    </div>
+    <input id="proxyUrlInp" class="search-inp" style="width:100%;margin-bottom:12px"
+      placeholder="https://ghost2210-kev-proxy.your-subdomain.workers.dev">
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="tb-btn" id="proxyCancelBtn" style="background:var(--s2);color:var(--muted2);border-color:var(--border2)">Cancel</button>
+      <button class="tb-btn" id="proxyClearBtn" style="background:var(--red-s);color:var(--red);border-color:var(--red-b)">Clear</button>
+      <button class="tb-btn" id="proxySaveBtn" style="background:var(--green-s);color:var(--green);border-color:var(--green-b)">💾 Save & Refresh</button>
+    </div>
+    <div style="margin-top:12px;font-size:10px;color:var(--muted);font-family:var(--mono);line-height:1.6">
+      See KEV_PROXY_DEPLOY.md in ghost2210-worker.zip for setup instructions.
+    </div>
+  </div>
+</div>
+</body>
+</html>

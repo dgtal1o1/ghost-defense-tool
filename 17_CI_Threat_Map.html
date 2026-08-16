@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CI Threat Map -- Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020507;--s1:#060d0a;--s2:#0a150f;--s3:#0f1f16;
+  --b1:rgba(0,255,65,0.07);--b2:rgba(0,255,65,0.14);
+  --ng:#00ff41;--ng-d:rgba(0,255,65,0.10);--ng-dd:rgba(0,255,65,0.05);
+  --red:#ff3737;--red-g:rgba(255,55,55,0.13);--red-b:rgba(255,55,55,0.26);
+  --orange:#ff8c00;--orange-g:rgba(255,140,0,0.12);
+  --yellow:#ffe600;--yellow-g:rgba(255,230,0,0.09);
+  --cyan:#00e5ff;--cyan-g:rgba(0,229,255,0.09);
+  --purple:#c084fc;--purple-g:rgba(192,132,252,0.10);
+  --muted:rgba(0,255,65,0.32);--muted2:rgba(0,255,65,0.58);
+  --mono:'Share Tech Mono',monospace;
+  --display:'Orbitron',sans-serif;
+  --body:'Exo 2',sans-serif;
+}
+html{background:var(--bg);scroll-behavior:smooth}
+body{font-family:var(--body);color:var(--ng);min-height:100vh;overflow-x:hidden;
+  text-shadow:0 0 5px rgba(0,255,65,0.12)}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:500;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.12) 2px,rgba(0,0,0,0.12) 4px)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:499;
+  background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,0.65) 100%)}
+.grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(0,255,65,0.025) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(0,255,65,0.025) 1px,transparent 1px);
+  background-size:44px 44px}
+.wrap{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 16px 60px}
+
+/* TOP BAR */
+.topbar{border-bottom:1px solid var(--b2);padding:12px 0;display:flex;
+  align-items:center;justify-content:space-between;margin-bottom:16px;
+  position:sticky;top:0;z-index:200;background:rgba(2,5,7,0.96);backdrop-filter:blur(10px)}
+.logo{font-family:var(--display);font-size:14px;font-weight:900;letter-spacing:.18em;
+  color:var(--ng);text-shadow:0 0 14px var(--ng)}
+.logo span{color:var(--red);text-shadow:0 0 12px var(--red)}
+.tl{display:flex;align-items:center;gap:12px}
+.tsep{color:var(--b2);font-family:var(--mono)}
+.tsub{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.12em}
+.tr{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tb{font-size:10px;font-family:var(--mono);padding:4px 10px;border-radius:3px;
+  display:flex;align-items:center;gap:5px}
+.tb-red{background:var(--red-g);border:1px solid var(--red-b);color:var(--red)}
+.tb-ng{background:var(--ng-d);border:1px solid var(--b2);color:var(--ng)}
+.tb-cy{background:var(--cyan-g);border:1px solid rgba(0,229,255,.25);color:var(--cyan)}
+.blink{animation:blink 1.1s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+#clk{font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+/* AI BAR */
+.ai-bar{background:var(--s1);border:1px solid rgba(0,229,255,0.18);border-radius:5px;
+  padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ai-label{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--cyan)}
+.ai-desc{font-size:10px;font-family:var(--mono);color:var(--muted);flex:1;min-width:120px}
+.key-in{background:var(--s2);border:1px solid rgba(0,229,255,0.2);border-radius:3px;
+  color:var(--ng);font-family:var(--mono);font-size:10px;padding:7px 10px;outline:none;width:190px;text-shadow:none}
+.key-in::placeholder{color:var(--muted)}
+.ai-btn{background:var(--cyan-g);border:1px solid rgba(0,229,255,.3);border-radius:3px;
+  color:var(--cyan);font-family:var(--mono);font-size:10px;font-weight:700;
+  letter-spacing:.1em;padding:7px 12px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.ai-btn:hover{background:rgba(0,229,255,.18)}
+.ai-btn:disabled{opacity:.35;pointer-events:none}
+.test-btn{background:var(--ng-d);border:1px solid var(--b2);border-radius:3px;
+  color:var(--ng);font-family:var(--mono);font-size:10px;font-weight:700;
+  letter-spacing:.1em;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.ai-log{width:100%;font-family:var(--mono);font-size:10px;color:var(--muted2);
+  padding:6px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:3px;
+  display:none;max-height:60px;overflow-y:auto;margin-top:4px;line-height:1.6}
+.ai-log.show{display:block}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px}
+.sbox{background:var(--s1);border:1px solid var(--b1);border-radius:4px;padding:12px 14px;position:relative;overflow:hidden}
+.sbox::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,currentColor,transparent);opacity:.4}
+.sn{font-family:var(--display);font-size:22px;font-weight:700;line-height:1;margin-bottom:4px}
+.sl{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+
+/* ALERT */
+.alert-banner{background:rgba(255,55,55,0.07);border:1px solid var(--red-b);
+  border-left:3px solid var(--red);border-radius:4px;padding:10px 14px;
+  margin-bottom:16px;font-size:11px;color:var(--muted2);line-height:1.7;font-family:var(--mono)}
+.alert-banner strong{color:var(--red)}
+
+/* FILTERS */
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.fl{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em}
+.fchip{font-size:10px;font-family:var(--mono);padding:5px 12px;border-radius:3px;
+  border:1px solid var(--b1);color:var(--muted);cursor:pointer;transition:all .12s}
+.fchip:hover,.fchip.active{background:var(--ng-d);border-color:var(--b2);color:var(--ng)}
+.search-in{background:var(--s2);border:1px solid var(--b1);border-radius:3px;
+  color:var(--ng);font-family:var(--mono);font-size:11px;padding:6px 12px;
+  outline:none;width:220px;margin-left:auto;text-shadow:none}
+.search-in::placeholder{color:var(--muted)}
+
+/* MAP PANEL */
+.map-panel{background:var(--s1);border:1px solid var(--b1);border-radius:5px;
+  overflow:hidden;margin-bottom:16px}
+.panel-hdr{padding:10px 14px;border-bottom:1px solid var(--b1);display:flex;
+  align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.panel-hdr-title{font-family:var(--display);font-size:9px;font-weight:700;
+  letter-spacing:.18em;color:var(--ng);text-transform:uppercase}
+.map-legend{display:flex;gap:12px;font-family:var(--mono);font-size:9px}
+.map-wrap{padding:10px;background:rgba(0,5,10,0.7)}
+#usMap{width:100%;display:block}
+.map-foot{padding:8px 14px;border-top:1px solid var(--b1);font-family:var(--mono);
+  font-size:9px;color:var(--muted)}
+
+/* FLAG */
+.flag-wrap{text-align:center;padding:12px 0 8px;margin-bottom:16px}
+.flag-wrap svg{max-width:440px;width:90%;display:inline-block;border-radius:4px;
+  box-shadow:0 0 20px rgba(0,255,65,0.08),0 0 2px rgba(0,255,65,0.25)}
+.flag-label{font-family:var(--display);font-size:9px;letter-spacing:.25em;
+  color:rgba(0,255,65,0.35);margin-top:8px;text-shadow:0 0 10px rgba(0,255,65,0.15)}
+.flag-sub{font-family:var(--mono);font-size:8px;letter-spacing:.15em;
+  color:rgba(0,255,65,0.2);margin-top:3px}
+
+/* ENTITY PANEL */
+.entity-panel{background:var(--s1);border:1px solid var(--b2);border-radius:5px;
+  overflow:hidden;margin-bottom:16px;display:none;animation:slideDown .2s ease}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.entity-panel.show{display:block}
+.ep-hdr{padding:12px 16px;border-bottom:1px solid var(--b1);
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.ep-title{font-family:var(--display);font-size:11px;font-weight:900;letter-spacing:.08em}
+.ep-meta{font-size:9px;font-family:var(--mono);color:var(--muted);margin-top:2px}
+.ep-close{background:none;border:1px solid var(--b1);border-radius:3px;color:var(--muted);
+  font-size:13px;cursor:pointer;padding:3px 8px;line-height:1;transition:all .12s;font-family:var(--mono)}
+.ep-close:hover{border-color:var(--red-b);color:var(--red)}
+.ep-actor{font-size:10px;font-family:var(--mono);padding:3px 10px;border-radius:2px}
+.ep-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0}
+.ep-col{padding:12px 15px;border-right:1px solid var(--b1)}
+.ep-col:last-child{border-right:none}
+.ep-col-title{font-size:9px;font-family:var(--mono);color:var(--muted);
+  letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;
+  padding-bottom:5px;border-bottom:1px solid var(--b1)}
+.ep-entity{font-size:11px;font-family:var(--mono);color:var(--muted2);
+  padding:4px 0;border-bottom:1px solid rgba(0,255,65,0.04);
+  display:flex;align-items:flex-start;gap:6px;line-height:1.4}
+.ep-entity:last-child{border-bottom:none}
+.ep-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.ep-incident{font-size:11px;font-family:var(--mono);color:var(--muted2);
+  line-height:1.65;background:var(--s2);border:1px solid var(--b1);
+  border-left:2px solid var(--red);border-radius:3px;padding:8px 10px;margin-bottom:8px}
+.ep-cve{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:2px;
+  background:var(--red-g);border:1px solid var(--red-b);color:var(--red);
+  text-decoration:none;display:inline-block;margin:2px 2px 2px 0;transition:all .12s}
+.ep-cve:hover{background:rgba(255,55,55,.22)}
+.ep-adv{font-size:10px;font-family:var(--mono);color:var(--cyan);
+  background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.18);
+  border-radius:2px;padding:4px 10px;text-decoration:none;display:inline-block;
+  margin-bottom:8px;transition:all .12s}
+.ep-adv:hover{background:rgba(0,229,255,.14)}
+.ep-adv-note{font-size:10px;font-family:var(--mono);color:var(--muted);line-height:1.6}
+@media(max-width:700px){.ep-grid{grid-template-columns:1fr}.ep-col{border-right:none;border-bottom:1px solid var(--b1)}}
+
+/* SECTOR GRID */
+.sector-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));
+  gap:12px;margin-bottom:20px}
+.sector-card{background:var(--s1);border:1px solid var(--b1);border-radius:6px;
+  overflow:hidden;transition:border-color .15s;cursor:pointer}
+.sector-card:hover{border-color:var(--b2)}
+.sector-card.expanded{border-color:var(--b2)}
+.card-stripe{height:4px}
+.card-hdr{padding:13px 15px 10px}
+.ch-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:7px}
+.sector-icon{font-size:22px;flex-shrink:0}
+.sector-info{flex:1}
+.sector-name{font-family:var(--display);font-size:11px;font-weight:900;letter-spacing:.06em;margin-bottom:2px}
+.sector-sub{font-size:10px;font-family:var(--mono);color:var(--muted);line-height:1.4}
+.threat-level{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+.tl-badge{font-size:9px;font-family:var(--mono);font-weight:700;padding:3px 9px;
+  border-radius:2px;letter-spacing:.06em;white-space:nowrap}
+.tl-critical{background:var(--red-g);color:var(--red);border:1px solid var(--red-b)}
+.tl-high{background:var(--orange-g);color:var(--orange);border:1px solid rgba(255,140,0,.28)}
+.tl-elevated{background:var(--yellow-g);color:var(--yellow);border:1px solid rgba(255,230,0,.25)}
+.tl-moderate{background:var(--ng-d);color:var(--ng);border:1px solid var(--b2)}
+.ics-badge{font-size:9px;font-family:var(--mono);padding:2px 6px;border-radius:2px;
+  background:var(--yellow-g);color:var(--yellow);border:1px solid rgba(255,230,0,.2)}
+.threat-meter{height:5px;background:var(--s3);border-radius:2px;overflow:hidden;margin-bottom:8px}
+.tm-fill{height:100%;border-radius:2px;transition:width .8s ease}
+.active-threats{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+.at-chip{font-size:9px;font-family:var(--mono);padding:2px 7px;border-radius:2px;border:1px solid var(--b1);color:var(--muted2);background:var(--s2)}
+.at-cn{border-color:rgba(255,140,0,.25);color:var(--orange);background:var(--orange-g)}
+.at-ru{border-color:rgba(255,55,55,.25);color:var(--red);background:var(--red-g)}
+.at-ir{border-color:rgba(0,229,255,.22);color:var(--cyan);background:var(--cyan-g)}
+.at-kp{border-color:rgba(192,132,252,.25);color:var(--purple);background:var(--purple-g)}
+.at-ra{border-color:rgba(255,230,0,.22);color:var(--yellow);background:var(--yellow-g)}
+.card-summary{padding:8px 15px 10px;font-size:11px;color:var(--muted2);line-height:1.65;border-top:1px solid var(--b1)}
+.card-ftr{padding:8px 15px;border-top:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.exp-lbl{font-size:10px;font-family:var(--mono);color:var(--muted);display:flex;align-items:center;gap:5px}
+.exp-ico{transition:transform .2s}
+.sector-card.expanded .exp-ico{transform:rotate(180deg)}
+.ext-link{font-size:10px;font-family:var(--mono);color:var(--cyan);
+  background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.18);
+  border-radius:2px;padding:3px 8px;text-decoration:none;transition:all .12s}
+.ext-link:hover{background:rgba(0,229,255,.14)}
+.card-detail{display:none;background:var(--s2);border-top:1px solid var(--b1)}
+.sector-card.expanded .card-detail{display:block}
+.det-sec{padding:12px 15px;border-bottom:1px solid var(--b1)}
+.det-sec:last-child{border-bottom:none}
+.det-title{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.12em;
+  text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--b1)}
+.actor-item{background:var(--s3);border:1px solid var(--b1);border-radius:3px;
+  padding:7px 10px;font-size:11px;font-family:var(--mono);color:var(--muted2);margin-bottom:5px}
+.actor-item:last-child{margin-bottom:0}
+.actor-name{font-weight:700;margin-bottom:2px}
+.cve-row{display:flex;gap:5px;flex-wrap:wrap}
+.cve-chip{font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:2px;
+  background:var(--red-g);border:1px solid var(--red-b);color:var(--red);text-decoration:none;transition:all .12s}
+.cve-chip:hover{background:rgba(255,55,55,.22)}
+.def-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.def-item{background:var(--s3);border:1px solid var(--b1);border-left:2px solid var(--ng);
+  border-radius:3px;padding:7px 10px;font-size:10px;color:var(--muted2);font-family:var(--mono);line-height:1.5}
+.ai-update-card{background:var(--s3);border:1px solid rgba(0,229,255,.2);
+  border-left:2px solid var(--cyan);border-radius:3px;padding:10px 12px;margin:10px 15px}
+.auc-hdr{font-size:9px;font-family:var(--mono);color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;margin-bottom:7px}
+.auc-body{font-size:11px;color:var(--muted2);line-height:1.65;font-family:var(--mono)}
+
+/* FOOTER */
+.ghost-footer{margin-top:28px;padding:18px 0 8px;border-top:1px solid var(--b1);text-align:center}
+.gf-rule{height:1px;background:linear-gradient(90deg,transparent,var(--ng),transparent);opacity:.3;margin-bottom:16px}
+.ghost-name{font-family:var(--display);font-size:15px;font-weight:900;letter-spacing:.2em;
+  color:var(--ng);text-shadow:0 0 12px var(--ng),0 0 28px rgba(0,255,65,.4)}
+.gf-sub{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--muted);margin-top:5px}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+@media(max-width:900px){.stats-row{grid-template-columns:repeat(3,1fr)}.sector-grid{grid-template-columns:1fr}}
+@media(max-width:500px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="wrap">
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="tl">
+    <div class="logo">CI<span>THREATMAP</span></div>
+    <div class="tsep">|</div>
+    <div class="tsub">CRITICAL INFRASTRUCTURE THREAT AWARENESS</div>
+  </div>
+  <div class="tr">
+    <div class="tb tb-red"><span class="blink">&#9679;</span>16 SECTORS</div>
+    <div class="tb tb-cy">CISA FRAMEWORK</div>
+    <div class="tb tb-ng">DEFENSIVE INTEL</div>
+    <div id="clk"></div>
+  </div>
+</div>
+
+<!-- AI BAR -->
+<div class="ai-bar">
+  <span style="font-size:18px">&#9889;</span>
+  <div>
+    <div class="ai-label">AI LIVE THREAT INTEL</div>
+    <div class="ai-desc">Requires Anthropic API key.</div>
+  </div>
+  <input class="key-in" id="apiKeyInput" type="password" placeholder="sk-ant-... API key">
+  <button class="test-btn" id="testKeyBtn" onclick="testAPIKey()">TEST KEY</button>
+  <select id="sectorSel" style="background:var(--s2);border:1px solid rgba(0,229,255,0.2);border-radius:3px;color:var(--ng);font-family:var(--mono);font-size:10px;padding:7px 10px;outline:none;cursor:pointer;min-width:160px"></select>
+  <button class="ai-btn" onclick="runAIUpdate(false)">&#9889; UPDATE</button>
+  <button class="ai-btn" onclick="runAIUpdate(true)" style="background:var(--ng-d);border-color:var(--b2);color:var(--ng)">&#8635; SWEEP ALL</button>
+  <div class="ai-log" id="aiLog"></div>
+</div>
+
+<!-- STATS -->
+<div class="stats-row">
+  <div class="sbox" style="color:var(--red)"><div class="sn" id="sCritical">0</div><div class="sl">Critical</div></div>
+  <div class="sbox" style="color:var(--orange)"><div class="sn" id="sHigh">0</div><div class="sl">High</div></div>
+  <div class="sbox" style="color:var(--yellow)"><div class="sn" id="sElevated">0</div><div class="sl">Elevated</div></div>
+  <div class="sbox" style="color:var(--ng)"><div class="sn">16</div><div class="sl">CISA Sectors</div></div>
+  <div class="sbox" style="color:var(--cyan)"><div class="sn" id="sActors">0</div><div class="sl">Threat Actors</div></div>
+</div>
+
+<!-- ALERT -->
+<div class="alert-banner">
+  <strong>ELEVATED THREAT ENVIRONMENT 2025-2026:</strong> CISA, FBI, and NSA report sustained nation-state targeting of US critical infrastructure.
+  Volt Typhoon pre-positioned in energy, water, and communications. Salt Typhoon breached 9+ US telecom carriers.
+  Ransomware attacks on healthcare up 264%. All 16 CISA sectors under active threat.
+</div>
+
+<!-- FILTERS -->
+<div class="filter-row">
+  <span class="fl">FILTER:</span>
+  <span class="fchip active" onclick="setFilter('all',this)">ALL</span>
+  <span class="fchip" onclick="setFilter('critical',this)">CRITICAL</span>
+  <span class="fchip" onclick="setFilter('high',this)">HIGH</span>
+  <span class="fchip" onclick="setFilter('china',this)">CHINA</span>
+  <span class="fchip" onclick="setFilter('russia',this)">RUSSIA</span>
+  <span class="fchip" onclick="setFilter('ransomware',this)">RANSOMWARE</span>
+  <span class="fchip" onclick="setFilter('ics',this)">ICS/OT</span>
+  <input class="search-in" id="searchIn" type="text" placeholder="Search sector, actor, CVE..." oninput="doSearch()">
+  <button onclick="exportLeadershipReport()"
+    style="background:linear-gradient(135deg,rgba(0,229,255,0.12),rgba(0,229,255,0.06));
+           border:1px solid rgba(0,229,255,.35);border-radius:3px;color:var(--cyan);
+           font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;
+           padding:5px 14px;cursor:pointer;white-space:nowrap;transition:all .15s"
+    title="Generate executive leadership briefing report">
+    &#128196; LEADERSHIP REPORT
+  </button>
+</div>
+
+<!-- US MAP -->
+<div class="map-panel">
+  <div class="panel-hdr">
+    <span class="panel-hdr-title">// US HOMELAND CRITICAL INFRASTRUCTURE THREAT MAP</span>
+    <div class="map-legend">
+      <span style="color:var(--red)">&#9632; CRITICAL</span>
+      <span style="color:var(--orange)">&#9632; HIGH</span>
+      <span style="color:var(--yellow)">&#9632; ELEVATED</span>
+      <span style="color:var(--ng)">&#9632; MODERATE</span>
+    </div>
+  </div>
+  <div class="map-wrap">
+    <svg id="usMap" viewBox="0 0 960 580" style="width:100%;display:block"></svg>
+  </div>
+  <div class="map-foot">Click any marker to view affected entities. Threat concentration based on CI density and CISA advisories. Sources: CISA, DHS, FBI, NSA. TLP:CLEAR.</div>
+</div>
+
+<!-- US FLAG -->
+<div class="flag-wrap">
+  <svg viewBox="0 0 760 400" xmlns="http://www.w3.org/2000/svg">
+    <rect width="760" height="400" fill="#B22234"/>
+    <rect y="30"  width="760" height="30" fill="#FFFFFF"/>
+    <rect y="91"  width="760" height="30" fill="#FFFFFF"/>
+    <rect y="152" width="760" height="30" fill="#FFFFFF"/>
+    <rect y="213" width="760" height="30" fill="#FFFFFF"/>
+    <rect y="274" width="760" height="30" fill="#FFFFFF"/>
+    <rect y="335" width="760" height="30" fill="#FFFFFF"/>
+    <rect width="304" height="215" fill="#3C3B6E"/>
+    <g fill="#FFFFFF">
+      <g id="s6" transform="translate(25,22)"><polygon id="st" points="0,-8 2.4,-3 8,-3 3.6,1 5.6,7 0,3.8 -5.6,7 -3.6,1 -8,-3 -2.4,-3"/>
+        <use href="#st" x="50"/><use href="#st" x="100"/><use href="#st" x="150"/><use href="#st" x="200"/><use href="#st" x="250"/></g>
+      <g transform="translate(50,43)"><use href="#st"/><use href="#st" x="50"/><use href="#st" x="100"/><use href="#st" x="150"/><use href="#st" x="200"/></g>
+      <g transform="translate(25,65)"><use href="#st"/><use href="#st" x="50"/><use href="#st" x="100"/><use href="#st" x="150"/><use href="#st" x="200"/><use href="#st" x="250"/></g>
+      <g transform="translate(50,87)"><use href="#st"/><use href="#st" x="50"/><use href="#st" x="100"/><use href="#st" x="150"/><use href="#st" x="200"/></g>
+      <g transform="translate(25,108)"><use href="#st"/><use href="#st" x="50"/><use href="#st" x="100"/><use href="#st" x="150"/><use href="#st" x="200"/><use href="#st" x="250"/></g>
+      <g transform="translate(50,130)"><use href="#st"/><use href="#st" x="50"/><use href="#st" x="100"/><use href="#st" x="150"/><use href="#st" x="200"/></g>
+      <g transform="translate(25,152)"><use href="#st"/><use href="#st" x="50"/><use href="#st" x="100"/><use href="#st" x="150"/><use href="#st" x="200"/><use href="#st" x="250"/></g>
+      <g transform="translate(50,173)"><use href="#st"/><use href="#st" x="50"/><use href="#st" x="100"/><use href="#st" x="150"/><use href="#st" x="200"/></g>
+      <g transform="translate(25,195)"><use href="#st"/><use href="#st" x="50"/><use href="#st" x="100"/><use href="#st" x="150"/><use href="#st" x="200"/><use href="#st" x="250"/></g>
+    </g>
+    <rect width="760" height="400" fill="rgba(0,255,65,0.04)" rx="3"/>
+  </svg>
+  <div class="flag-label">UNITED STATES OF AMERICA</div>
+  <div class="flag-sub">DEFEND THE HOMELAND - DEFEND ALWAYS</div>
+</div>
+
+<!-- ENTITY PANEL -->
+<div class="entity-panel" id="entityPanel">
+  <div class="ep-hdr">
+    <div>
+      <div class="ep-title" id="epTitle"></div>
+      <div class="ep-meta" id="epMeta"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="ep-actor" id="epActor"></div>
+      <button class="ep-close" onclick="closeEntity()">&#10005; CLOSE</button>
+    </div>
+  </div>
+  <div class="ep-grid">
+    <div class="ep-col">
+      <div class="ep-col-title">Affected Entities</div>
+      <div id="epEntities"></div>
+    </div>
+    <div class="ep-col">
+      <div class="ep-col-title">Known Incident</div>
+      <div id="epIncident"></div>
+      <div id="epCves"></div>
+    </div>
+    <div class="ep-col">
+      <div class="ep-col-title">CISA Advisory</div>
+      <div id="epAdvisory"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTOR GRID -->
+<div class="sector-grid" id="sectorGrid"></div>
+
+<!-- FOOTER -->
+<div class="ghost-footer">
+  <div class="gf-rule"></div>
+  <div style="font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--muted);margin-bottom:4px">BUILT BY</div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:5px">
+    <span style="font-size:18px">&#128123;</span>
+    <div class="ghost-name">GHOST DEFENSE</div>
+    <span style="font-size:18px">&#128123;</span>
+  </div>
+  <div class="gf-sub">CI THREAT MAP v2.0 . GHOST DEFENSE . CISA . FBI . NSA . MITRE ATT&amp;CK . TLP:CLEAR . DEFEND ALWAYS</div>
+</div>
+
+</div><!-- /wrap -->
+<script>
+// ============================================================
+// GHOST DEFENSE - CI THREAT MAP v2.0
+// ALL functions in ONE script block - no scope issues
+// ============================================================
+
+// -- CLOCK --
+setInterval(function(){
+  var el = document.getElementById('clk');
+  if(el) el.textContent = new Date().toUTCString().replace('GMT','UTC').split(' ').slice(1,5).join(' ');
+}, 1000);
+
+// -- THREAT COLORS --
+var THREAT_COLORS = {
+  critical: '#ff3737',
+  high:     '#ff8c00',
+  elevated: '#ffe600',
+  moderate: '#00ff41',
+  unknown:  '#1a3520'
+};
+
+// -- STATE THREAT LEVELS (by FIPS code) --
+var REGION_THREATS = {
+  '06':'critical','36':'critical','48':'critical','12':'critical','51':'critical',
+  '20':'critical','11':'critical','17':'critical','42':'critical','53':'critical',
+  '04':'high','08':'high','13':'high','26':'high','27':'high','29':'high',
+  '34':'high','37':'high','39':'high','41':'high','47':'high','55':'high','24':'high',
+  '01':'elevated','02':'elevated','05':'elevated','09':'elevated','10':'elevated',
+  '15':'elevated','16':'elevated','18':'elevated','19':'elevated','21':'elevated',
+  '22':'elevated','23':'elevated','25':'elevated','28':'elevated','30':'elevated',
+  '31':'elevated','32':'elevated','33':'elevated','35':'elevated','38':'elevated',
+  '40':'elevated','44':'elevated','45':'elevated','46':'elevated','49':'elevated',
+  '50':'elevated','54':'elevated','56':'elevated'
+};
+
+// -- CI HOTSPOTS WITH ENTITY DATA --
+var CI_HOTSPOTS = [
+  { x:155, y:278, label:'Pacific Grid', threat:'critical', icon:'E', sector:'Energy',
+    actor:'Volt Typhoon', nation:'cn',
+    entities:['Western Area Power Administration','Pacific Gas & Electric (PG&E)','Bonneville Power Administration','Los Angeles Dept of Water & Power','San Diego Gas & Electric'],
+    cves:['CVE-2023-20198','CVE-2022-1388','CVE-2021-44228'],
+    incident:'Volt Typhoon confirmed pre-positioned in multiple Western grid operators for potential wartime disruption. CISA AA24-038A issued.',
+    advisory:'AA24-038A' },
+  { x:148, y:342, label:'Silicon Valley', threat:'critical', icon:'T', sector:'Info Technology',
+    actor:'UNC5221 / APT41', nation:'cn',
+    entities:['F5 Networks (source code breach)','Cisco Systems (IOS XE mass exploit)','Microsoft (Exchange ProxyLogon)','SolarWinds (SUNBURST supply chain)','VMware (ESXi ransomware wave)'],
+    cves:['CVE-2023-20198','CVE-2024-3400','CVE-2021-26855'],
+    incident:'UNC5221 breached F5 Networks internal systems obtaining source code. Cisco IOS XE CVE-2023-20198 mass exploitation hit thousands of devices.',
+    advisory:'AA23-158A' },
+  { x:280, y:415, label:'Gulf Coast Energy', threat:'critical', icon:'O', sector:'Energy / Chemical',
+    actor:'Sandworm / APT33', nation:'ru',
+    entities:['Colonial Pipeline (ransomware 2021)','Chevron Gulf of Mexico operations','ExxonMobil Beaumont refinery','LNG export terminals (Sabine Pass)','Strategic Petroleum Reserve sites'],
+    cves:['CVE-2021-44228','CVE-2020-1472','CVE-2018-13379'],
+    incident:'Colonial Pipeline DarkSide ransomware shut down fuel supply to US East Coast for 6 days. 17 states declared emergency. $4.4M ransom paid.',
+    advisory:'AA21-131A' },
+  { x:428, y:188, label:'Great Lakes Mfg', threat:'high', icon:'M', sector:'Critical Manufacturing',
+    actor:'APT41 / Sandworm', nation:'cn',
+    entities:['Norsk Hydro (NotPetya - $75M)','Detroit auto supply chain','US Steel manufacturing','Dow Chemical Michigan','Dana Inc auto parts (ransomware)'],
+    cves:['CVE-2021-44228','CVE-2022-30525','CVE-2021-26855'],
+    incident:'NotPetya (Sandworm) caused $300M+ damage to global manufacturing firms. APT41 ongoing industrial IP theft from Great Lakes manufacturers.',
+    advisory:'AA20-049A' },
+  { x:642, y:275, label:'DC Federal Hub', threat:'critical', icon:'G', sector:'Government',
+    actor:'APT29 / Salt Typhoon', nation:'ru',
+    entities:['US Treasury (SolarWinds breach)','US State Department (email breach)','NSC / White House networks','DHS / CISA systems','DOD contractor networks'],
+    cves:['CVE-2020-1472','CVE-2021-26855','CVE-2023-34362'],
+    incident:'SolarWinds SUNBURST (APT29) breached Treasury, State, NSC in 2020. Salt Typhoon accessed federal communications infrastructure in 2024.',
+    advisory:'AA20-352A' },
+  { x:697, y:242, label:'NYC Finance', threat:'critical', icon:'F', sector:'Financial Services',
+    actor:'Lazarus / APT38', nation:'kp',
+    entities:['JPMorgan Chase (SWIFT targeting)','Bank of America (DDoS - Killnet)','NYSE trading systems','Federal Reserve of New York','Citigroup global network'],
+    cves:['CVE-2021-44228','CVE-2023-4966','CVE-2022-30190'],
+    incident:'APT38 SWIFT manipulation across 16+ countries. Lazarus Group stole $1.5B from Bybit in Feb 2025 - largest crypto heist in history.',
+    advisory:'AA22-011A' },
+  { x:542, y:332, label:'SE Energy', threat:'high', icon:'E', sector:'Energy',
+    actor:'Volt Typhoon / Ransomware', nation:'cn',
+    entities:['Duke Energy Carolinas grid','Southern Company Alabama/Georgia','Tennessee Valley Authority (TVA)','Dominion Energy Virginia','Florida Power & Light'],
+    cves:['CVE-2022-1388','CVE-2023-20198','CVE-2021-22986'],
+    incident:'Volt Typhoon pre-positioning confirmed in multiple Southeast utilities. Several ransomware incidents against regional grid operators 2023-2025.',
+    advisory:'AA24-038A' },
+  { x:648, y:335, label:'SE Healthcare', threat:'critical', icon:'H', sector:'Healthcare',
+    actor:'ALPHV / Black Basta', nation:'ra',
+    entities:['Ascension Health (140 hospitals)','HCA Healthcare Nashville','Ardent Health Services','Change Healthcare (67k pharmacies)','Atrium Health Charlotte'],
+    cves:['CVE-2024-1709','CVE-2023-4966','CVE-2021-44228'],
+    incident:'Black Basta hit Ascension Health May 2024 - 140 hospitals reverted to paper records. ALPHV Change Healthcare breach disrupted 67,000+ pharmacies. $22M ransom paid.',
+    advisory:'AA24-131A' },
+  { x:348, y:284, label:'Midwest Ag/Water', threat:'elevated', icon:'A', sector:'Food & Water',
+    actor:'Ransomware / Volt Typhoon', nation:'ra',
+    entities:['NEW Cooperative grain handling (Iowa)','Crystal Valley Co-op (BlackMatter)','JBS USA pork processing','Midwest water treatment SCADA','Chicago Water Reclamation District'],
+    cves:['CVE-2021-44228','CVE-2020-1472','CVE-2023-6448'],
+    incident:'NEW Cooperative ransomware (BlackMatter) threatened harvest storage. JBS paid $11M ransom. Multiple Midwest water SCADA systems compromised.',
+    advisory:'AA21-287A' },
+  { x:685, y:190, label:'NE Healthcare/Comms', threat:'high', icon:'C', sector:'Healthcare / Comms',
+    actor:'Salt Typhoon / Ransomware', nation:'cn',
+    entities:['AT&T Northeast (Salt Typhoon breach)','Verizon (lawful intercept access)','Mass General Brigham (ransomware)','Yale New Haven Health','Lumen Technologies backbone'],
+    cves:['CVE-2023-20198','CVE-2024-3400','CVE-2018-13379'],
+    incident:'Salt Typhoon breached AT&T and Verizon accessing lawful intercept systems for months. Affected senior government official communications. CISA AA24-338A.',
+    advisory:'AA24-338A' },
+  { x:238, y:374, label:'Southwest Water', threat:'elevated', icon:'W', sector:'Water',
+    actor:'IRGC / Volt Typhoon', nation:'ir',
+    entities:['Unitronics PLC systems (IRGC attack)','Phoenix water utility SCADA','Arizona water district networks','Las Vegas Valley Water District','Southern Nevada Water Authority'],
+    cves:['CVE-2023-6448','CVE-2021-22986','CVE-2020-1472'],
+    incident:'IRGC-linked CyberAv3ngers compromised Unitronics PLCs at multiple water facilities in Nov 2023. CISA Emergency Directive 23-02 issued.',
+    advisory:'AA23-335A' },
+  { x:475, y:412, label:'Gulf Ports/Maritime', threat:'high', icon:'P', sector:'Transportation',
+    actor:'APT40 / Sandworm', nation:'cn',
+    entities:['Port of Houston (APT40 2021)','Port of New Orleans systems','COSCO Shipping Americas (ransomware)','Maersk (NotPetya - $300M damage)','US Coast Guard maritime networks'],
+    cves:['CVE-2021-44228','CVE-2020-1472','CVE-2023-34362'],
+    incident:'APT40 targeted Port of Houston industrial control systems 2021. Maersk NotPetya destroyed all global shipping systems causing $300M in losses.',
+    advisory:'AA21-209A' }
+];
+
+// -- SECTOR DATABASE --
+var SECTORS = [
+  { id:'energy', name:'ENERGY', icon:'[E]',
+    sub:'Electric Grid, Oil & Gas, Pipelines, LNG, Nuclear',
+    threat:'critical', threatScore:97, isICS:true,
+    summary:'Highest-priority target for Volt Typhoon pre-positioning and Sandworm destructive attacks. Colonial Pipeline ransomware (2021) demonstrated real-world disruption potential. Chinese APTs embedded in US grid infrastructure. Russia demonstrated capability with Ukraine grid blackouts.',
+    actors:[
+      {name:'Volt Typhoon', nation:'cn', detail:'Pre-positioning in US electric utilities for wartime disruption - CISA confirmed'},
+      {name:'Sandworm / APT44', nation:'ru', detail:'Industroyer2 ICS malware, Ukraine grid blackouts 2015-2016'},
+      {name:'APT33 / Refined Kitten', nation:'ir', detail:'Petrochemical targeting, Shamoon wiper coordination'},
+      {name:'Ransomware Groups', nation:'ra', detail:'Colonial Pipeline (DarkSide), multiple utility attacks 2023-2025'},
+    ],
+    cves:['CVE-2022-1388','CVE-2023-20198','CVE-2021-44228','CVE-2018-13379'],
+    defenses:['Segment OT from IT per CISA ICS guidance','Deploy OT monitoring (Dragos, Claroty, Nozomi)','Apply IEC 62443 industrial standards','Subscribe to E-ISAC threat intelligence','Conduct tabletop exercises for grid disruption','Patch all internet-facing industrial systems'],
+    cisa:'https://www.cisa.gov/topics/critical-infrastructure-security-and-resilience/critical-infrastructure-sectors/energy-sector',
+    advisory:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-038a' },
+  { id:'water', name:'WATER & WASTEWATER', icon:'[W]',
+    sub:'Drinking Water, Wastewater Treatment, Distribution Systems',
+    threat:'critical', threatScore:94, isICS:true,
+    summary:'Volt Typhoon confirmed pre-positioning in US water utilities. IRGC-linked actors compromised water utility PLCs November 2023. EPA and CISA issued joint emergency advisory. Multiple ransomware attacks on water systems 2023-2025.',
+    actors:[
+      {name:'Volt Typhoon', nation:'cn', detail:'Pre-positioned in multiple US water utilities - confirmed by CISA'},
+      {name:'IRGC / CyberAv3ngers', nation:'ir', detail:'Compromised Unitronics PLCs at water facilities Nov 2023'},
+      {name:'Sandworm', nation:'ru', detail:'Water system targeting capability assessed by NSA'},
+      {name:'Ransomware Groups', nation:'ra', detail:'Multiple water utilities hit across US 2023-2025'},
+    ],
+    cves:['CVE-2023-6448','CVE-2021-22986','CVE-2020-1472'],
+    defenses:['Change all default passwords on ICS/SCADA immediately','Implement MFA on all remote OT access','Segment water control networks from corporate IT','Remove unnecessary internet-facing OT exposure','Subscribe to WaterISAC threat intelligence','Follow CISA Water Sector Cybersecurity Guide'],
+    cisa:'https://www.cisa.gov/topics/critical-infrastructure-security-and-resilience/critical-infrastructure-sectors/water-and-wastewater-systems-sector',
+    advisory:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-335a' },
+  { id:'comms', name:'COMMUNICATIONS', icon:'[C]',
+    sub:'Telecom, Internet Infrastructure, Cable, Satellite',
+    threat:'critical', threatScore:96, isICS:false,
+    summary:'Salt Typhoon breached 9+ US telecommunications carriers including AT&T, Verizon, and T-Mobile - accessing lawful intercept systems. 200+ organizations compromised globally. Ongoing access to US call records of senior government officials.',
+    actors:[
+      {name:'Salt Typhoon / Earth Estries', nation:'cn', detail:'Breached AT&T, Verizon, T-Mobile, Lumen, Charter - lawful intercept access'},
+      {name:'Volt Typhoon', nation:'cn', detail:'Targeting ISPs and communications backbone infrastructure'},
+      {name:'APT28 / Fancy Bear', nation:'ru', detail:'Targeting communications infrastructure in NATO countries'},
+    ],
+    cves:['CVE-2023-20198','CVE-2024-3400','CVE-2023-4966','CVE-2018-13379'],
+    defenses:['Implement CISA hardening guidance for network infrastructure','Audit all remote access to telecom management systems','Review for GhostSpider and SparrowDoor backdoor IOCs','Restrict SNMP - change all default community strings','Monitor for unusual lawful intercept system access','Subscribe to IT-ISAC and CISA telecom alerts'],
+    cisa:'https://www.cisa.gov/topics/critical-infrastructure-security-and-resilience/critical-infrastructure-sectors/communications-sector',
+    advisory:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-338a' },
+  { id:'healthcare', name:'HEALTHCARE & PUBLIC HEALTH', icon:'[H]',
+    sub:'Hospitals, Pharma, Medical Devices, Health IT',
+    threat:'critical', threatScore:95, isICS:false,
+    summary:'Ransomware attacks on healthcare up 264% since 2023. Change Healthcare breach (Feb 2024) disrupted 67,000+ pharmacies. Ascension Health attack May 2024 forced 140 hospitals to paper. NHS UK hit by Qilin ransomware June 2024. Patient deaths documented from ransomware-caused delays.',
+    actors:[
+      {name:'ALPHV/BlackCat', nation:'ra', detail:'Change Healthcare $22M ransom - largest healthcare breach in US history'},
+      {name:'Black Basta', nation:'ra', detail:'Ascension Health attack - 140 hospitals disrupted'},
+      {name:'Qilin', nation:'ra', detail:'NHS Synnovis UK - blood supply disruption'},
+      {name:'Lazarus Group', nation:'kp', detail:'COVID-19 vaccine research theft 2020-2022'},
+    ],
+    cves:['CVE-2024-1709','CVE-2023-4966','CVE-2021-44228','CVE-2022-1388'],
+    defenses:['Maintain offline tested backups of all clinical systems','Develop manual paper-based fallback procedures','Segment medical device networks from clinical IT','Apply CISA/HHS Black Basta advisory AA24-131A','Implement HHS healthcare cybersecurity guidelines','Subscribe to H-ISAC threat intelligence'],
+    cisa:'https://www.cisa.gov/topics/critical-infrastructure-security-and-resilience/critical-infrastructure-sectors/healthcare-and-public-health-sector',
+    advisory:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-131a' },
+  { id:'financial', name:'FINANCIAL SERVICES', icon:'[F]',
+    sub:'Banks, Exchanges, Payment Systems, Insurance, Crypto',
+    threat:'critical', threatScore:93, isICS:false,
+    summary:'Lazarus Group stole $1.5B from Bybit (Feb 2025) - largest crypto heist in history. Total DPRK crypto theft estimated $3B+. SWIFT messaging system targeted across 16+ countries. DDoS against US banks by Killnet 2022-2023.',
+    actors:[
+      {name:'Lazarus Group', nation:'kp', detail:'$1.5B Bybit heist 2025, $3B+ total crypto theft, SWIFT targeting'},
+      {name:'APT38', nation:'kp', detail:'Central bank SWIFT manipulation across 16+ countries'},
+      {name:'APT28 / Fancy Bear', nation:'ru', detail:'Financial sector espionage and data theft'},
+      {name:'Ransomware Groups', nation:'ra', detail:'Multiple financial institutions hit 2024-2025'},
+    ],
+    cves:['CVE-2021-44228','CVE-2023-4966','CVE-2022-30190','CVE-2024-40711'],
+    defenses:['Implement SWIFT Customer Security Programme (CSP) controls','Apply FS-ISAC threat intelligence and alerts','Enforce hardware MFA on all financial system access','Monitor crypto exchange integrations for supply chain attacks','Conduct regular SWIFT messaging system audits','Follow SEC cybersecurity incident disclosure rules'],
+    cisa:'https://www.cisa.gov/topics/critical-infrastructure-security-and-resilience/critical-infrastructure-sectors/financial-services-sector',
+    advisory:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-011a' },
+  { id:'transport', name:'TRANSPORTATION SYSTEMS', icon:'[T]',
+    sub:'Aviation, Rail, Ports, Maritime, Pipelines, Logistics',
+    threat:'high', threatScore:88, isICS:true,
+    summary:'Colonial Pipeline ransomware (2021) shut down fuel to US East Coast for 6 days - 17 states declared emergency. NotPetya wiper (Sandworm) caused $10B+ in damage to global shipping including Maersk. TSA issued emergency cybersecurity requirements.',
+    actors:[
+      {name:'Sandworm / APT44', nation:'ru', detail:'NotPetya destroyed Maersk shipping systems - $300M damage'},
+      {name:'APT40 / Leviathan', nation:'cn', detail:'Maritime and aviation intelligence targeting'},
+      {name:'Volt Typhoon', nation:'cn', detail:'Transportation infrastructure pre-positioning'},
+      {name:'Ransomware Groups', nation:'ra', detail:'Colonial Pipeline, Port of Lisbon, multiple airports'},
+    ],
+    cves:['CVE-2021-44228','CVE-2020-1472','CVE-2018-13379','CVE-2022-30190'],
+    defenses:['Comply with TSA cybersecurity directives for pipelines and rail','Segment OT/SCADA from corporate IT in all transport systems','Develop manual operational continuity procedures','Apply maritime cybersecurity guidelines (IMO MSC-FAL.1/Circ.3)','Subscribe to A-ISAC and Surface Transportation ISAC','Implement CISA Transportation Sector guidelines'],
+    cisa:'https://www.cisa.gov/topics/critical-infrastructure-security-and-resilience/critical-infrastructure-sectors/transportation-systems-sector',
+    advisory:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-083a' },
+  { id:'defense', name:'DEFENSE INDUSTRIAL BASE', icon:'[D]',
+    sub:'Defense Contractors, Weapons R&D, Military Logistics',
+    threat:'critical', threatScore:96, isICS:false,
+    summary:'Volt Typhoon and Salt Typhoon actively targeting defense industrial base for military technology theft. APT40 stole classified F-35 design data. Lazarus Group targeting cleared defense contractors. CMMC rolled out to require minimum security standards for DoD contractors.',
+    actors:[
+      {name:'Volt Typhoon', nation:'cn', detail:'Pre-positioning near US military bases - Guam and INDOPACOM focus'},
+      {name:'APT40 / Leviathan', nation:'cn', detail:'Naval/maritime defense technology theft - F-35 data breach'},
+      {name:'APT41 / Winnti', nation:'cn', detail:'Defense contractor targeting for weapons system data'},
+      {name:'Lazarus Group', nation:'kp', detail:'Defense contractor espionage for missile and weapons programs'},
+    ],
+    cves:['CVE-2021-26855','CVE-2021-44228','CVE-2023-20198','CVE-2018-13379'],
+    defenses:['Achieve CMMC Level 2 or 3 certification for DoD contracts','Implement NIST SP 800-171 controls to protect CUI','Enforce zero-trust architecture across all contractor networks','Apply DIBNet Portal threat intelligence from DoD','Conduct regular insider threat assessments','Subscribe to DIB-ISAC threat intelligence feeds'],
+    cisa:'https://www.cisa.gov/topics/critical-infrastructure-security-and-resilience/critical-infrastructure-sectors/defense-industrial-base-sector',
+    advisory:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-011a' },
+  { id:'government', name:'GOVERNMENT FACILITIES', icon:'[G]',
+    sub:'Federal, State, Local Government, Courts, Elections',
+    threat:'critical', threatScore:95, isICS:false,
+    summary:'SolarWinds SUNBURST (APT29) compromised 18,000+ organizations including Treasury, Commerce, State, and NSC in 2020. APT28 targeted election infrastructure. Salt Typhoon accessed government communications. Ongoing nation-state targeting of all government levels.',
+    actors:[
+      {name:'APT29 / Cozy Bear', nation:'ru', detail:'SolarWinds SUNBURST - 18,000+ victims including Treasury, State, NSC'},
+      {name:'APT28 / Fancy Bear', nation:'ru', detail:'Election infrastructure targeting, government email compromise'},
+      {name:'Salt Typhoon', nation:'cn', detail:'Federal agency communications access 2024'},
+      {name:'Charming Kitten', nation:'ir', detail:'Government officials and policy makers targeting'},
+    ],
+    cves:['CVE-2021-26855','CVE-2020-1472','CVE-2023-34362','CVE-2021-44228'],
+    defenses:['Implement CISA Shields Up guidance for government networks','Apply SCuBA secure cloud business application baselines','Enforce phishing-resistant MFA (FIDO2) across all systems','Apply NIST FISMA and FedRAMP requirements','Segment election infrastructure with air gaps where possible','Subscribe to MS-ISAC for state and local government intel'],
+    cisa:'https://www.cisa.gov/topics/critical-infrastructure-security-and-resilience/critical-infrastructure-sectors/government-facilities-sector',
+    advisory:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-352a' },
+  { id:'it', name:'INFORMATION TECHNOLOGY', icon:'[IT]',
+    sub:'Cloud, Software, Hardware, Managed Services, MSPs',
+    threat:'critical', threatScore:94, isICS:false,
+    summary:'Software supply chain attacks (SolarWinds, Kaseya, 3CX) compromised thousands of downstream organizations simultaneously. APT41 ongoing supply chain attacks. UNC5221 breached F5 Networks internal systems. Log4Shell affected millions of Java applications globally.',
+    actors:[
+      {name:'UNC5221', nation:'cn', detail:'F5 Networks internal breach - source code and vulnerability roadmap stolen'},
+      {name:'APT41 / Winnti', nation:'cn', detail:'Supply chain attacks via software vendors and MSPs'},
+      {name:'APT29 / Cozy Bear', nation:'ru', detail:'SolarWinds SUNBURST supply chain - 18,000+ downstream victims'},
+      {name:'Ransomware Groups', nation:'ra', detail:'MSP targeting for downstream customer ransomware deployment'},
+    ],
+    cves:['CVE-2021-44228','CVE-2023-34362','CVE-2024-1709'],
+    defenses:['Implement software supply chain security (SSDF) - NIST SP 800-218','Enforce MFA on all MSP remote access tools (ConnectWise, Kaseya)','Audit all third-party software dependencies - require SBOM','Monitor for unexpected outbound connections from dev systems','Apply CISA Secure by Design principles','Subscribe to IT-ISAC and CISA vulnerability alerts'],
+    cisa:'https://www.cisa.gov/topics/critical-infrastructure-security-and-resilience/critical-infrastructure-sectors/information-technology-sector',
+    advisory:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-158a' },
+  { id:'chemical', name:'CHEMICAL SECTOR', icon:'[CH]',
+    sub:'Chemical Manufacturing, Storage, Distribution',
+    threat:'high', threatScore:85, isICS:true,
+    summary:'CISA CFATS program protects highest-risk facilities. APT33 specifically targets petrochemical sector with Shamoon wiper and custom destructive tools. Triton/TRISIS malware (Sandworm) targeted safety instrumented systems - first known attack designed to cause physical damage.',
+    actors:[
+      {name:'APT33 / Refined Kitten', nation:'ir', detail:'Petrochemical targeting, Shamoon wiper, safety system targeting'},
+      {name:'Sandworm', nation:'ru', detail:'Triton/TRISIS malware targeted safety instrumented systems'},
+      {name:'APT34 / OilRig', nation:'ir', detail:'Chemical and energy sector targeting'},
+    ],
+    cves:['CVE-2021-44228','CVE-2022-30525','CVE-2018-13379'],
+    defenses:['Comply with CISA CFATS regulations for highest-risk facilities','Implement safety instrumented system (SIS) security - IEC 61511','Segment safety systems from ALL business networks','Apply Triton/TRISIS IOCs and detection signatures','Conduct ICS vulnerability assessments per CISA recommendations','Subscribe to CISA Chemical Sector alerts'],
+    cisa:'https://www.cisa.gov/topics/critical-infrastructure-security-and-resilience/critical-infrastructure-sectors/chemical-sector',
+    advisory:'https://www.cisa.gov/news-events/ics-advisories' },
+  { id:'nuclear', name:'NUCLEAR REACTORS', icon:'[N]',
+    sub:'Nuclear Power Plants, Materials, Waste, R&D',
+    threat:'high', threatScore:89, isICS:true,
+    summary:'Stuxnet (2010) established that nuclear facility control systems can be compromised via cyber. NRC and CISA issued cybersecurity requirements for nuclear licensees. North Korean actors target nuclear policy researchers. Russian actors conduct reconnaissance against NATO nuclear facilities.',
+    actors:[
+      {name:'Lazarus Group', nation:'kp', detail:'Nuclear policy researcher targeting, weapons program intelligence'},
+      {name:'Kimsuky', nation:'kp', detail:'Nuclear experts and think tanks - intelligence collection'},
+      {name:'APT29 / Cozy Bear', nation:'ru', detail:'Nuclear policy officials and research institute targeting'},
+      {name:'Sandworm', nation:'ru', detail:'Nuclear facility reconnaissance in Ukraine and Eastern Europe'},
+    ],
+    cves:['CVE-2021-44228','CVE-2020-1472','CVE-2021-34527'],
+    defenses:['Comply with NRC 10 CFR 73.54 cybersecurity requirements','Implement air-gap controls for critical digital assets','Apply NEI 08-09 nuclear cybersecurity program guidelines','Restrict removable media - Stuxnet vector still relevant','Conduct adversary simulation exercises with NRC/CISA support','Subscribe to NRC cybersecurity working group bulletins'],
+    cisa:'https://www.cisa.gov/topics/critical-infrastructure-security-and-resilience/critical-infrastructure-sectors/nuclear-reactors-materials-and-waste-sector',
+    advisory:'https://www.cisa.gov/news-events/ics-advisories' },
+  { id:'food', name:'FOOD & AGRICULTURE', icon:'[AG]',
+    sub:'Food Processing, Supply Chain, Agriculture, Water',
+    threat:'elevated', threatScore:78, isICS:true,
+    summary:'JBS Foods ransomware attack (2021) disrupted 20% of US beef processing capacity. NEW Cooperative grain handling ransomware (BlackMatter 2021) threatened crop storage during harvest. FDA Food Safety Modernization Act includes cybersecurity provisions.',
+    actors:[
+      {name:'Ransomware Groups', nation:'ra', detail:'JBS Foods (REvil), NEW Cooperative (BlackMatter), multiple food processors'},
+      {name:'Volt Typhoon', nation:'cn', detail:'Agricultural infrastructure reconnaissance assessed by IC'},
+    ],
+    cves:['CVE-2021-44228','CVE-2020-1472','CVE-2022-30190'],
+    defenses:['Implement CISA Food and Agriculture Sector cybersecurity guide','Secure agricultural SCADA and precision farming systems','Conduct supply chain risk assessments for processing OT','Develop manual operational continuity for processing facilities','Subscribe to Food and Ag-ISAC threat intelligence','Maintain offline backups of all processing control systems'],
+    cisa:'https://www.cisa.gov/topics/critical-infrastructure-security-and-resilience/critical-infrastructure-sectors/food-and-agriculture-sector',
+    advisory:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-287a' },
+  { id:'dam', name:'DAMS SECTOR', icon:'[DM]',
+    sub:'Hydroelectric, Flood Control, Water Storage',
+    threat:'elevated', threatScore:80, isICS:true,
+    summary:'CISA Dam Sector includes 90,000+ dams in the US. Bowman Avenue Dam (NY) was compromised by Iranian actors in 2013 - first publicly confirmed nation-state attack on US water infrastructure. Physical consequences of dam system compromise can be catastrophic.',
+    actors:[
+      {name:'IRGC-linked', nation:'ir', detail:'Bowman Avenue Dam compromise 2013 - first US water infrastructure attack'},
+      {name:'Volt Typhoon', nation:'cn', detail:'Hydroelectric infrastructure reconnaissance assessed'},
+      {name:'Sandworm', nation:'ru', detail:'Infrastructure disruption capability assessed by NSA'},
+    ],
+    cves:['CVE-2023-6448','CVE-2021-22986','CVE-2020-1472'],
+    defenses:['Apply CISA Dam Sector cybersecurity resources and guides','Implement FERC cybersecurity requirements for hydroelectric','Segment SCADA from all external networks','Conduct dam failure scenario planning including cyber-caused','Subscribe to CISA Dam Sector alerts and advisories','Test manual override procedures for all automated systems'],
+    cisa:'https://www.cisa.gov/topics/critical-infrastructure-security-and-resilience/critical-infrastructure-sectors/dams-sector',
+    advisory:'https://www.cisa.gov/news-events/ics-advisories' },
+  { id:'emergency', name:'EMERGENCY SERVICES', icon:'[EM]',
+    sub:'9-1-1, Police, Fire, EMS, Search and Rescue',
+    threat:'elevated', threatScore:82, isICS:false,
+    summary:'Volt Typhoon pre-positioning targets emergency services communications. Ransomware hit multiple 9-1-1 dispatch centers and emergency management agencies 2022-2025. Baltimore 911 dispatch ransomware 2018 forced manual logging for 17 hours.',
+    actors:[
+      {name:'Volt Typhoon', nation:'cn', detail:'Emergency services and public safety comms pre-positioning'},
+      {name:'Ransomware Groups', nation:'ra', detail:'9-1-1 centers, emergency management, hospital emergency systems'},
+    ],
+    cves:['CVE-2021-44228','CVE-2022-1388','CVE-2024-1709'],
+    defenses:['Implement SAFECOM emergency communications guidance','Maintain analog radio backup for all digital emergency systems','Segment CAD (Computer-Aided Dispatch) from public networks','Conduct ransomware tabletop exercises for dispatch centers','Apply CISA Emergency Services Sector cybersecurity guide','Develop manual dispatch procedures for all CAD systems'],
+    cisa:'https://www.cisa.gov/topics/critical-infrastructure-security-and-resilience/critical-infrastructure-sectors/emergency-services-sector',
+    advisory:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-257a' },
+  { id:'manufacturing', name:'CRITICAL MANUFACTURING', icon:'[MF]',
+    sub:'Primary Metals, Machinery, Electrical, Transport Equipment',
+    threat:'high', threatScore:87, isICS:true,
+    summary:'Multiple major manufacturers hit by ransomware 2021-2025 including Norsk Hydro ($75M), JBS, Brenntag, and Boeing. Nation-state industrial espionage ongoing. ICS/OT vulnerabilities in manufacturing control systems exploited by APT groups.',
+    actors:[
+      {name:'APT41 / Winnti', nation:'cn', detail:'Industrial espionage - IP theft from manufacturers'},
+      {name:'Sandworm', nation:'ru', detail:'NotPetya destroyed manufacturing operations globally'},
+      {name:'Ransomware Groups', nation:'ra', detail:'Norsk Hydro, Boeing, multiple major manufacturers hit'},
+    ],
+    cves:['CVE-2021-44228','CVE-2022-30525','CVE-2021-26855'],
+    defenses:['Implement ICS/OT framework per NIST SP 800-82','Segment manufacturing execution systems (MES) from ERP','Apply vendor-specific hardening for PLCs and HMIs','Conduct OT asset inventory - know everything connected','Develop manual fallback procedures for all production lines','Subscribe to Manufacturing ISAC threat intelligence'],
+    cisa:'https://www.cisa.gov/topics/critical-infrastructure-security-and-resilience/critical-infrastructure-sectors/critical-manufacturing-sector',
+    advisory:'https://www.cisa.gov/news-events/ics-advisories' },
+  { id:'commercial', name:'COMMERCIAL FACILITIES', icon:'[CF]',
+    sub:'Entertainment, Sports, Retail, Hotels, Real Estate',
+    threat:'elevated', threatScore:75, isICS:false,
+    summary:'MGM Resorts (ALPHV/BlackCat 2023) - $100M+ in losses, 10-day operational disruption. Caesars Entertainment paid $15M ransom same month. Social engineering (vishing) used to compromise MGM IT helpdesk. Scattered Spider gang responsible.',
+    actors:[
+      {name:'ALPHV/BlackCat', nation:'ra', detail:'MGM Resorts - $100M+ losses, Caesars Entertainment ransomware'},
+      {name:'Scattered Spider', nation:'ra', detail:'MGM, Caesars - social engineering via IT helpdesk vishing'},
+      {name:'Ransomware Groups', nation:'ra', detail:'Retail, hospitality, entertainment sector targeting'},
+    ],
+    cves:['CVE-2023-4966','CVE-2024-1709','CVE-2021-44228'],
+    defenses:['Implement strict IT helpdesk identity verification - prevent vishing','Isolate POS systems from corporate networks','Apply PCI DSS v4.0 requirements for payment systems','Conduct social engineering awareness training','Monitor for unusual VPN and remote access activity','Subscribe to Retail and Hospitality ISAC'],
+    cisa:'https://www.cisa.gov/topics/critical-infrastructure-security-and-resilience/critical-infrastructure-sectors/commercial-facilities-sector',
+    advisory:'https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-284a' },
+];
+
+// -- APP STATE --
+var activeFilter = 'all';
+var searchQuery  = '';
+var aiUpdates    = {};
+var aiUpdating   = false;
+var selectedHotspot = null;
+
+// -- POPULATE SECTOR SELECT --
+(function() {
+  var sel = document.getElementById('sectorSel');
+  var opt = document.createElement('option');
+  opt.value = 'all'; opt.textContent = 'ALL SECTORS'; sel.appendChild(opt);
+  SECTORS.forEach(function(s) {
+    var o = document.createElement('option'); o.value = s.id; o.textContent = s.name; sel.appendChild(o);
+  });
+})();
+
+// -- UTILS --
+function safeStr(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function nationLabel(n) { return n==='cn'?'CHINA':n==='ru'?'RUSSIA':n==='ir'?'IRAN':n==='kp'?'DPRK':'RANSOMWARE'; }
+function nationColor(n) { return n==='cn'?'var(--orange)':n==='ru'?'var(--red)':n==='ir'?'var(--cyan)':n==='kp'?'var(--purple)':'var(--yellow)'; }
+function threatClass(t) { return t==='critical'?'tl-critical':t==='high'?'tl-high':t==='elevated'?'tl-elevated':'tl-moderate'; }
+function threatLabel(t) { return t==='critical'?'CRITICAL':t==='high'?'HIGH':t==='elevated'?'ELEVATED':'MODERATE'; }
+function threatBarColor(t) { return t==='critical'?'var(--red)':t==='high'?'var(--orange)':t==='elevated'?'var(--yellow)':'var(--ng)'; }
+function nationChipClass(n) { return n==='cn'?'at-cn':n==='ru'?'at-ru':n==='ir'?'at-ir':n==='kp'?'at-kp':'at-ra'; }
+
+// -- STATS --
+function updateStats() {
+  document.getElementById('sCritical').textContent = SECTORS.filter(function(s){return s.threat==='critical';}).length;
+  document.getElementById('sHigh').textContent     = SECTORS.filter(function(s){return s.threat==='high';}).length;
+  document.getElementById('sElevated').textContent = SECTORS.filter(function(s){return s.threat==='elevated';}).length;
+  var actors = {};
+  SECTORS.forEach(function(s){ s.actors.forEach(function(a){ actors[a.name]=1; }); });
+  document.getElementById('sActors').textContent = Object.keys(actors).length;
+}
+
+// -- FILTER & SEARCH --
+function setFilter(f, el) {
+  activeFilter = f;
+  document.querySelectorAll('.fchip').forEach(function(c){ c.classList.remove('active'); });
+  if(el) el.classList.add('active');
+  renderSectors();
+}
+function doSearch() { searchQuery = document.getElementById('searchIn').value.toLowerCase(); renderSectors(); }
+
+function filteredSectors() {
+  return SECTORS.filter(function(s) {
+    var mf = true;
+    if(activeFilter==='critical') mf = s.threat==='critical';
+    else if(activeFilter==='high') mf = s.threat==='high';
+    else if(activeFilter==='china') mf = s.actors.some(function(a){return a.nation==='cn';});
+    else if(activeFilter==='russia') mf = s.actors.some(function(a){return a.nation==='ru';});
+    else if(activeFilter==='ransomware') mf = s.actors.some(function(a){return a.nation==='ra';});
+    else if(activeFilter==='ics') mf = s.isICS;
+    if(!mf) return false;
+    if(!searchQuery) return true;
+    return (s.name+s.sub+s.summary+s.actors.map(function(a){return a.name;}).join('')+s.cves.join('')).toLowerCase().includes(searchQuery);
+  });
+}
+
+// -- TOGGLE CARD --
+function toggleCard(id) {
+  var el = document.getElementById('sc-'+id);
+  if(el) el.classList.toggle('expanded');
+}
+
+// -- RENDER SECTORS --
+function renderSectors() {
+  var list = filteredSectors();
+  var grid = document.getElementById('sectorGrid');
+  if(!grid) return;
+  if(!list.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--muted);font-family:var(--mono)">No sectors match filter</div>';
+    return;
+  }
+  grid.innerHTML = list.map(function(s) {
+    var aiU = aiUpdates[s.id];
+    var bc  = threatBarColor(s.threat);
+    var aiSection = '';
+    if(aiU) {
+      aiSection = '<div class="ai-update-card"><div class="auc-hdr">AI INTEL UPDATE</div>'
+        + '<div class="auc-body">' + safeStr(aiU.summary||'') + '</div>'
+        + (aiU.new_cves&&aiU.new_cves.length?'<div style="margin-top:6px;font-size:10px;color:var(--red)">NEW CVEs: '+aiU.new_cves.map(safeStr).join(', ')+'</div>':'')
+        + '</div>';
+    }
+    return '<div class="sector-card" id="sc-'+s.id+'" onclick="toggleCard(\''+s.id+'\')">'
+      +'<div class="card-stripe" style="background:linear-gradient(90deg,'+bc+',transparent)"></div>'
+      +'<div class="card-hdr">'
+        +'<div class="ch-top">'
+          +'<div class="sector-icon" style="color:'+bc+'">'+safeStr(s.icon)+'</div>'
+          +'<div class="sector-info">'
+            +'<div class="sector-name" style="color:'+bc+'">'+safeStr(s.name)+'</div>'
+            +'<div class="sector-sub">'+safeStr(s.sub)+'</div>'
+          +'</div>'
+          +'<div class="threat-level">'
+            +'<span class="tl-badge '+threatClass(s.threat)+'">'+threatLabel(s.threat)+'</span>'
+            +(s.isICS?'<span class="ics-badge">ICS/OT</span>':'')
+          +'</div>'
+        +'</div>'
+        +'<div class="threat-meter"><div class="tm-fill" style="width:'+s.threatScore+'%;background:'+bc+'"></div></div>'
+        +'<div class="active-threats">'+s.actors.map(function(a){
+          return '<span class="at-chip '+nationChipClass(a.nation)+'">'+nationLabel(a.nation)+'</span>';
+        }).join('')+'</div>'
+      +'</div>'
+      +'<div class="card-summary">'+safeStr(s.summary.slice(0,180))+(s.summary.length>180?'...':'')+'</div>'
+      +'<div class="card-ftr">'
+        +'<span class="exp-lbl"><span class="exp-ico">&#9660;</span> FULL INTEL + DEFENSES</span>'
+        +'<div style="display:flex;gap:6px" onclick="event.stopPropagation()">'
+          +'<a class="ext-link" href="'+safeStr(s.cisa)+'" target="_blank">CISA</a>'
+          +'<a class="ext-link" href="'+safeStr(s.advisory)+'" target="_blank">ADVISORY</a>'
+        +'</div>'
+      +'</div>'
+      +'<div class="card-detail" id="cd-'+s.id+'">'
+        +aiSection
+        +'<div class="det-sec"><div class="det-title">FULL THREAT SUMMARY</div>'
+          +'<div style="font-size:11px;color:var(--muted2);line-height:1.7;font-family:var(--mono)">'+safeStr(s.summary)+'</div>'
+        +'</div>'
+        +'<div class="det-sec"><div class="det-title">ACTIVE THREAT ACTORS</div>'
+          +s.actors.map(function(a){
+            return '<div class="actor-item">'
+              +'<div class="actor-name" style="color:'+nationColor(a.nation)+'">'+safeStr(a.name)+' ['+nationLabel(a.nation)+']</div>'
+              +'<div>'+safeStr(a.detail)+'</div></div>';
+          }).join('')
+        +'</div>'
+        +'<div class="det-sec"><div class="det-title">EXPLOITED CVEs</div>'
+          +'<div class="cve-row">'+s.cves.map(function(c){
+            return '<a class="cve-chip" href="https://nvd.nist.gov/vuln/detail/'+c+'" target="_blank" onclick="event.stopPropagation()">'+c+'</a>';
+          }).join('')+'</div>'
+        +'</div>'
+        +'<div class="det-sec"><div class="det-title">DEFENSIVE COUNTERMEASURES</div>'
+          +'<div class="def-grid">'+s.defenses.map(function(d){
+            return '<div class="def-item">'+safeStr(d)+'</div>';
+          }).join('')+'</div>'
+        +'</div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+// -- ENTITY PANEL --
+function showEntityPanel(h) {
+  var col = THREAT_COLORS[h.threat];
+  var nc  = nationColor(h.nation);
+  document.getElementById('epTitle').textContent = h.label + ' - ' + h.sector;
+  document.getElementById('epMeta').textContent  = 'CISA Sector: ' + h.sector + '  |  Threat: ' + h.threat.toUpperCase();
+  var actEl = document.getElementById('epActor');
+  actEl.textContent = h.actor + '  [' + nationLabel(h.nation) + ']';
+  actEl.style.cssText = 'font-size:10px;font-family:var(--mono);padding:3px 10px;border-radius:2px;background:rgba(255,255,255,0.05);border:1px solid '+nc+'55;color:'+nc;
+  document.getElementById('epEntities').innerHTML = (h.entities||[]).map(function(e) {
+    return '<div class="ep-entity"><div class="ep-dot" style="background:'+col+'"></div><div>'+safeStr(e)+'</div></div>';
+  }).join('');
+  document.getElementById('epIncident').innerHTML = '<div class="ep-incident">'+safeStr(h.incident)+'</div>';
+  document.getElementById('epCves').innerHTML = (h.cves||[]).map(function(c) {
+    return '<a class="ep-cve" href="https://nvd.nist.gov/vuln/detail/'+c+'" target="_blank">'+c+'</a>';
+  }).join('');
+  var advUrl = 'https://www.cisa.gov/news-events/cybersecurity-advisories/'+(h.advisory||'').toLowerCase();
+  document.getElementById('epAdvisory').innerHTML =
+    '<a class="ep-adv" href="'+advUrl+'" target="_blank">CISA '+(h.advisory||'N/A')+' -&gt;</a>'
+    +'<div class="ep-adv-note" style="margin-top:8px">Full advisory with IOCs, mitigations, and detection signatures for this threat actor and sector.</div>';
+  var panel = document.getElementById('entityPanel');
+  panel.classList.add('show');
+  setTimeout(function(){ panel.scrollIntoView({behavior:'smooth', block:'nearest'}); }, 50);
+}
+function closeEntity() {
+  document.getElementById('entityPanel').classList.remove('show');
+  d3.selectAll('.hs-dot').attr('r',6).attr('stroke-width',1).attr('opacity',0.9);
+}
+
+// -- US MAP --
+function initUSMap() {
+  var mapEl = document.getElementById('usMap');
+  if(!mapEl || typeof d3 === 'undefined' || typeof topojson === 'undefined') return;
+  var W = 960, H = 580;
+  var svg = d3.select('#usMap');
+  svg.append('rect').attr('width',W).attr('height',H).attr('fill','#020c14');
+  for(var gx=0;gx<W;gx+=40) svg.append('line').attr('x1',gx).attr('y1',0).attr('x2',gx).attr('y2',H).attr('stroke','rgba(0,255,65,0.025)').attr('stroke-width',0.5);
+  for(var gy=0;gy<H;gy+=40) svg.append('line').attr('x1',0).attr('y1',gy).attr('x2',W).attr('y2',gy).attr('stroke','rgba(0,255,65,0.025)').attr('stroke-width',0.5);
+  var g = svg.append('g');
+  fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json')
+    .then(function(r){ return r.json(); })
+    .then(function(us) {
+      var proj = d3.geoAlbersUsa().scale(1100).translate([W/2, H/2]);
+      var pathGen = d3.geoPath().projection(proj);
+      var states = topojson.feature(us, us.objects.states);
+      g.selectAll('.st').data(states.features).enter().append('path').attr('class','st').attr('d',pathGen)
+        .attr('fill',function(d){ var f=String(d.id).padStart(2,'0'),t=REGION_THREATS[f]||'unknown'; return THREAT_COLORS[t]+(t==='unknown'?'':'1a'); })
+        .attr('stroke',function(d){ return THREAT_COLORS[REGION_THREATS[String(d.id).padStart(2,'0')]||'unknown']; })
+        .attr('stroke-width',function(d){ var t=REGION_THREATS[String(d.id).padStart(2,'0')]||'u'; return t==='critical'?1.5:t==='high'?1:0.5; })
+        .attr('opacity',0.9)
+        .append('title').text(function(d){ return 'Threat: '+(REGION_THREATS[String(d.id).padStart(2,'0')]||'MODERATE').toUpperCase(); });
+      g.append('path').datum(topojson.mesh(us,us.objects.states,function(a,b){return a!==b;})).attr('d',pathGen).attr('fill','none').attr('stroke','rgba(0,255,65,0.2)').attr('stroke-width',0.8);
+      g.append('path').datum(topojson.mesh(us,us.objects.states,function(a,b){return a===b;})).attr('d',pathGen).attr('fill','none').attr('stroke','rgba(0,255,65,0.45)').attr('stroke-width',1.5);
+      CI_HOTSPOTS.forEach(function(h) {
+        var col = THREAT_COLORS[h.threat];
+        if(h.threat==='critical'||h.threat==='high') {
+          var ring = g.append('circle').attr('cx',h.x).attr('cy',h.y).attr('r',10).attr('fill','none').attr('stroke',col).attr('stroke-width',1).attr('opacity',0.7);
+          (function p(){ ring.attr('r',8).attr('opacity',0.8).transition().duration(1800).attr('r',22).attr('opacity',0).on('end',p); })();
+        }
+        var dot = g.append('circle').attr('class','hs-dot').attr('cx',h.x).attr('cy',h.y)
+          .attr('r',6).attr('fill',col).attr('stroke','rgba(0,0,0,0.5)').attr('stroke-width',1).attr('opacity',0.9)
+          .style('cursor','pointer')
+          .on('click', function() {
+            d3.selectAll('.hs-dot').attr('r',6).attr('stroke-width',1).attr('opacity',0.9);
+            d3.select(this).attr('r',9).attr('stroke',col).attr('stroke-width',2).attr('opacity',1);
+            showEntityPanel(h);
+          })
+          .on('mouseover', function(){ d3.select(this).attr('r',8); })
+          .on('mouseout', function(){ if(!document.getElementById('entityPanel').classList.contains('show')||selectedHotspot!==h.label) d3.select(this).attr('r',6); });
+        g.append('text').attr('x',h.x).attr('y',h.y+1).attr('text-anchor','middle').attr('dominant-baseline','middle')
+          .attr('font-family','Orbitron,sans-serif').attr('font-size',6).attr('font-weight','bold')
+          .attr('fill','#fff').attr('pointer-events','none').text(h.icon);
+        g.append('text').attr('x',h.x).attr('y',h.y+16).attr('text-anchor','middle')
+          .attr('font-family','Share Tech Mono,monospace').attr('font-size',7).attr('font-weight','bold')
+          .attr('fill',col).attr('pointer-events','none').text(h.label);
+      });
+      svg.append('text').attr('x',10).attr('y',14).attr('font-family','Orbitron,sans-serif').attr('font-size',9).attr('font-weight','bold').attr('fill','rgba(0,255,65,0.35)').text('US CI THREAT CONCENTRATION - CISA 16 SECTORS - CLICK MARKERS');
+      var ld=[{l:'CRITICAL',c:'#ff3737'},{l:'HIGH',c:'#ff8c00'},{l:'ELEVATED',c:'#ffe600'},{l:'MODERATE',c:'#00ff41'}];
+      ld.forEach(function(li,i){ var ly=H-52+(i*14); svg.append('rect').attr('x',10).attr('y',ly-8).attr('width',9).attr('height',9).attr('rx',1).attr('fill',li.c+'33').attr('stroke',li.c).attr('stroke-width',1); svg.append('text').attr('x',23).attr('y',ly+1).attr('font-family','Share Tech Mono,monospace').attr('font-size',8).attr('fill',li.c).text(li.l); });
+    })
+    .catch(function(err) {
+      console.warn('Map load failed:', err.message);
+      svg.append('text').attr('x',480).attr('y',290).attr('text-anchor','middle').attr('font-family','Share Tech Mono').attr('font-size',13).attr('fill','rgba(0,255,65,0.25)').text('Map requires internet connection - sector cards below are fully functional');
+    });
+}
+
+// -- API KEY TEST --
+async function testAPIKey() {
+  var k = (document.getElementById('apiKeyInput')||{}).value || '';
+  k = k.trim();
+  var btn = document.getElementById('testKeyBtn');
+  if(!k) { alert('Paste your sk-ant-... key first.'); return; }
+  if(btn) { btn.textContent = 'TESTING...'; btn.disabled = true; }
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-opus-4-6',max_tokens:10,messages:[{role:'user',content:'Say OK.'}]})
+    });
+    var data = await resp.json();
+    if(resp.ok) {
+      var reply=(data.content||[]).map(function(b){return b.text||'';}).join('');
+      alert('SUCCESS - API key valid!\nResponse: '+reply);
+      if(btn){btn.textContent='KEY OK';btn.style.color='var(--ng)';}
+    } else {
+      var msg=(data.error&&data.error.message)?data.error.message:JSON.stringify(data);
+      if(resp.status===401) msg='Invalid key. Get a fresh one at console.anthropic.com/settings/keys';
+      if(resp.status===429) msg='Rate limited. Wait 30s and retry.';
+      alert('ERROR '+resp.status+':\n\n'+msg);
+      if(btn){btn.textContent='FAILED';btn.style.color='var(--red)';}
+    }
+  } catch(err) {
+    alert('NETWORK ERROR:\n\n'+err.message+'\n\nTry opening api.anthropic.com in a tab first.');
+    if(btn){btn.textContent='NET ERR';btn.style.color='var(--red)';}
+  }
+  setTimeout(function(){if(btn){btn.textContent='TEST KEY';btn.disabled=false;btn.style.color='';}},5000);
+}
+
+// -- AI UPDATE --
+function addLog(msg) {
+  var log = document.getElementById('aiLog');
+  if(!log) return;
+  log.classList.add('show');
+  log.textContent += (log.textContent?'\n':'')+msg;
+  log.scrollTop = log.scrollHeight;
+}
+
+async function fetchSectorIntel(sector, apiKey) {
+  var prompt = 'You are a CI threat intelligence analyst. Date: June 2026. Provide latest threat intel for CISA CI sector: '
+    + sector.name + ' (' + sector.sub + '). Return ONLY raw JSON no markdown: '
+    + '{"sector":"","threat_level":"critical|high|elevated|moderate","summary":"2-3 sentences",'
+    + '"new_actors":["name"],"new_cves":["CVE-XXXX-XXXXX"],"defensive_priority":"IMMEDIATE|HIGH|MEDIUM"}';
+  var resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:'claude-opus-4-6',max_tokens:600,messages:[{role:'user',content:prompt}]})
+  });
+  if(!resp.ok) {
+    var e = await resp.json().catch(function(){return{};});
+    var m = (e.error&&e.error.message)?e.error.message:resp.statusText;
+    if(resp.status===401) m='Invalid API key';
+    if(resp.status===429) m='Rate limited - wait 30s';
+    throw new Error('HTTP '+resp.status+': '+m);
+  }
+  var data = await resp.json();
+  var raw = (data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('').trim();
+  raw = raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```\s*$/i,'').trim();
+  var hit = raw.match(/\{[\s\S]*\}/);
+  if(!hit) throw new Error('No JSON in response');
+  return JSON.parse(hit[0].replace(/,\s*]/g,']').replace(/,\s*}/g,'}'));
+}
+
+async function runAIUpdate(sweepAll) {
+  if(aiUpdating) return;
+  var apiKey = (document.getElementById('apiKeyInput')||{}).value || '';
+  apiKey = apiKey.trim();
+  if(!apiKey) { var log=document.getElementById('aiLog'); log.classList.add('show'); log.textContent='API key required - paste sk-ant-... key above.'; return; }
+  aiUpdating = true;
+  document.querySelectorAll('.ai-btn').forEach(function(b){b.disabled=true;});
+  document.getElementById('aiLog').textContent = '';
+  var targets = sweepAll ? SECTORS.map(function(s){return s.id;}) : [document.getElementById('sectorSel').value==='all'?SECTORS[0].id:document.getElementById('sectorSel').value];
+  addLog('Initializing AI sweep for '+targets.length+' sector'+(targets.length>1?'s':'')+'...');
+  var ok=0, fail=0;
+  for(var i=0;i<targets.length;i++) {
+    var sector = SECTORS.find(function(s){return s.id===targets[i];});
+    if(!sector) continue;
+    addLog('Querying: '+sector.name+'...');
+    try {
+      var intel = await fetchSectorIntel(sector, apiKey);
+      aiUpdates[sector.id] = intel;
+      if(intel.threat_level) sector.threat = intel.threat_level;
+      ok++; addLog('Updated: '+sector.name+' - '+(intel.threat_level||'stable').toUpperCase());
+    } catch(err) {
+      fail++; addLog('ERROR: '+sector.name+' - '+err.message);
+      if(err.message.indexOf('401')!==-1){addLog('Auth error - stopping.');break;}
+    }
+    if(i<targets.length-1) await new Promise(function(r){setTimeout(r,750);});
+  }
+  addLog('Complete: '+ok+' updated, '+fail+' failed.');
+  updateStats(); renderSectors();
+  aiUpdating=false;
+  document.querySelectorAll('.ai-btn').forEach(function(b){b.disabled=false;});
+}
+
+// -- INIT --
+updateStats();
+renderSectors();
+setTimeout(initUSMap, 200);
+
+// -- LEADERSHIP REPORT GENERATOR --
+function exportLeadershipReport() {
+  var now    = new Date();
+  var dateStr = now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  var timeStr = now.toUTCString().replace('GMT','UTC');
+  var classDate = now.toLocaleDateString('en-US',{year:'numeric',month:'2-digit',day:'2-digit'});
+
+  function safe(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // Bucket sectors by threat level
+  var critical  = SECTORS.filter(function(s){return s.threat==='critical';});
+  var high      = SECTORS.filter(function(s){return s.threat==='high';});
+  var elevated  = SECTORS.filter(function(s){return s.threat==='elevated';});
+
+  // Count unique threat actors
+  var actorMap = {};
+  SECTORS.forEach(function(s){ s.actors.forEach(function(a){ actorMap[a.name]={name:a.name,nation:a.nation}; }); });
+  var actors = Object.values(actorMap);
+  var cnActors = actors.filter(function(a){return a.nation==='cn';});
+  var ruActors = actors.filter(function(a){return a.nation==='ru';});
+  var raActors = actors.filter(function(a){return a.nation==='ra';});
+  var irActors = actors.filter(function(a){return a.nation==='ir';});
+  var kpActors = actors.filter(function(a){return a.nation==='kp';});
+
+  // Nation color map
+  function nc(n){ return n==='cn'?'#ea580c':n==='ru'?'#dc2626':n==='ir'?'#0891b2':n==='kp'?'#7c3aed':'#ca8a04'; }
+  function nl(n){ return n==='cn'?'CHINA':n==='ru'?'RUSSIA':n==='ir'?'IRAN':n==='kp'?'DPRK':'RANSOMWARE'; }
+
+  // Severity color
+  function tc(t){ return t==='critical'?'#dc2626':t==='high'?'#ea580c':t==='elevated'?'#ca8a04':'#16a34a'; }
+
+  // Stat card builder
+  function statCard(val, label, col, sub) {
+    return '<div style="background:#fff;border:1px solid #e5e7eb;border-top:3px solid '+col+';border-radius:8px;padding:18px;text-align:center">'
+      +'<div style="font-size:36px;font-weight:800;color:'+col+';line-height:1">'+val+'</div>'
+      +'<div style="font-size:12px;font-weight:700;color:#374151;margin-top:5px;letter-spacing:.05em">'+label+'</div>'
+      +(sub?'<div style="font-size:10px;color:#9ca3af;margin-top:3px">'+sub+'</div>':'')
+    +'</div>';
+  }
+
+  // Sector row builder
+  function sectorRow(s, idx) {
+    var col = tc(s.threat);
+    var bg  = idx%2===0?'#f9fafb':'#ffffff';
+    var actors_str = s.actors.slice(0,3).map(function(a){
+      return '<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:'+nc(a.nation)+'22;color:'+nc(a.nation)+';border:1px solid '+nc(a.nation)+'44;margin-right:3px;white-space:nowrap">'+safe(a.name)+'</span>';
+    }).join('');
+    var cves_str = s.cves.slice(0,2).map(function(c){
+      return '<a href="https://nvd.nist.gov/vuln/detail/'+c+'" target="_blank" style="font-size:10px;color:#dc2626;text-decoration:none;margin-right:4px;background:#fef2f2;padding:1px 5px;border-radius:2px;border:1px solid #fca5a5">'+c+'</a>';
+    }).join('');
+    return '<tr style="background:'+bg+'">'
+      +'<td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;white-space:nowrap">'
+        +'<span style="background:'+col+';color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:3px;letter-spacing:.05em">'+s.threat.toUpperCase()+'</span>'
+        +(s.isICS?'<span style="background:#fef9c3;color:#854d0e;font-size:9px;padding:2px 6px;border-radius:2px;border:1px solid #fde047;margin-left:4px;font-weight:600">ICS/OT</span>':'')
+      +'</td>'
+      +'<td style="padding:10px 14px;border-bottom:1px solid #e5e7eb">'
+        +'<div style="font-weight:700;color:#111;font-size:12px">'+safe(s.name)+'</div>'
+        +'<div style="font-size:11px;color:#6b7280;margin-top:2px">'+safe(s.sub)+'</div>'
+      +'</td>'
+      +'<td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;max-width:240px">'
+        +'<div style="font-size:11px;color:#374151;line-height:1.5">'+safe(s.summary.slice(0,120))+'...</div>'
+      +'</td>'
+      +'<td style="padding:10px 14px;border-bottom:1px solid #e5e7eb">'+actors_str+'</td>'
+      +'<td style="padding:10px 14px;border-bottom:1px solid #e5e7eb">'+cves_str+'</td>'
+    +'</tr>';
+  }
+
+  // Hotspot entity section
+  function hotspotSection(h) {
+    var col = h.threat==='critical'?'#dc2626':h.threat==='high'?'#ea580c':'#ca8a04';
+    return '<div style="background:#fff;border:1px solid #e5e7eb;border-left:4px solid '+col+';border-radius:6px;padding:14px;margin-bottom:10px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+        +'<div>'
+          +'<span style="font-weight:700;color:#111;font-size:12px">'+safe(h.label)+'</span>'
+          +'<span style="margin-left:8px;font-size:11px;color:#6b7280">'+safe(h.sector)+'</span>'
+        +'</div>'
+        +'<div style="display:flex;gap:6px;align-items:center">'
+          +'<span style="background:'+col+';color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px">'+h.threat.toUpperCase()+'</span>'
+          +'<span style="background:'+nc(h.nation)+'22;color:'+nc(h.nation)+';border:1px solid '+nc(h.nation)+'44;font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px">'+nl(h.nation)+'</span>'
+        +'</div>'
+      +'</div>'
+      +'<div style="font-size:11px;color:#374151;line-height:1.6;background:#fafafa;border:1px solid #e5e7eb;border-radius:4px;padding:8px;margin-bottom:8px">'+safe(h.incident)+'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+        +'<div>'
+          +'<div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Affected Entities</div>'
+          +(h.entities||[]).slice(0,3).map(function(e){ return '<div style="font-size:11px;color:#374151;padding:2px 0;border-bottom:1px solid #f3f4f6">'+safe(e)+'</div>'; }).join('')
+        +'</div>'
+        +'<div>'
+          +'<div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Exploited CVEs</div>'
+          +(h.cves||[]).map(function(c){ return '<a href="https://nvd.nist.gov/vuln/detail/'+c+'" target="_blank" style="display:inline-block;font-size:10px;color:#dc2626;background:#fef2f2;border:1px solid #fca5a5;padding:1px 6px;border-radius:3px;margin:1px;text-decoration:none">'+c+'</a>'; }).join('')
+        +'</div>'
+      +'</div>'
+    +'</div>';
+  }
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    +'<title>CI Threat Briefing - Ghost Defense - '+dateStr+'</title>'
+    +'<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:Calibri,Arial,sans-serif;background:#f3f4f6;color:#111}'
+    +'@media print{'
+    +'  body{background:#fff}'
+    +'  .noprint{display:none!important}'
+    +'  .page-break{page-break-before:always}'
+    +'  @page{margin:1.5cm;size:letter}'
+    +'}'
+    +'</style></head><body>'
+
+    //  HEADER 
+    +'<div style="background:#0f172a;padding:24px 36px;display:flex;align-items:center;justify-content:space-between">'
+      +'<div>'
+        +'<div style="font-size:9px;letter-spacing:.25em;color:#64748b;margin-bottom:4px">GHOST DEFENSE // DEFENSIVE INTELLIGENCE</div>'
+        +'<div style="font-size:26px;font-weight:800;color:#00ff41;letter-spacing:.08em">CRITICAL INFRASTRUCTURE</div>'
+        +'<div style="font-size:18px;font-weight:700;color:#94a3b8;letter-spacing:.05em">LEADERSHIP THREAT BRIEFING</div>'
+      +'</div>'
+      +'<div style="text-align:right">'
+        +'<div style="font-size:28px;font-weight:800;color:#fff">'+dateStr+'</div>'
+        +'<div style="font-size:11px;color:#64748b;margin-top:4px">'+timeStr+'</div>'
+        +'<div style="margin-top:8px;display:inline-block;background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:4px 12px;border-radius:4px;letter-spacing:.1em">CLASSIFICATION: UNCLASSIFIED // TLP:CLEAR</div>'
+      +'</div>'
+    +'</div>'
+
+    //  SITUATION SUMMARY 
+    +'<div style="background:#fff;margin:20px 24px;border-radius:10px;padding:22px;border:1px solid #e5e7eb;box-shadow:0 1px 3px rgba(0,0,0,.06)">'
+      +'<h2 style="font-size:14px;font-weight:700;color:#111;border-bottom:2px solid #00B050;padding-bottom:8px;margin-bottom:16px;letter-spacing:.05em">SITUATION SUMMARY</h2>'
+
+      // Stat cards
+      +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px">'
+        +statCard(critical.length,  'CRITICAL SECTORS', '#dc2626', 'Nation-state pre-positioned')
+        +statCard(high.length,      'HIGH THREAT',      '#ea580c', 'Active targeting confirmed')
+        +statCard(elevated.length,  'ELEVATED',         '#ca8a04', 'Ransomware campaigns active')
+        +statCard(CI_HOTSPOTS.filter(function(h){return h.threat==='critical';}).length, 'CRITICAL ZONES', '#dc2626', 'Geographic hotspots')
+        +statCard(actors.length,    'THREAT ACTORS',    '#1d4ed8', 'Nation-state + ransomware')
+      +'</div>'
+
+      // Threat actor breakdown
+      +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px">'
+        +['CHINA:'+cnActors.length+':'+cnActors.map(function(a){return a.name;}).slice(0,2).join(', ')+':#ea580c',
+          'RUSSIA:'+ruActors.length+':'+ruActors.map(function(a){return a.name;}).slice(0,2).join(', ')+':#dc2626',
+          'IRAN:'+irActors.length+':'+irActors.map(function(a){return a.name;}).slice(0,2).join(', ')+':#0891b2',
+          'DPRK:'+kpActors.length+':'+kpActors.map(function(a){return a.name;}).slice(0,2).join(', ')+':#7c3aed',
+          'RANSOMWARE:'+raActors.length+':'+raActors.map(function(a){return a.name;}).slice(0,2).join(', ')+':#ca8a04',
+        ].map(function(s){
+          var p=s.split(':'); var nation=p[0],cnt=p[1],names=p[2],col=p[3];
+          return '<div style="background:#fafafa;border:1px solid #e5e7eb;border-left:3px solid '+col+';border-radius:6px;padding:10px">'
+            +'<div style="font-size:10px;font-weight:700;color:'+col+';letter-spacing:.1em;margin-bottom:4px">'+nation+'</div>'
+            +'<div style="font-size:22px;font-weight:800;color:'+col+'">'+cnt+'</div>'
+            +'<div style="font-size:10px;color:#9ca3af;margin-top:2px">actors tracked</div>'
+            +'<div style="font-size:10px;color:#6b7280;margin-top:3px;line-height:1.4">'+names+'...</div>'
+          +'</div>';
+        }).join('')
+      +'</div>'
+
+      // Executive summary text
+      +'<div style="background:#fafafa;border:1px solid #e5e7eb;border-left:4px solid #dc2626;border-radius:6px;padding:14px;font-size:12px;color:#374151;line-height:1.8">'
+        +'<strong style="color:#dc2626">EXECUTIVE ASSESSMENT:</strong> '
+        +critical.length+' of 16 CISA critical infrastructure sectors face CRITICAL threat levels with confirmed nation-state pre-positioning or active exploitation. '
+        +'Volt Typhoon (China) has pre-positioned in US energy, water, and communications infrastructure for potential wartime disruption. '
+        +'Salt Typhoon (China) has breached 9+ US telecommunications carriers accessing lawful intercept systems. '
+        +'Ransomware attacks on healthcare have increased 264% since 2023 with confirmed patient impact. '
+        +'All '+actors.length+' tracked threat actors remain active across the 16 CISA sectors as of '+dateStr+'.'
+      +'</div>'
+    +'</div>'
+
+    //  SECTOR THREAT TABLE 
+    +'<div style="background:#fff;margin:0 24px 20px;border-radius:10px;border:1px solid #e5e7eb;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)">'
+      +'<div style="background:#0f172a;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">'
+        +'<span style="color:#00ff41;font-weight:700;font-size:14px;letter-spacing:.06em">ALL 16 CISA SECTORS - THREAT ASSESSMENT</span>'
+        +'<span style="color:#64748b;font-size:11px">Ranked by severity</span>'
+      +'</div>'
+      +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+      +'<thead><tr style="background:#f8fafc">'
+      +'<th style="padding:10px 14px;text-align:left;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.1em;border-bottom:2px solid #e5e7eb;white-space:nowrap">LEVEL</th>'
+      +'<th style="padding:10px 14px;text-align:left;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.1em;border-bottom:2px solid #e5e7eb">SECTOR</th>'
+      +'<th style="padding:10px 14px;text-align:left;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.1em;border-bottom:2px solid #e5e7eb">THREAT SUMMARY</th>'
+      +'<th style="padding:10px 14px;text-align:left;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.1em;border-bottom:2px solid #e5e7eb">KEY ACTORS</th>'
+      +'<th style="padding:10px 14px;text-align:left;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.1em;border-bottom:2px solid #e5e7eb">KEY CVEs</th>'
+      +'</tr></thead><tbody>'
+      +SECTORS.slice().sort(function(a,b){
+        var order={critical:0,high:1,elevated:2,moderate:3};
+        return (order[a.threat]||3)-(order[b.threat]||3);
+      }).map(function(s,i){ return sectorRow(s,i); }).join('')
+      +'</tbody></table></div>'
+    +'</div>'
+
+    //  GEOGRAPHIC THREAT ZONES 
+    +'<div class="page-break" style="background:#fff;margin:0 24px 20px;border-radius:10px;border:1px solid #e5e7eb;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)">'
+      +'<div style="background:#0f172a;padding:14px 20px">'
+        +'<span style="color:#00ff41;font-weight:700;font-size:14px;letter-spacing:.06em">GEOGRAPHIC THREAT ZONES - AFFECTED ENTITIES</span>'
+      +'</div>'
+      +'<div style="padding:16px">'
+        +'<div style="font-size:12px;color:#6b7280;margin-bottom:14px;line-height:1.6">'
+          +'The following 12 geographic zones represent the highest critical infrastructure concentration areas in the US. '
+          +'Each zone has confirmed nation-state or ransomware activity. Affected entities are based on publicly disclosed incidents and CISA advisories.'
+        +'</div>'
+        +CI_HOTSPOTS.map(hotspotSection).join('')
+      +'</div>'
+    +'</div>'
+
+    //  IMMEDIATE ACTIONS 
+    +'<div style="background:#fff;margin:0 24px 20px;border-radius:10px;border:1px solid #e5e7eb;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)">'
+      +'<div style="background:#dc2626;padding:14px 20px">'
+        +'<span style="color:#fff;font-weight:700;font-size:14px;letter-spacing:.06em">RECOMMENDED IMMEDIATE ACTIONS FOR LEADERSHIP</span>'
+      +'</div>'
+      +'<div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+        +[
+          ['CRITICAL - 24 HOURS','#dc2626','Verify Volt Typhoon IOC checks completed across energy, water, and communications systems. CISA AA24-038A.'],
+          ['CRITICAL - 24 HOURS','#dc2626','Audit all telecom management systems for Salt Typhoon GhostSpider and SparrowDoor backdoor IOCs. CISA AA24-338A.'],
+          ['CRITICAL - 48 HOURS','#dc2626','Confirm all healthcare facilities have offline backup procedures for ransomware scenarios. CISA AA24-131A.'],
+          ['HIGH - 7 DAYS','#ea580c','Validate OT/IT segmentation across energy and water sectors. Commission penetration test if not done in 12 months.'],
+          ['HIGH - 7 DAYS','#ea580c','Require MFA on all remote access to critical systems. No exceptions for OT networks or management planes.'],
+          ['HIGH - 7 DAYS','#ea580c','Patch all KEV vulnerabilities per CISA BOD 26-04 risk-based timelines (superseded BOD 22-01). Prioritize internet-facing systems.'],
+          ['MEDIUM - 30 DAYS','#ca8a04','Subscribe all critical sector teams to relevant ISACs (E-ISAC, WaterISAC, H-ISAC, FS-ISAC).'],
+          ['MEDIUM - 30 DAYS','#ca8a04','Conduct tabletop exercise simulating ransomware attack on primary facility with manual fallback procedures.'],
+        ].map(function(item){
+          return '<div style="background:#fafafa;border:1px solid #e5e7eb;border-left:3px solid '+item[1]+';border-radius:6px;padding:12px">'
+            +'<div style="font-size:10px;font-weight:700;color:'+item[1]+';letter-spacing:.08em;margin-bottom:6px">'+item[0]+'</div>'
+            +'<div style="font-size:11px;color:#374151;line-height:1.6">'+item[2]+'</div>'
+          +'</div>';
+        }).join('')
+      +'</div>'
+    +'</div>'
+
+    //  FOOTER 
+    +'<div style="background:#0f172a;padding:16px 36px;display:flex;justify-content:space-between;align-items:center;margin-top:10px" class="noprint">'
+      +'<div style="color:#64748b;font-size:11px">Sources: CISA | FBI | NSA | MITRE ATT&CK | NVD/NIST | Five Eyes Advisories | All TLP:CLEAR</div>'
+      +'<div style="color:#64748b;font-size:11px">Ghost Defense | Defensive Intel | DEFEND ALWAYS</div>'
+    +'</div>'
+    +'<div style="background:#0f172a;padding:14px 36px;text-align:center" class="noprint">'
+      +'<button onclick="window.print()" style="background:#00ff41;color:#0f172a;border:none;padding:11px 30px;border-radius:5px;font-size:13px;font-weight:800;cursor:pointer;letter-spacing:.08em;margin-right:10px">PRINT / SAVE AS PDF</button>'
+      +'<button onclick="window.close()" style="background:#374151;color:#fff;border:none;padding:11px 24px;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer">CLOSE</button>'
+    +'</div>'
+
+    +'</body></html>';
+
+  var win = window.open('', '_blank');
+  if(!win){ alert('Popup blocked. Allow popups for this page and retry.'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+}
+</script>

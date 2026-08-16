@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Nessus Dashboard — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020507;--s1:#060d0a;--s2:#0a150f;--s3:#0f1f16;--s4:#162b1e;
+  --b1:rgba(0,255,65,0.07);--b2:rgba(0,255,65,0.14);--b3:rgba(0,255,65,0.25);
+  --ng:#00ff41;--ng-d:rgba(0,255,65,0.10);--ng-dd:rgba(0,255,65,0.05);
+  --red:#ff3737;--red-g:rgba(255,55,55,0.13);--red-b:rgba(255,55,55,0.26);
+  --orange:#ff8c00;--orange-g:rgba(255,140,0,0.12);
+  --yellow:#ffe600;--yellow-g:rgba(255,230,0,0.09);
+  --cyan:#00e5ff;--cyan-g:rgba(0,229,255,0.09);
+  --purple:#c084fc;--purple-g:rgba(192,132,252,0.10);
+  --muted:rgba(0,255,65,0.32);--muted2:rgba(0,255,65,0.58);
+  --mono:'Share Tech Mono',monospace;
+  --display:'Orbitron',sans-serif;
+  --body:'Exo 2',sans-serif;
+}
+html{background:var(--bg)}
+body{font-family:var(--body);color:var(--ng);min-height:100vh;overflow-x:hidden;
+  text-shadow:0 0 5px rgba(0,255,65,0.15)}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:500;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.13) 2px,rgba(0,0,0,0.13) 4px)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:499;
+  background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,0.7) 100%)}
+.grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(0,255,65,0.025) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(0,255,65,0.025) 1px,transparent 1px);
+  background-size:44px 44px}
+.wrap{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 16px 60px}
+
+/* TOP BAR */
+.topbar{border-bottom:1px solid var(--b2);padding:12px 0;
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;
+  position:sticky;top:0;z-index:200;background:rgba(2,5,7,0.96);backdrop-filter:blur(10px)}
+.tl{display:flex;align-items:center;gap:12px}
+.logo{font-family:var(--display);font-size:14px;font-weight:900;letter-spacing:.18em;
+  color:var(--ng);text-shadow:0 0 14px var(--ng),0 0 30px rgba(0,255,65,.35)}
+.logo span{color:var(--cyan);text-shadow:0 0 12px var(--cyan)}
+.tsep{color:var(--b3);font-family:var(--mono)}
+.tsub{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.12em}
+.tr{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tb{font-size:10px;font-family:var(--mono);padding:4px 10px;border-radius:3px;
+  display:flex;align-items:center;gap:5px;letter-spacing:.07em}
+.tb-ng{background:var(--ng-d);border:1px solid var(--b2);color:var(--ng)}
+.tb-red{background:var(--red-g);border:1px solid var(--red-b);color:var(--red)}
+.tb-cy{background:var(--cyan-g);border:1px solid rgba(0,229,255,.25);color:var(--cyan)}
+.blink{animation:blink 1.1s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+#clk{font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+/* CONNECTION BAR */
+.conn-bar{background:var(--s1);border:1px solid var(--b1);border-radius:5px;
+  padding:14px 18px;margin-bottom:18px}
+.conn-title{font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:.18em;
+  color:var(--ng);text-transform:uppercase;margin-bottom:12px}
+.conn-tabs{display:flex;gap:0;margin-bottom:14px;border-bottom:1px solid var(--b1)}
+.conn-tab{font-size:11px;font-family:var(--mono);padding:8px 18px;cursor:pointer;
+  color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px}
+.conn-tab.active{color:var(--ng);border-bottom-color:var(--ng)}
+.conn-tab:hover{color:var(--muted2)}
+.conn-panel{display:none}
+.conn-panel.active{display:block}
+
+/* API Panel */
+.api-grid{display:grid;grid-template-columns:1fr 1fr 160px 120px;gap:8px;align-items:end}
+.field-group{display:flex;flex-direction:column;gap:4px}
+.field-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+.field-in{background:var(--s2);border:1px solid var(--b1);border-radius:3px;
+  color:var(--ng);font-family:var(--mono);font-size:11px;padding:8px 11px;
+  outline:none;width:100%;text-shadow:none;transition:border-color .15s}
+.field-in::placeholder{color:var(--muted)}
+.field-in:focus{border-color:var(--b2)}
+.conn-btn{background:var(--ng-d);border:1px solid var(--b2);border-radius:3px;
+  color:var(--ng);font-family:var(--display);font-size:10px;font-weight:700;
+  letter-spacing:.12em;padding:9px 16px;cursor:pointer;white-space:nowrap;
+  transition:all .15s;width:100%}
+.conn-btn:hover{background:rgba(0,255,65,.18)}
+.conn-btn:disabled{opacity:.35;pointer-events:none}
+.conn-status{font-size:10px;font-family:var(--mono);margin-top:8px;padding:6px 10px;
+  border-radius:3px;display:none}
+.conn-status.show{display:block}
+.cs-ok{background:var(--ng-d);border:1px solid var(--b1);color:var(--ng)}
+.cs-err{background:var(--red-g);border:1px solid var(--red-b);color:var(--red)}
+.cs-connecting{background:var(--cyan-g);border:1px solid rgba(0,229,255,.2);color:var(--cyan)}
+
+/* File Upload Panel */
+.upload-zone{border:2px dashed var(--b2);border-radius:4px;padding:24px;text-align:center;
+  cursor:pointer;transition:all .2s;position:relative}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--ng);background:var(--ng-dd)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.uz-icon{font-size:28px;margin-bottom:8px;opacity:.6}
+.uz-title{font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.1em;margin-bottom:4px}
+.uz-sub{font-size:11px;font-family:var(--mono);color:var(--muted);line-height:1.6}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:18px}
+.sbox{background:var(--s1);border:1px solid var(--b1);border-radius:4px;padding:12px 14px;
+  position:relative;overflow:hidden}
+.sbox::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,currentColor,transparent);opacity:.4}
+.sn{font-family:var(--display);font-size:22px;font-weight:700;line-height:1;margin-bottom:4px}
+.sl{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+
+/* MAIN LAYOUT */
+.main-layout{display:grid;grid-template-columns:1fr 340px;gap:12px;margin-bottom:16px}
+
+/* SCAN LIST */
+.scan-panel{background:var(--s1);border:1px solid var(--b1);border-radius:5px;overflow:hidden}
+.panel-hdr{padding:10px 14px;border-bottom:1px solid var(--b1);
+  font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:.18em;
+  color:var(--ng);text-transform:uppercase;display:flex;align-items:center;justify-content:space-between}
+.scan-list{overflow-y:auto;max-height:280px}
+.scan-item{padding:10px 14px;border-bottom:1px solid var(--b1);cursor:pointer;
+  transition:background .1s;display:flex;align-items:center;gap:10px}
+.scan-item:hover,.scan-item.selected{background:var(--ng-dd)}
+.scan-item::before{content:'';width:3px;height:100%;position:absolute;left:0;top:0}
+.si-info{flex:1;min-width:0}
+.si-name{font-size:11px;font-weight:600;color:var(--ng);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.si-meta{font-size:10px;font-family:var(--mono);color:var(--muted)}
+.si-badge{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 7px;
+  border-radius:2px;white-space:nowrap;flex-shrink:0}
+.sb-completed{background:var(--ng-d);color:var(--ng);border:1px solid var(--b1)}
+.sb-running{background:var(--cyan-g);color:var(--cyan);border:1px solid rgba(0,229,255,.2)}
+.sb-error{background:var(--red-g);color:var(--red);border:1px solid var(--red-b)}
+
+/* VULN TABLE PANEL */
+.vuln-panel{background:var(--s1);border:1px solid var(--b1);border-radius:5px;
+  overflow:hidden;margin-bottom:16px}
+.vuln-toolbar{padding:8px 14px;border-bottom:1px solid var(--b1);
+  display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.vtf{font-size:10px;font-family:var(--mono);padding:4px 10px;border-radius:2px;
+  border:1px solid var(--b1);color:var(--muted);cursor:pointer;transition:all .12s}
+.vtf:hover,.vtf.active{background:var(--ng-d);border-color:var(--b2);color:var(--ng)}
+.vsearch{background:var(--s2);border:1px solid var(--b1);border-radius:3px;
+  color:var(--ng);font-family:var(--mono);font-size:11px;padding:5px 10px;
+  outline:none;width:200px;margin-left:auto;text-shadow:none}
+.vsearch::placeholder{color:var(--muted)}
+.vsearch:focus{border-color:var(--b2)}
+.export-rpt-btn{background:var(--cyan-g);border:1px solid rgba(0,229,255,.3);border-radius:3px;
+  color:var(--cyan);font-family:var(--mono);font-size:10px;font-weight:700;
+  letter-spacing:.08em;padding:5px 12px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.export-rpt-btn:hover{background:rgba(0,229,255,.18)}
+
+/* VULN TABLE */
+.vtable-wrap{overflow-x:auto;max-height:460px;overflow-y:auto}
+.vtable{width:100%;border-collapse:collapse}
+.vtable th{font-size:9px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;
+  color:var(--muted);font-weight:500;padding:9px 12px;text-align:left;
+  border-bottom:1px solid var(--b1);background:var(--s1);
+  position:sticky;top:0;z-index:2;white-space:nowrap;cursor:pointer}
+.vtable th:hover{color:var(--ng)}
+.vtable td{font-size:11px;padding:9px 12px;border-bottom:1px solid rgba(0,255,65,0.04);
+  vertical-align:middle}
+.vtable tr:hover td{background:var(--ng-dd)}
+
+/* Severity badges */
+.sev{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 8px;
+  border-radius:2px;letter-spacing:.05em;white-space:nowrap}
+.sev-c{background:var(--red-g);color:var(--red);border:1px solid var(--red-b)}
+.sev-h{background:var(--orange-g);color:var(--orange);border:1px solid rgba(255,140,0,.28)}
+.sev-m{background:var(--yellow-g);color:var(--yellow);border:1px solid rgba(255,230,0,.22)}
+.sev-l{background:var(--ng-d);color:var(--ng);border:1px solid var(--b1)}
+.sev-i{background:var(--s3);color:var(--muted);border:1px solid var(--b1)}
+
+/* KEV badge */
+.kev-badge{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 6px;
+  border-radius:2px;background:var(--red-g);color:var(--red);border:1px solid var(--red-b)}
+.kev-none{color:var(--muted);font-family:var(--mono);font-size:10px}
+
+/* Host cell */
+.host-ip{font-family:var(--mono);font-size:11px;color:var(--cyan)}
+.host-name{font-size:10px;color:var(--muted)}
+
+/* CVE link */
+.cve-link{color:var(--cyan);text-decoration:none;font-family:var(--mono);font-size:10px}
+.cve-link:hover{text-decoration:underline}
+
+/* CVSS */
+.cvss-c{color:var(--red);font-family:var(--display);font-size:13px;font-weight:700}
+.cvss-h{color:var(--orange);font-family:var(--display);font-size:13px;font-weight:700}
+.cvss-m{color:var(--yellow);font-family:var(--display);font-size:13px;font-weight:700}
+.cvss-l{color:var(--ng);font-family:var(--display);font-size:13px;font-weight:700}
+
+/* RIGHT PANEL */
+.right-col{display:flex;flex-direction:column;gap:12px}
+
+/* Severity chart */
+.chart-panel{background:var(--s1);border:1px solid var(--b1);border-radius:5px;overflow:hidden}
+.chart-bars{padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.cbar-row{display:flex;align-items:center;gap:8px}
+.cbar-label{font-size:10px;font-family:var(--mono);color:var(--muted);width:60px;flex-shrink:0}
+.cbar-track{flex:1;height:10px;background:var(--s3);border-radius:5px;overflow:hidden}
+.cbar-fill{height:100%;border-radius:5px;transition:width .8s ease}
+.cbar-count{font-family:var(--display);font-size:11px;font-weight:700;width:40px;
+  text-align:right;flex-shrink:0}
+
+/* Top hosts */
+.host-list{display:flex;flex-direction:column;gap:4px;padding:10px 14px}
+.host-item{background:var(--s2);border:1px solid var(--b1);border-radius:3px;
+  padding:8px 10px;display:flex;align-items:center;justify-content:space-between}
+.hi-ip{font-family:var(--mono);font-size:11px;color:var(--cyan)}
+.hi-count{font-family:var(--display);font-size:11px;font-weight:700;color:var(--red)}
+
+/* Scan history */
+.history-panel{background:var(--s1);border:1px solid var(--b1);border-radius:5px;
+  overflow:hidden;margin-bottom:16px}
+.history-list{overflow-y:auto;max-height:200px}
+.history-item{padding:10px 14px;border-bottom:1px solid var(--b1);
+  display:flex;align-items:center;gap:10px;font-size:11px}
+.history-item:last-child{border-bottom:none}
+.hi-name{flex:1;font-family:var(--mono);color:var(--ng);min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hi-date{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap}
+.hi-vulns{font-family:var(--display);font-size:10px;font-weight:700;color:var(--orange)}
+
+/* Empty state */
+.empty-state{padding:40px 20px;text-align:center;color:var(--muted);
+  font-family:var(--mono);font-size:12px;line-height:1.8}
+.es-icon{font-size:32px;margin-bottom:12px;opacity:.3}
+
+/* FOOTER */
+.ghost-footer{margin-top:28px;padding:18px 0 8px;border-top:1px solid var(--b1);text-align:center}
+.gf-rule{height:1px;background:linear-gradient(90deg,transparent,var(--ng),transparent);
+  opacity:.3;margin-bottom:16px}
+.ghost-name{font-family:var(--display);font-size:15px;font-weight:900;letter-spacing:.2em;
+  color:var(--ng);text-shadow:0 0 12px var(--ng),0 0 28px rgba(0,255,65,.4)}
+.gf-sub{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--muted);margin-top:5px}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+
+@media(max-width:1000px){
+  .main-layout{grid-template-columns:1fr}
+  .stats-row{grid-template-columns:repeat(3,1fr)}
+  .api-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:500px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="wrap">
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="tl">
+    <div class="logo">NESSUS<span>DASHBOARD</span></div>
+    <div class="tsep">|</div>
+    <div class="tsub">VULNERABILITY MANAGEMENT INTELLIGENCE</div>
+  </div>
+  <div class="tr">
+    <div class="tb tb-red"><span class="blink" id="connDot">●</span><span id="connLabel">DISCONNECTED</span></div>
+    <div class="tb tb-cy">CISA KEV AWARE</div>
+    <div class="tb tb-ng">NESSUS ESSENTIALS</div>
+    <div id="clk"></div>
+  </div>
+</div>
+
+<!-- CONNECTION BAR -->
+<div class="conn-bar">
+  <div class="conn-title">// DATA SOURCE — CONNECT TO NESSUS OR UPLOAD SCAN FILE</div>
+  <div class="conn-tabs">
+    <div class="conn-tab active" onclick="switchTab('api',this)">API CONNECTION</div>
+    <div class="conn-tab" onclick="switchTab('upload',this)">FILE UPLOAD</div>
+    <div class="conn-tab" onclick="switchTab('demo',this)">DEMO DATA</div>
+  </div>
+
+  <!-- API Tab -->
+  <div class="conn-panel active" id="tab-api">
+    <div class="api-grid">
+      <div class="field-group">
+        <div class="field-label">Nessus Host URL</div>
+        <input class="field-in" id="nessusHost" type="text" placeholder="https://localhost:8834" value="https://localhost:8834">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Access Key</div>
+        <input class="field-in" id="accessKey" type="password" placeholder="Access key from My Account > API Keys">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Secret Key</div>
+        <input class="field-in" id="secretKey" type="password" placeholder="Secret key">
+      </div>
+      <div class="field-group">
+        <div class="field-label">&nbsp;</div>
+        <button class="conn-btn" id="connectBtn" onclick="connectNessus()">CONNECT</button>
+      </div>
+    </div>
+    <div class="conn-status" id="connStatus"></div>
+
+    <!-- CERT HELPER -->
+    <div style="margin-top:12px;background:rgba(255,140,0,0.07);border:1px solid rgba(255,140,0,0.25);
+                border-left:3px solid var(--orange);border-radius:4px;padding:12px 14px">
+      <div style="font-family:var(--display);font-size:9px;font-weight:700;color:var(--orange);
+                  letter-spacing:.12em;margin-bottom:8px">STEP 1 REQUIRED -- ACCEPT NESSUS CERTIFICATE</div>
+      <div style="font-size:10px;font-family:var(--mono);color:var(--muted2);line-height:1.8;margin-bottom:10px">
+        Nessus uses a self-signed SSL certificate. Your browser blocks connections to it until you manually accept it.
+        This must be done once before the API connection will work.
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button onclick="openNessusCert()" style="background:var(--orange-g);border:1px solid rgba(255,140,0,.3);
+          border-radius:3px;color:var(--orange);font-family:var(--mono);font-size:10px;font-weight:700;
+          letter-spacing:.1em;padding:7px 14px;cursor:pointer;white-space:nowrap">
+          STEP 1: OPEN NESSUS IN NEW TAB
+        </button>
+        <span style="font-size:10px;font-family:var(--mono);color:var(--muted)">
+          Click Advanced > Accept the Risk > then return here and click CONNECT
+        </span>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;font-size:10px;font-family:var(--mono);color:var(--muted);line-height:1.8">
+      <strong style="color:var(--ng)">STEP 2:</strong> Get API keys: Nessus &gt; top-right menu &gt; My Account &gt; API Keys &gt; Generate.<br>
+      <strong style="color:var(--ng)">STEP 3:</strong> Enter host URL, paste Access Key and Secret Key, click CONNECT.<br>
+      <strong style="color:var(--ng)">TROUBLESHOOT:</strong> If still failing -- use FILE UPLOAD tab to export .nessus file from Nessus and load it directly.
+    </div>
+  </div>
+
+  <!-- Upload Tab -->
+  <div class="conn-panel" id="tab-upload">
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="nessusFile" accept=".nessus,.xml,.csv" onchange="handleFileUpload(this.files[0])">
+      <div class="uz-icon">📁</div>
+      <div class="uz-title">DROP .NESSUS FILE HERE</div>
+      <div class="uz-sub">or click to browse<br>
+        Supports: .nessus (XML export), .csv (Nessus CSV report)<br>
+        Export from Nessus: Scans &gt; [Your Scan] &gt; Export &gt; Nessus</div>
+    </div>
+    <div style="margin-top:10px;font-size:10px;font-family:var(--mono);color:var(--muted);line-height:1.7">
+      To export from Nessus Essentials: Scans &gt; select scan &gt; Export button (top right) &gt; Nessus format (.nessus) or CSV.
+      The .nessus format contains full vulnerability details, host info, and plugin output.
+    </div>
+  </div>
+
+  <!-- Demo Tab -->
+  <div class="conn-panel" id="tab-demo">
+    <div style="font-size:12px;font-family:var(--mono);color:var(--muted2);line-height:1.7;margin-bottom:12px">
+      Load a representative demo dataset to explore the dashboard features without a live Nessus connection.
+      The demo includes realistic vulnerabilities across multiple hosts with KEV cross-reference and severity breakdown.
+    </div>
+    <button class="conn-btn" style="width:auto;padding:10px 28px" onclick="loadDemoData()">LOAD DEMO SCAN DATA</button>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats-row" id="statsRow">
+  <div class="sbox" style="color:var(--red)"><div class="sn" id="sCrit">0</div><div class="sl">Critical</div></div>
+  <div class="sbox" style="color:var(--orange)"><div class="sn" id="sHigh">0</div><div class="sl">High</div></div>
+  <div class="sbox" style="color:var(--yellow)"><div class="sn" id="sMed">0</div><div class="sl">Medium</div></div>
+  <div class="sbox" style="color:var(--ng)"><div class="sn" id="sLow">0</div><div class="sl">Low</div></div>
+  <div class="sbox" style="color:var(--cyan)"><div class="sn" id="sHosts">0</div><div class="sl">Hosts Scanned</div></div>
+  <div class="sbox" style="color:var(--red)"><div class="sn" id="sKev">0</div><div class="sl">In CISA KEV</div></div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="main-layout">
+
+  <!-- LEFT: SCANS + VULNS -->
+  <div>
+    <!-- SCAN LIST -->
+    <div class="scan-panel" style="margin-bottom:12px">
+      <div class="panel-hdr">
+        <span>// SCANS</span>
+        <button onclick="refreshScans()" style="background:none;border:none;color:var(--muted);font-family:var(--mono);font-size:10px;cursor:pointer">&#8634; REFRESH</button>
+      </div>
+      <div class="scan-list" id="scanList">
+        <div class="empty-state"><div class="es-icon">📡</div>Connect to Nessus or upload a scan file to begin</div>
+      </div>
+    </div>
+
+    <!-- VULN TABLE -->
+    <div class="vuln-panel">
+      <div class="panel-hdr">
+        <span>// VULNERABILITIES</span>
+        <span id="vulnCount" style="font-size:9px;color:var(--muted)">0 findings</span>
+      </div>
+      <div class="vuln-toolbar">
+        <span class="vtf active" onclick="setSevFilter('all',this)">ALL</span>
+        <span class="vtf" onclick="setSevFilter('critical',this)" style="color:var(--red)">CRITICAL</span>
+        <span class="vtf" onclick="setSevFilter('high',this)" style="color:var(--orange)">HIGH</span>
+        <span class="vtf" onclick="setSevFilter('medium',this)" style="color:var(--yellow)">MEDIUM</span>
+        <span class="vtf" onclick="setSevFilter('kev',this)" style="color:var(--red)">IN KEV</span>
+        <span class="vtf" onclick="setSevFilter('low',this)">LOW</span>
+        <input class="vsearch" id="vulnSearch" type="text" placeholder="Search plugin, CVE, host..." oninput="renderVulns()">
+        <button class="export-rpt-btn" onclick="exportReport()">&#128196; EXPORT REPORT</button>
+      </div>
+      <div class="vtable-wrap">
+        <table class="vtable" id="vulnTable">
+          <thead><tr>
+            <th onclick="sortVulns('severity')">SEVERITY</th>
+            <th onclick="sortVulns('pluginName')">VULNERABILITY</th>
+            <th onclick="sortVulns('host')">HOST</th>
+            <th onclick="sortVulns('cvss')">CVSS</th>
+            <th>CVE</th>
+            <th>KEV</th>
+            <th onclick="sortVulns('port')">PORT</th>
+          </tr></thead>
+          <tbody id="vulnBody">
+            <tr><td colspan="7"><div class="empty-state"><div class="es-icon">🛡️</div>No data loaded — connect to Nessus or upload a scan file</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="right-col">
+
+    <!-- Severity Chart -->
+    <div class="chart-panel">
+      <div class="panel-hdr">// SEVERITY BREAKDOWN</div>
+      <div class="chart-bars" id="sevChart">
+        <div class="empty-state" style="padding:20px">No data</div>
+      </div>
+    </div>
+
+    <!-- Top Vulnerable Hosts -->
+    <div class="chart-panel">
+      <div class="panel-hdr">// TOP VULNERABLE HOSTS</div>
+      <div class="host-list" id="topHosts">
+        <div class="empty-state" style="padding:16px">No data</div>
+      </div>
+    </div>
+
+    <!-- Scan Info -->
+    <div class="chart-panel">
+      <div class="panel-hdr">// SCAN DETAILS</div>
+      <div style="padding:12px 14px" id="scanDetails">
+        <div class="empty-state" style="padding:16px">No scan selected</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SCAN HISTORY -->
+<div class="history-panel">
+  <div class="panel-hdr">
+    <span>// SCAN HISTORY</span>
+    <span id="histCount" style="font-size:9px;color:var(--muted)">0 scans</span>
+  </div>
+  <div class="history-list" id="historyList">
+    <div class="empty-state" style="padding:20px">No scan history — connect to Nessus to load history</div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="ghost-footer">
+  <div class="gf-rule"></div>
+  <div style="font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--muted);margin-bottom:4px">BUILT BY</div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:5px">
+    <span style="font-size:18px">👻</span>
+    <div class="ghost-name">GHOST DEFENSE</div>
+    <span style="font-size:18px">👻</span>
+  </div>
+  <div class="gf-sub">NESSUS DASHBOARD v1.0 . BUILT BY GHOST DEFENSE . REQUIRES NESSUS ESSENTIALS/PRO . CISA KEV AWARE . DEFENSIVE USE ONLY . DEFEND ALWAYS</div>
+</div>
+
+</div>
+<script>
+// -- CLOCK --
+setInterval(function(){
+  document.getElementById('clk').textContent =
+    new Date().toUTCString().replace('GMT','UTC').split(' ').slice(1,5).join(' ');
+},1000);
+
+// -- STATE --
+var allVulns   = [];
+var allScans   = [];
+var scanHistory = [];
+var sevFilter  = 'all';
+var vulnSort   = {col:'severity', dir:-1};
+var nessusConnected = false;
+var nessusBase = '';
+var nessusHeaders = {};
+
+// -- CISA KEV (built-in critical set for cross-reference) --
+var KEV_SET = {
+  'CVE-2024-3400':1,'CVE-2023-46747':1,'CVE-2022-1388':1,'CVE-2021-44228':1,
+  'CVE-2020-5902':1,'CVE-2024-47575':1,'CVE-2023-20198':1,'CVE-2021-22986':1,
+  'CVE-2023-34362':1,'CVE-2024-21762':1,'CVE-2023-4966':1,'CVE-2024-1709':1,
+  'CVE-2019-19781':1,'CVE-2022-41040':1,'CVE-2018-13379':1,'CVE-2021-34527':1,
+  'CVE-2020-1472':1,'CVE-2021-26855':1,'CVE-2023-27997':1,'CVE-2024-40711':1,
+  'CVE-2023-22515':1,'CVE-2022-30190':1,'CVE-2021-40539':1,'CVE-2023-0669':1,
+  'CVE-2024-6387':1,'CVE-2023-48788':1,'CVE-2024-49138':1,'CVE-2024-50623':1,
+  'CVE-2022-47966':1,'CVE-2021-27065':1,'CVE-2023-46748':1,'CVE-2024-55956':1,
+  'CVE-2024-21793':1,'CVE-2022-30525':1,'CVE-2023-3519':1,'CVE-2022-26134':1,
+  'CVE-2023-38831':1,'CVE-2023-36884':1,'CVE-2024-38112':1,'CVE-2024-21338':1,
+  'CVE-2024-4577':1,'CVE-2024-24919':1,'CVE-2024-20399':1,'CVE-2023-29357':1,
+};
+
+// -- UTILS --
+function safeStr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function sevNum(s){ return s==='critical'?4:s==='high'?3:s==='medium'?2:s==='low'?1:0; }
+function sevClass(s){ return s==='critical'?'sev-c':s==='high'?'sev-h':s==='medium'?'sev-m':s==='low'?'sev-l':'sev-i'; }
+function sevLabel(s){ return (s||'info').toUpperCase(); }
+function cvssClass(v){ return !v?'':v>=9?'cvss-c':v>=7?'cvss-h':v>=4?'cvss-m':'cvss-l'; }
+function isKev(cves){ if(!cves||!cves.length) return false; return cves.some(function(c){return KEV_SET[c];}); }
+
+function setConnStatus(type, msg) {
+  var el = document.getElementById('connStatus');
+  el.className = 'conn-status show cs-' + type;
+  el.textContent = msg;
+  var dot = document.getElementById('connDot');
+  var lbl = document.getElementById('connLabel');
+  if(type === 'ok') { dot.style.color='var(--ng)'; lbl.textContent='CONNECTED'; nessusConnected=true; }
+  else if(type === 'err') { dot.style.color='var(--red)'; lbl.textContent='DISCONNECTED'; nessusConnected=false; }
+  else { dot.style.color='var(--cyan)'; lbl.textContent='CONNECTING...'; }
+}
+
+// -- TAB SWITCHING --
+function switchTab(name, el) {
+  document.querySelectorAll('.conn-tab').forEach(function(t){ t.classList.remove('active'); });
+  document.querySelectorAll('.conn-panel').forEach(function(p){ p.classList.remove('active'); });
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// -- NESSUS API CONNECTION --
+function openNessusCert() {
+  var host = document.getElementById('nessusHost').value.trim().replace(/\/$/,'') || 'https://localhost:8834';
+  window.open(host, '_blank');
+  setConnStatus('connecting', 'Opened '+host+' in new tab. Accept the certificate warning, then return here and click CONNECT.');
+}
+
+async function connectNessus() {
+  var host   = document.getElementById('nessusHost').value.trim().replace(/\/$/, '');
+  var access = document.getElementById('accessKey').value.trim();
+  var secret = document.getElementById('secretKey').value.trim();
+
+  if(!host)   { setConnStatus('err', 'Enter the Nessus host URL (e.g. https://localhost:8834)'); return; }
+  if(!access) { setConnStatus('err', 'Enter your Nessus Access Key (My Account > API Keys)'); return; }
+  if(!secret) { setConnStatus('err', 'Enter your Nessus Secret Key'); return; }
+
+  nessusBase = host;
+  nessusHeaders = { 'X-ApiKeys': 'accessKey=' + access + '; secretKey=' + secret };
+
+  setConnStatus('connecting', 'Connecting to ' + host + '...');
+  document.getElementById('connectBtn').disabled = true;
+
+  // Try multiple endpoints in order -- Nessus version differences
+  var endpoints = [
+    host + '/server/status',
+    host + '/session',
+    host + '/scans',
+  ];
+
+  var connected = false;
+  var lastErr = '';
+
+  function fetchWithTimeout(url, opts, ms) {
+    return new Promise(function(resolve, reject) {
+      var done = false;
+      var timer = setTimeout(function(){
+        if(!done){ done=true; reject(new Error('Timeout after '+ms+'ms')); }
+      }, ms);
+      fetch(url, opts).then(function(r){
+        if(!done){ done=true; clearTimeout(timer); resolve(r); }
+      }).catch(function(e){
+        if(!done){ done=true; clearTimeout(timer); reject(e); }
+      });
+    });
+  }
+
+  for(var i = 0; i < endpoints.length; i++) {
+    try {
+      setConnStatus('connecting', 'Trying endpoint ' + (i+1) + ' of ' + endpoints.length + '...');
+      var resp = await fetchWithTimeout(endpoints[i], {
+        method: 'GET',
+        headers: nessusHeaders,
+        mode: 'cors',
+        credentials: 'omit'
+      }, 8000);
+
+      if(resp.status === 401) {
+        setConnStatus('err', 'Authentication failed (401). Check your Access Key and Secret Key are correct. Get them from Nessus: My Account > API Keys > Generate.');
+        document.getElementById('connectBtn').disabled = false;
+        return;
+      }
+      if(resp.status === 403) {
+        setConnStatus('err', 'Forbidden (403). Your Nessus account may not have API access. Try regenerating keys.');
+        document.getElementById('connectBtn').disabled = false;
+        return;
+      }
+      if(resp.ok) {
+        var data = await resp.json().catch(function(){return{};});
+        var statusMsg = data.status || data.server_uuid || 'ready';
+        setConnStatus('ok', 'Connected to ' + host + '  |  Status: ' + statusMsg);
+        connected = true;
+        nessusConnected = true;
+        break;
+      }
+    } catch(err) {
+      lastErr = err.message;
+    }
+  }
+
+  if(!connected) {
+    var guidance = '';
+    if(lastErr.includes('Failed to fetch') || lastErr.includes('NetworkError') || lastErr.includes('CORS') || lastErr.includes('net::')) {
+      guidance = 'CERTIFICATE / CORS ERROR\n\n'
+        + 'REQUIRED STEPS:\n'
+        + '1. Click "STEP 1: OPEN NESSUS IN NEW TAB" above\n'
+        + '2. On the Nessus page: click Advanced > Accept the Risk (or Proceed)\n'
+        + '3. You should see the Nessus login page -- that means the cert is accepted\n'
+        + '4. Return to this tab and click CONNECT again\n\n'
+        + 'If still failing after accepting cert:\n'
+        + '- Use FILE UPLOAD tab instead (export .nessus file from Nessus)\n'
+        + '- Or use DEMO DATA tab to test the dashboard features\n\n'
+        + 'Technical error: ' + lastErr;
+    } else if(lastErr.includes('timeout') || lastErr.includes('abort')) {
+      guidance = 'CONNECTION TIMEOUT\n\nNessus is not responding. Check:\n1. Nessus service is running\n2. URL is correct (default: https://localhost:8834)\n3. No firewall blocking port 8834';
+    } else {
+      guidance = 'Connection failed: ' + lastErr + '\n\nTry the FILE UPLOAD tab as an alternative.';
+    }
+    setConnStatus('err', guidance.split('\n')[0]);
+    alert(guidance);
+  } else {
+    await loadScans();
+  }
+
+  document.getElementById('connectBtn').disabled = false;
+}
+
+// -- LOAD SCANS --
+async function loadScans() {
+  try {
+    var resp = await fetch(nessusBase + '/scans', { headers: nessusHeaders, mode: 'cors' });
+    var data = await resp.json();
+    var scans = (data.scans || []).sort(function(a,b){ return (b.last_modification_date||0)-(a.last_modification_date||0); });
+    allScans = scans;
+    scanHistory = scans.slice(0, 20);
+    renderScanList(scans);
+    renderHistory();
+    if(scans.length > 0) selectScan(scans[0]);
+  } catch(e) {
+    document.getElementById('scanList').innerHTML = '<div class="empty-state">Failed to load scans: ' + safeStr(e.message) + '</div>';
+  }
+}
+
+async function refreshScans() {
+  if(!nessusConnected) return;
+  await loadScans();
+}
+
+async function selectScan(scan) {
+  document.querySelectorAll('.scan-item').forEach(function(el){ el.classList.remove('selected'); });
+  var el = document.getElementById('si-' + scan.id);
+  if(el) el.classList.add('selected');
+
+  try {
+    var resp = await fetch(nessusBase + '/scans/' + scan.id, { headers: nessusHeaders, mode: 'cors' });
+    var data = await resp.json();
+    processScanDetail(scan, data);
+  } catch(e) {
+    console.error('Failed to load scan detail:', e);
+  }
+}
+
+function processScanDetail(scan, detail) {
+  var hosts = detail.hosts || [];
+  var vulns = [];
+
+  hosts.forEach(function(host) {
+    var hostVulns = detail.vulnerabilities || [];
+    hostVulns.forEach(function(v) {
+      var sev = v.severity === 4 ? 'critical' : v.severity === 3 ? 'high' : v.severity === 2 ? 'medium' : v.severity === 1 ? 'low' : 'info';
+      var cves = v.cve ? (Array.isArray(v.cve) ? v.cve : [v.cve]) : [];
+      vulns.push({
+        pluginId: v.plugin_id,
+        pluginName: v.plugin_name,
+        severity: sev,
+        sevNum: v.severity,
+        host: host.hostname || host.host_ip,
+        ip: host.host_ip,
+        port: v.port || 0,
+        protocol: v.protocol || 'tcp',
+        cvss: v.cvss3_base_score || v.cvss_base_score || null,
+        cves: cves,
+        inKev: isKev(cves),
+        count: v.count || 1,
+      });
+    });
+  });
+
+  allVulns = vulns;
+  renderVulns();
+  updateStats();
+  renderSevChart();
+  renderTopHosts();
+  renderScanDetails(scan, detail);
+}
+
+// -- RENDER SCAN LIST --
+function renderScanList(scans) {
+  if(!scans.length) {
+    document.getElementById('scanList').innerHTML = '<div class="empty-state"><div class="es-icon"></div>No scans found</div>';
+    return;
+  }
+  document.getElementById('scanList').innerHTML = scans.map(function(s) {
+    var statusCls = s.status === 'completed' ? 'sb-completed' : s.status === 'running' ? 'sb-running' : 'sb-error';
+    var date = s.last_modification_date ? new Date(s.last_modification_date*1000).toLocaleDateString() : 'Unknown';
+    return '<div class="scan-item" id="si-' + s.id + '" onclick="selectScan(' + JSON.stringify(s).replace(/"/g,'&quot;') + ')">'
+      + '<div class="si-info">'
+        + '<div class="si-name">' + safeStr(s.name) + '</div>'
+        + '<div class="si-meta">' + date + ' &nbsp;|&nbsp; ' + (s.total || 0) + ' hosts</div>'
+      + '</div>'
+      + '<span class="si-badge ' + statusCls + '">' + (s.status||'unknown').toUpperCase() + '</span>'
+      + '</div>';
+  }).join('');
+}
+
+// -- RENDER VULNS --
+function renderVulns() {
+  var q = document.getElementById('vulnSearch').value.toLowerCase();
+  var list = allVulns.filter(function(v) {
+    if(sevFilter === 'critical' && v.severity !== 'critical') return false;
+    if(sevFilter === 'high' && v.severity !== 'high') return false;
+    if(sevFilter === 'medium' && v.severity !== 'medium') return false;
+    if(sevFilter === 'low' && v.severity !== 'low') return false;
+    if(sevFilter === 'kev' && !v.inKev) return false;
+    if(q) return (v.pluginName+v.host+v.cves.join('')).toLowerCase().includes(q);
+    return true;
+  });
+
+  list.sort(function(a,b){
+    var av = vulnSort.col==='severity'?a.sevNum:vulnSort.col==='cvss'?(a.cvss||0):a[vulnSort.col]||'';
+    var bv = vulnSort.col==='severity'?b.sevNum:vulnSort.col==='cvss'?(b.cvss||0):b[vulnSort.col]||'';
+    if(av<bv) return vulnSort.dir;
+    if(av>bv) return -vulnSort.dir;
+    return 0;
+  });
+
+  document.getElementById('vulnCount').textContent = list.length + ' findings';
+
+  if(!list.length) {
+    document.getElementById('vulnBody').innerHTML =
+      '<tr><td colspan="7"><div class="empty-state">No vulnerabilities match filter</div></td></tr>';
+    return;
+  }
+
+  document.getElementById('vulnBody').innerHTML = list.map(function(v) {
+    return '<tr>'
+      + '<td><span class="sev ' + sevClass(v.severity) + '">' + sevLabel(v.severity) + '</span></td>'
+      + '<td style="max-width:260px"><div style="font-weight:600;color:var(--ng)">' + safeStr(v.pluginName) + '</div>'
+        + (v.pluginId ? '<div style="font-size:10px;font-family:var(--mono);color:var(--muted)">Plugin ' + v.pluginId + '</div>' : '') + '</td>'
+      + '<td><div class="host-ip">' + safeStr(v.ip||v.host) + '</div>'
+        + (v.host !== v.ip ? '<div class="host-name">' + safeStr(v.host) + '</div>' : '') + '</td>'
+      + '<td><span class="' + cvssClass(v.cvss) + '">' + (v.cvss ? v.cvss.toFixed(1) : '') + '</span></td>'
+      + '<td>' + (v.cves.length ? v.cves.slice(0,2).map(function(c){
+          return '<a class="cve-link" href="https://nvd.nist.gov/vuln/detail/'+c+'" target="_blank">'+c+'</a>';
+        }).join('<br>') : '<span class="kev-none"></span>') + '</td>'
+      + '<td>' + (v.inKev ? '<span class="kev-badge">IN KEV</span>' : '<span class="kev-none"></span>') + '</td>'
+      + '<td><span style="font-family:var(--mono);font-size:10px;color:var(--muted2)">'
+        + (v.port ? v.port + '/' + v.protocol : '') + '</span></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function setSevFilter(f, el) {
+  sevFilter = f;
+  document.querySelectorAll('.vtf').forEach(function(t){ t.classList.remove('active'); });
+  el.classList.add('active');
+  renderVulns();
+}
+
+function sortVulns(col) {
+  if(vulnSort.col === col) vulnSort.dir *= -1;
+  else { vulnSort.col = col; vulnSort.dir = -1; }
+  renderVulns();
+}
+
+// -- STATS --
+function updateStats() {
+  document.getElementById('sCrit').textContent  = allVulns.filter(function(v){return v.severity==='critical';}).length;
+  document.getElementById('sHigh').textContent  = allVulns.filter(function(v){return v.severity==='high';}).length;
+  document.getElementById('sMed').textContent   = allVulns.filter(function(v){return v.severity==='medium';}).length;
+  document.getElementById('sLow').textContent   = allVulns.filter(function(v){return v.severity==='low';}).length;
+  document.getElementById('sKev').textContent   = allVulns.filter(function(v){return v.inKev;}).length;
+  var hosts = {};
+  allVulns.forEach(function(v){ hosts[v.ip||v.host]=1; });
+  document.getElementById('sHosts').textContent = Object.keys(hosts).length;
+}
+
+// -- SEVERITY CHART --
+function renderSevChart() {
+  var counts = {critical:0,high:0,medium:0,low:0,info:0};
+  allVulns.forEach(function(v){ if(counts[v.severity]!==undefined) counts[v.severity]++; });
+  var max = Math.max(1, counts.critical, counts.high, counts.medium, counts.low);
+  var cols = {critical:'var(--red)',high:'var(--orange)',medium:'var(--yellow)',low:'var(--ng)',info:'var(--muted)'};
+  document.getElementById('sevChart').innerHTML = Object.entries(counts).map(function(e) {
+    var sev=e[0], cnt=e[1];
+    return '<div class="cbar-row">'
+      + '<div class="cbar-label" style="color:'+cols[sev]+'">' + sev.toUpperCase().slice(0,4) + '</div>'
+      + '<div class="cbar-track"><div class="cbar-fill" style="width:' + Math.round(cnt/max*100) + '%;background:' + cols[sev] + '"></div></div>'
+      + '<div class="cbar-count" style="color:'+cols[sev]+'">' + cnt + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+// -- TOP HOSTS --
+function renderTopHosts() {
+  var hostMap = {};
+  allVulns.forEach(function(v) {
+    var k = v.ip||v.host;
+    if(!hostMap[k]) hostMap[k] = {ip:k, name:v.host!==v.ip?v.host:'', count:0, crit:0};
+    hostMap[k].count++;
+    if(v.severity==='critical') hostMap[k].crit++;
+  });
+  var sorted = Object.values(hostMap).sort(function(a,b){return b.crit-a.crit||b.count-a.count;}).slice(0,8);
+  if(!sorted.length) { document.getElementById('topHosts').innerHTML='<div class="empty-state" style="padding:12px">No data</div>'; return; }
+  document.getElementById('topHosts').innerHTML = sorted.map(function(h) {
+    return '<div class="host-item">'
+      + '<div><div class="hi-ip">' + safeStr(h.ip) + '</div>'
+        + (h.name ? '<div style="font-size:10px;color:var(--muted)">' + safeStr(h.name) + '</div>' : '')
+      + '</div>'
+      + '<div style="text-align:right">'
+        + '<div class="hi-count">' + h.crit + ' CRIT</div>'
+        + '<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">' + h.count + ' total</div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+// -- SCAN DETAILS --
+function renderScanDetails(scan, detail) {
+  var info = detail.info || {};
+  document.getElementById('scanDetails').innerHTML =
+    row('Scan Name', scan.name || info.name) +
+    row('Status', scan.status || 'completed') +
+    row('Targets', info.targets || 'N/A') +
+    row('Scanner', info.scanner_name || 'Local Scanner') +
+    row('Start Time', info.scan_start ? new Date(info.scan_start*1000).toLocaleString() : 'N/A') +
+    row('End Time', info.scan_end ? new Date(info.scan_end*1000).toLocaleString() : 'N/A') +
+    row('Policy', info.policy || 'N/A');
+
+  function row(k,v) {
+    return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--b1);font-size:11px">'
+      + '<span style="color:var(--muted);font-family:var(--mono)">' + k + '</span>'
+      + '<span style="color:var(--ng);font-family:var(--mono)">' + safeStr(String(v||'N/A')) + '</span>'
+      + '</div>';
+  }
+}
+
+// -- HISTORY --
+function renderHistory() {
+  document.getElementById('histCount').textContent = scanHistory.length + ' scans';
+  if(!scanHistory.length) return;
+  document.getElementById('historyList').innerHTML = scanHistory.map(function(s) {
+    var date = s.last_modification_date ? new Date(s.last_modification_date*1000).toLocaleDateString() : 'Unknown';
+    return '<div class="history-item">'
+      + '<div class="hi-name">' + safeStr(s.name) + '</div>'
+      + '<div class="hi-date">' + date + '</div>'
+      + '<div class="hi-vulns">' + (s.total_vulnerabilities||s.total||0) + ' vulns</div>'
+      + '<span class="si-badge ' + (s.status==='completed'?'sb-completed':s.status==='running'?'sb-running':'sb-error') + '">' + (s.status||'?').toUpperCase() + '</span>'
+      + '</div>';
+  }).join('');
+}
+
+// -- FILE UPLOAD (.nessus XML or CSV) --
+var uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', function(e){ e.preventDefault(); uploadZone.classList.add('drag'); });
+uploadZone.addEventListener('dragleave', function(){ uploadZone.classList.remove('drag'); });
+uploadZone.addEventListener('drop', function(e){ e.preventDefault(); uploadZone.classList.remove('drag'); handleFileUpload(e.dataTransfer.files[0]); });
+
+function handleFileUpload(file) {
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var text = e.target.result;
+    try {
+      if(file.name.endsWith('.csv')) {
+        parseNessusCSV(text, file.name);
+      } else {
+        parseNessusXML(text, file.name);
+      }
+    } catch(err) {
+      alert('File parse error: ' + err.message + '\n\nMake sure you are uploading a .nessus (XML) or CSV export from Nessus.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function parseNessusXML(text, fname) {
+  var parser = new DOMParser();
+  var xml = parser.parseFromString(text, 'text/xml');
+
+  if(xml.querySelector('parsererror')) throw new Error('Invalid XML  make sure this is a .nessus export file');
+
+  var vulns = [];
+  var reportHosts = xml.querySelectorAll('ReportHost');
+
+  reportHosts.forEach(function(host) {
+    var hostName = host.getAttribute('name') || 'Unknown';
+    var hostIP = '';
+    var ipTag = host.querySelector('tag[name="host-ip"]');
+    if(ipTag) hostIP = ipTag.textContent;
+    var fqdn = host.querySelector('tag[name="host-fqdn"]');
+    var displayName = fqdn ? fqdn.textContent : hostName;
+
+    var items = host.querySelectorAll('ReportItem');
+    items.forEach(function(item) {
+      var sev = parseInt(item.getAttribute('severity') || '0');
+      var sevStr = sev===4?'critical':sev===3?'high':sev===2?'medium':sev===1?'low':'info';
+      var cveNodes = item.querySelectorAll('cve');
+      var cves = Array.from(cveNodes).map(function(n){ return n.textContent.trim(); }).filter(Boolean);
+      var cvss3 = item.querySelector('cvss3_base_score');
+      var cvss2 = item.querySelector('cvss_base_score');
+      var cvssVal = cvss3 ? parseFloat(cvss3.textContent) : cvss2 ? parseFloat(cvss2.textContent) : null;
+
+      vulns.push({
+        pluginId: item.getAttribute('pluginID'),
+        pluginName: item.getAttribute('pluginName') || 'Unknown',
+        severity: sevStr,
+        sevNum: sev,
+        host: displayName,
+        ip: hostIP || hostName,
+        port: parseInt(item.getAttribute('port') || '0'),
+        protocol: item.getAttribute('protocol') || 'tcp',
+        cvss: cvssVal,
+        cves: cves,
+        inKev: isKev(cves),
+        count: 1,
+      });
+    });
+  });
+
+  if(!vulns.length) throw new Error('No vulnerabilities found in this .nessus file');
+
+  allVulns = vulns;
+  var scanName = fname.replace('.nessus','');
+
+  // Fake scan entry for display
+  allScans = [{ id:'file-1', name:scanName, status:'completed', last_modification_date: Date.now()/1000, total: vulns.length }];
+  scanHistory = allScans;
+  renderScanList(allScans);
+  renderHistory();
+  renderVulns();
+  updateStats();
+  renderSevChart();
+  renderTopHosts();
+
+  document.getElementById('scanDetails').innerHTML =
+    '<div style="font-size:11px;font-family:var(--mono);color:var(--muted2);line-height:1.8">'
+    + '<div style="color:var(--ng);font-weight:700;margin-bottom:8px">' + safeStr(scanName) + '</div>'
+    + row2('Source', 'File Upload') + row2('Findings', vulns.length) + row2('Hosts', Object.keys(vulns.reduce(function(a,v){a[v.ip]=1;return a;},{})).length)
+    + row2('Critical', vulns.filter(function(v){return v.severity==='critical';}).length)
+    + row2('In KEV', vulns.filter(function(v){return v.inKev;}).length)
+    + '</div>';
+
+  document.getElementById('connDot').style.color = 'var(--ng)';
+  document.getElementById('connLabel').textContent = 'FILE LOADED';
+
+  function row2(k,v){
+    return '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--b1);padding:4px 0">'
+      +'<span style="color:var(--muted)">'+k+'</span><span style="color:var(--ng)">'+v+'</span></div>';
+  }
+}
+
+function parseNessusCSV(text, fname) {
+  var lines = text.split('\n');
+  var headers = lines[0].split(',').map(function(h){ return h.trim().replace(/"/g,'').toLowerCase(); });
+  var vulns = [];
+
+  for(var i=1; i<lines.length; i++) {
+    var line = lines[i].trim();
+    if(!line) continue;
+    // Handle quoted CSV fields
+    var cols = [];
+    var cur = '', inQ = false;
+    for(var j=0; j<line.length; j++) {
+      if(line[j]==='"') { inQ=!inQ; }
+      else if(line[j]===',' && !inQ) { cols.push(cur); cur=''; }
+      else { cur+=line[j]; }
+    }
+    cols.push(cur);
+
+    var get = function(name) { var idx=headers.indexOf(name); return idx>=0?(cols[idx]||'').trim():''; };
+    var sev = get('risk').toLowerCase();
+    if(!sev || sev==='none') continue;
+    var sevStr = sev==='critical'?'critical':sev==='high'?'high':sev==='medium'?'medium':sev==='low'?'low':'info';
+    var cveStr = get('cve');
+    var cves = cveStr ? cveStr.split(/[\s,]+/).filter(function(c){ return /CVE-\d+-\d+/i.test(c); }).map(function(c){ return c.toUpperCase(); }) : [];
+    var cvssStr = get('cvss v3.0 base score') || get('cvss base score') || get('cvss');
+    var cvssVal = cvssStr ? parseFloat(cvssStr) : null;
+    var ip = get('host') || get('ip address') || get('ip');
+    var name = get('name') || get('plugin name') || get('vulnerability');
+    var port = parseInt(get('port')||'0');
+    var proto = get('protocol')||'tcp';
+    var plugin = get('plugin id') || get('pluginid') || '';
+
+    vulns.push({
+      pluginId: plugin,
+      pluginName: name,
+      severity: sevStr,
+      sevNum: sevStr==='critical'?4:sevStr==='high'?3:sevStr==='medium'?2:1,
+      host: ip,
+      ip: ip,
+      port: port,
+      protocol: proto,
+      cvss: isNaN(cvssVal)?null:cvssVal,
+      cves: cves,
+      inKev: isKev(cves),
+      count: 1,
+    });
+  }
+
+  if(!vulns.length) throw new Error('No vulnerabilities parsed from CSV. Check the file format.');
+  allVulns = vulns;
+  allScans = [{ id:'csv-1', name:fname.replace('.csv',''), status:'completed', last_modification_date:Date.now()/1000, total:vulns.length }];
+  scanHistory = allScans;
+  renderScanList(allScans);
+  renderHistory();
+  renderVulns();
+  updateStats();
+  renderSevChart();
+  renderTopHosts();
+  document.getElementById('connDot').style.color = 'var(--ng)';
+  document.getElementById('connLabel').textContent = 'CSV LOADED';
+}
+
+// -- DEMO DATA --
+function loadDemoData() {
+  var hosts = ['192.168.1.10','192.168.1.11','192.168.1.15','192.168.1.20','10.0.0.5','10.0.0.12'];
+  var demoVulns = [
+    {n:'Apache Log4j Remote Code Execution',s:'critical',sn:4,c:['CVE-2021-44228'],cv:10.0,p:443,pr:'tcp',h:'192.168.1.10',id:'179709'},
+    {n:'F5 BIG-IP iControl REST Auth Bypass',s:'critical',sn:4,c:['CVE-2022-1388'],cv:9.8,p:443,pr:'tcp',h:'192.168.1.11',id:'160500'},
+    {n:'Microsoft ZeroLogon Privilege Escalation',s:'critical',sn:4,c:['CVE-2020-1472'],cv:10.0,p:445,pr:'tcp',h:'192.168.1.20',id:'140864'},
+    {n:'Fortinet SSL VPN Credential Disclosure',s:'critical',sn:4,c:['CVE-2018-13379'],cv:9.8,p:443,pr:'tcp',h:'10.0.0.5',id:'128760'},
+    {n:'PrintNightmare Windows Print Spooler RCE',s:'critical',sn:4,c:['CVE-2021-34527'],cv:8.8,p:445,pr:'tcp',h:'192.168.1.10',id:'151389'},
+    {n:'ProxyLogon Exchange Server SSRF',s:'critical',sn:4,c:['CVE-2021-26855'],cv:9.8,p:443,pr:'tcp',h:'192.168.1.15',id:'147143'},
+    {n:'Citrix Bleed NetScaler Token Leak',s:'critical',sn:4,c:['CVE-2023-4966'],cv:9.4,p:443,pr:'tcp',h:'10.0.0.12',id:'181514'},
+    {n:'OpenSSH regreSSHion Race Condition',s:'high',sn:3,c:['CVE-2024-6387'],cv:8.1,p:22,pr:'tcp',h:'192.168.1.10',id:'198702'},
+    {n:'Fortinet FortiOS SSL VPN Heap Overflow',s:'high',sn:3,c:['CVE-2023-27997'],cv:9.8,p:443,pr:'tcp',h:'10.0.0.5',id:'177547'},
+    {n:'Microsoft Exchange ProxyNotShell',s:'high',sn:3,c:['CVE-2022-41040'],cv:8.8,p:443,pr:'tcp',h:'192.168.1.15',id:'166293'},
+    {n:'Follina MSDT Remote Code Execution',s:'high',sn:3,c:['CVE-2022-30190'],cv:7.8,p:0,pr:'tcp',h:'192.168.1.10',id:'162513'},
+    {n:'Veeam Backup and Replication RCE',s:'high',sn:3,c:['CVE-2024-40711'],cv:9.8,p:9401,pr:'tcp',h:'192.168.1.20',id:'201234'},
+    {n:'SMB Signing Disabled',s:'medium',sn:2,c:[],cv:5.9,p:445,pr:'tcp',h:'192.168.1.10',id:'57608'},
+    {n:'SSL Certificate Cannot Be Trusted',s:'medium',sn:2,c:[],cv:null,p:443,pr:'tcp',h:'10.0.0.5',id:'51192'},
+    {n:'TLS Version 1.0 Enabled',s:'medium',sn:2,c:[],cv:null,p:443,pr:'tcp',h:'192.168.1.11',id:'104743'},
+    {n:'SSH Weak Algorithms Supported',s:'medium',sn:2,c:[],cv:null,p:22,pr:'tcp',h:'192.168.1.10',id:'153953'},
+    {n:'Apache HTTP Server Default Page',s:'low',sn:1,c:[],cv:null,p:80,pr:'tcp',h:'192.168.1.15',id:'10302'},
+    {n:'SNMP Default Community Strings',s:'medium',sn:2,c:[],cv:7.5,p:161,pr:'udp',h:'10.0.0.12',id:'10264'},
+    {n:'Open Redirect Vulnerability',s:'medium',sn:2,c:[],cv:6.1,p:443,pr:'tcp',h:'192.168.1.11',id:'121345'},
+    {n:'RDP Weak Encryption',s:'low',sn:1,c:[],cv:null,p:3389,pr:'tcp',h:'192.168.1.20',id:'57690'},
+  ];
+
+  allVulns = demoVulns.map(function(v) {
+    return {
+      pluginId: v.id,
+      pluginName: v.n,
+      severity: v.s,
+      sevNum: v.sn,
+      host: v.h,
+      ip: v.h,
+      port: v.p,
+      protocol: v.pr,
+      cvss: v.cv,
+      cves: v.c,
+      inKev: isKev(v.c),
+      count: 1,
+    };
+  });
+
+  allScans = [{ id:'demo-1', name:'DEMO  Internal Network Scan', status:'completed', last_modification_date:Date.now()/1000, total:demoVulns.length }];
+  scanHistory = [
+    { id:'demo-1', name:'DEMO  Internal Network Scan', status:'completed', last_modification_date:Date.now()/1000, total:demoVulns.length, total_vulnerabilities:20 },
+    { id:'demo-2', name:'DEMO  Web App Scan', status:'completed', last_modification_date:Date.now()/1000-86400, total:3, total_vulnerabilities:8 },
+    { id:'demo-3', name:'DEMO  Firewall Audit', status:'completed', last_modification_date:Date.now()/1000-172800, total:2, total_vulnerabilities:5 },
+  ];
+
+  renderScanList(allScans);
+  renderHistory();
+  renderVulns();
+  updateStats();
+  renderSevChart();
+  renderTopHosts();
+
+  document.getElementById('scanDetails').innerHTML =
+    '<div style="font-size:11px;font-family:var(--mono);color:var(--muted2);line-height:2">'
+    + '<div style="color:var(--ng);font-weight:700;margin-bottom:6px">DEMO  Internal Network Scan</div>'
+    + '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--b1);padding:3px 0"><span style="color:var(--muted)">Source</span><span>Demo Dataset</span></div>'
+    + '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--b1);padding:3px 0"><span style="color:var(--muted)">Targets</span><span>192.168.1.0/24, 10.0.0.0/24</span></div>'
+    + '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--b1);padding:3px 0"><span style="color:var(--muted)">Hosts</span><span>6</span></div>'
+    + '<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">Policy</span><span>Advanced Scan</span></div>'
+    + '</div>';
+
+  document.getElementById('connDot').style.color = 'var(--ng)';
+  document.getElementById('connLabel').textContent = 'DEMO LOADED';
+}
+
+// -- EXPORT REPORT --
+function exportReport() {
+  var crit = allVulns.filter(function(v){return v.severity==='critical';});
+  var high  = allVulns.filter(function(v){return v.severity==='high';});
+  var kevList = allVulns.filter(function(v){return v.inKev;});
+
+  if(!allVulns.length) { alert('No data to export. Load a scan first.'); return; }
+
+  var now = new Date();
+  function safe(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function sevBadge(s) {
+    var col = s==='critical'?'#dc2626':s==='high'?'#ea580c':s==='medium'?'#ca8a04':'#16a34a';
+    return '<span style="background:'+col+';color:#fff;font-size:10px;padding:2px 8px;border-radius:3px;font-weight:bold">'+s.toUpperCase()+'</span>';
+  }
+
+  function buildTable(list, title, borderColor) {
+    if(!list.length) return '';
+    return '<div style="background:#fff;margin:0 32px 20px;border-radius:8px;border:1px solid '+borderColor+';overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">'
+      + '<div style="background:'+borderColor+';padding:13px 18px"><span style="color:#fff;font-weight:bold;font-size:14px;letter-spacing:1px">'+title+' ('+list.length+')</span></div>'
+      + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+      + '<thead><tr style="background:#f9fafb">'
+      + ['SEV','VULNERABILITY','HOST','CVSS','CVE','PORT'].map(function(h){
+          return '<th style="padding:9px 12px;text-align:left;font-size:11px;color:#6b7280;border-bottom:2px solid '+borderColor+';white-space:nowrap">'+h+'</th>';
+        }).join('')
+      + '</tr></thead><tbody>'
+      + list.map(function(v,i) {
+          var bg = i%2===0?'#f9fafb':'#fff';
+          var cvssCol = !v.cvss?'#6b7280':v.cvss>=9?'#dc2626':v.cvss>=7?'#ea580c':'#ca8a04';
+          return '<tr style="background:'+bg+'">'
+            + '<td style="padding:9px 12px;border-bottom:1px solid #e5e7eb">'+sevBadge(v.severity)+'</td>'
+            + '<td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;max-width:280px"><div style="font-weight:600">'+safe(v.pluginName)+'</div>'
+              + (v.pluginId?'<div style="font-size:10px;color:#9ca3af">Plugin '+safe(v.pluginId)+'</div>':'')
+            + '</td>'
+            + '<td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:11px;color:#1d4ed8">'+safe(v.ip||v.host)+'</td>'
+            + '<td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;text-align:center"><span style="font-weight:bold;color:'+cvssCol+';font-size:14px">'+(v.cvss?v.cvss.toFixed(1):'')+'</span></td>'
+            + '<td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;font-size:10px">'
+              + (v.cves.length?v.cves.slice(0,2).map(function(c){return '<a href="https://nvd.nist.gov/vuln/detail/'+c+'" target="_blank" style="color:#1d4ed8;text-decoration:none">'+c+'</a>';}).join('<br>'):'')
+              + (v.inKev?'<br><span style="background:#dc2626;color:#fff;font-size:9px;padding:1px 5px;border-radius:2px;font-weight:bold">IN KEV</span>':'')
+            + '</td>'
+            + '<td style="padding:9px 12px;border-bottom:1px solid #e5e7eb;font-size:10px;color:#6b7280">'+(v.port?v.port+'/'+v.protocol:'')+'</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table></div></div>';
+  }
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    + '<title>Nessus Vulnerability Report  Ghost Defense  '+now.toLocaleDateString()+'</title>'
+    + '<style>body{font-family:Calibri,Arial,sans-serif;margin:0;background:#f3f4f6}@media print{.noprint{display:none}}</style>'
+    + '</head><body>'
+    // Header
+    + '<div style="background:#111827;padding:22px 32px;display:flex;align-items:center;justify-content:space-between">'
+      + '<div><div style="font-size:24px;font-weight:bold;color:#00ff41;letter-spacing:3px">GHOST DEFENSE</div>'
+        + '<div style="color:#9ca3af;font-size:12px;letter-spacing:2px;margin-top:2px">NESSUS VULNERABILITY REPORT</div></div>'
+      + '<div style="text-align:right"><div style="color:#9ca3af;font-size:11px">'+now.toUTCString().replace('GMT','UTC')+'</div>'
+        + '<div style="color:#9ca3af;font-size:11px;margin-top:2px">DEFEND ALWAYS</div></div>'
+    + '</div>'
+    // Summary cards
+    + '<div style="background:#fff;margin:20px 32px;border-radius:8px;padding:20px;border:1px solid #e5e7eb;box-shadow:0 1px 3px rgba(0,0,0,.08)">'
+      + '<h2 style="margin:0 0 14px;font-size:15px;border-bottom:2px solid #00B050;padding-bottom:8px">EXECUTIVE SUMMARY</h2>'
+      + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px">'
+        + ['Critical:'+crit.length+':#dc2626', 'High:'+high.length+':#ea580c',
+           'In KEV:'+kevList.length+':#dc2626', 'Total:'+allVulns.length+':#374151',
+           'Hosts:'+Object.keys(allVulns.reduce(function(a,v){a[v.ip]=1;return a;},{})).length+':#1d4ed8'].map(function(s){
+             var parts=s.split(':'); var label=parts[0],val=parts[1],col=parts[2];
+             return '<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:12px;text-align:center">'
+               +'<div style="font-size:28px;font-weight:bold;color:'+col+'">'+val+'</div>'
+               +'<div style="font-size:11px;color:#6b7280;margin-top:3px">'+label+'</div></div>';
+           }).join('')
+      + '</div>'
+      + '<div style="background:#fafafa;border:1px solid #e5e7eb;border-radius:6px;padding:12px;font-size:12px;color:#374151;line-height:1.7">'
+        + '<strong>Analyst Notes:</strong> This scan identified '+allVulns.length+' total vulnerabilities across '
+        + Object.keys(allVulns.reduce(function(a,v){a[v.ip]=1;return a;},{})).length+' hosts. '
+        + crit.length+' critical and '+high.length+' high severity findings require immediate attention. '
+        + kevList.length+' findings are in the CISA Known Exploited Vulnerabilities catalog  these must be prioritized per CISA BOD 26-04 (which consolidated and superseded BOD 22-01).'
+      + '</div>'
+    + '</div>'
+    + buildTable(crit, 'CRITICAL VULNERABILITIES', '#dc2626')
+    + buildTable(high, 'HIGH SEVERITY VULNERABILITIES', '#ea580c')
+    + buildTable(kevList.filter(function(v){return v.severity!=='critical'&&v.severity!=='high';}), 'IN CISA KEV (Medium/Low)', '#ca8a04')
+    + '<div style="background:#111827;padding:14px 32px;display:flex;justify-content:space-between;align-items:center;margin-top:10px" class="noprint">'
+      + '<div style="color:#9ca3af;font-size:11px">Sources: Nessus Scan &nbsp;|&nbsp; CISA KEV &nbsp;|&nbsp; NVD/NIST &nbsp;|&nbsp; Ghost Defense</div>'
+      + '<div style="display:flex;gap:10px">'
+        + '<button onclick="window.print()" style="background:#00ff41;color:#111;border:none;padding:9px 22px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:12px">PRINT / SAVE PDF</button>'
+        + '<button onclick="window.close()" style="background:#374151;color:#fff;border:none;padding:9px 22px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:12px">CLOSE</button>'
+      + '</div>'
+    + '</div>'
+    + '</body></html>';
+
+  var win = window.open('', '_blank');
+  if(!win){ alert('Popup blocked  allow popups for this page and retry.'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+}
+</script>
+</body>
+</html>

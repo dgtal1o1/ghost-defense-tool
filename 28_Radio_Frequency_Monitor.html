@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radio Frequency Monitor — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070e;--s1:#0e0e1a;--s2:#141728;--s3:#1c2035;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);
+  --text:#eeedf8;--muted:#6b6a84;--muted2:#9998b8;
+  --green:#2fd98a;--green-s:rgba(47,217,138,0.1);--green-b:rgba(47,217,138,0.28);
+  --red:#ff4d4d;--red-s:rgba(255,77,77,0.1);--red-b:rgba(255,77,77,0.3);
+  --orange:#ff8c42;--orange-s:rgba(255,140,66,0.1);--orange-b:rgba(255,140,66,0.28);
+  --yellow:#ffd166;--yellow-s:rgba(255,209,102,0.1);--yellow-b:rgba(255,209,102,0.25);
+  --blue:#4cc9f0;--blue-s:rgba(76,201,240,0.1);--blue-b:rgba(76,201,240,0.28);
+  --purple:#b48eff;--purple-s:rgba(180,142,255,0.1);--purple-b:rgba(180,142,255,0.28);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html{background:var(--bg)}
+body{font-family:var(--sans);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:13px 24px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:30px;height:30px;background:var(--green-s);border:1px solid var(--green-b);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.brand-name{font-size:15px;font-weight:600}
+.brand-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+
+/* SPECTRUM BAR */
+.spectrum-bar{background:var(--s1);border-bottom:1px solid var(--border);padding:14px 24px;overflow-x:auto}
+.spectrum-title{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-family:var(--mono);margin-bottom:10px}
+.spectrum-wrap{display:flex;height:48px;border-radius:6px;overflow:hidden;min-width:600px;position:relative}
+.spectrum-seg{display:flex;align-items:center;justify-content:center;font-size:9px;font-family:var(--mono);
+  font-weight:700;letter-spacing:.06em;cursor:pointer;transition:filter .15s;position:relative;overflow:hidden}
+.spectrum-seg:hover{filter:brightness(1.3)}
+.spectrum-seg-label{writing-mode:horizontal-tb;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;padding:0 4px}
+.spectrum-freq{position:absolute;bottom:2px;font-size:8px;opacity:.7}
+
+/* SEARCH */
+.search-row{background:var(--s1);border-bottom:1px solid var(--border);padding:10px 24px;
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.search-input{flex:1;min-width:160px;background:var(--s2);border:1px solid var(--border2);border-radius:8px;
+  color:var(--text);font-family:var(--mono);font-size:13px;padding:9px 12px;outline:none;transition:border-color .15s}
+.search-input:focus{border-color:var(--green-b)}
+.search-input::placeholder{color:var(--muted)}
+.filter-chip{font-size:11px;font-family:var(--mono);padding:5px 12px;border-radius:6px;
+  background:var(--s2);border:1px solid var(--border2);color:var(--muted2);cursor:pointer;transition:all .12s;white-space:nowrap}
+.filter-chip.active{background:var(--green-s);color:var(--green);border-color:var(--green-b)}
+
+/* MAIN LAYOUT */
+.main-layout{display:grid;grid-template-columns:300px 1fr;flex:1;height:calc(100vh - 190px)}
+
+/* SIDEBAR */
+.sidebar{border-right:1px solid var(--border);overflow-y:auto;background:var(--bg)}
+.sidebar-section{border-bottom:1px solid var(--border)}
+.sidebar-title{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);
+  font-family:var(--mono);padding:9px 14px;background:var(--s1)}
+.band-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);
+  cursor:pointer;transition:background .12s}
+.band-item:hover{background:var(--s2)}
+.band-item.selected{background:var(--green-s);border-left:3px solid var(--green)}
+.band-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.band-name{font-size:12px;font-weight:600;flex:1}
+.band-range{font-family:var(--mono);font-size:10px;color:var(--muted2)}
+.band-count{font-size:10px;font-family:var(--mono);color:var(--muted);background:var(--s3);
+  padding:1px 6px;border-radius:3px}
+
+/* CONTENT PANEL */
+.content-panel{overflow-y:auto;display:flex;flex-direction:column;background:var(--bg)}
+
+/* LISTEN SECTION */
+.listen-section{background:var(--s1);border-bottom:1px solid var(--border);padding:14px 20px}
+.listen-title{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-family:var(--mono);margin-bottom:10px}
+.listen-grid{display:flex;flex-wrap:wrap;gap:8px}
+.listen-card{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border2);
+  border-radius:8px;padding:8px 12px;cursor:pointer;transition:all .15s;text-decoration:none}
+.listen-card:hover{border-color:var(--green-b);background:var(--green-s)}
+.listen-icon{font-size:16px;flex-shrink:0}
+.listen-name{font-size:12px;font-weight:500;color:var(--text)}
+.listen-freq{font-size:10px;color:var(--muted2);font-family:var(--mono)}
+.listen-live{font-size:9px;color:var(--green);background:var(--green-s);border:1px solid var(--green-b);
+  padding:1px 5px;border-radius:3px;margin-left:4px}
+
+/* FREQ TABLE */
+.table-wrap{overflow-x:auto;flex:1;padding:16px 20px}
+.freq-table{width:100%;border-collapse:collapse;font-size:12px}
+.freq-table th{padding:8px 12px;text-align:left;color:var(--muted);font-size:10px;
+  text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);
+  background:var(--s2);white-space:nowrap;cursor:pointer}
+.freq-table th:hover{color:var(--text)}
+.freq-table td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.freq-table tr:hover td{background:rgba(255,255,255,.02)}
+.freq-cell{font-family:var(--mono);font-weight:600;color:var(--green)}
+.mode-badge{font-size:10px;font-family:var(--mono);font-weight:700;padding:2px 7px;border-radius:4px}
+.mode-am{background:rgba(255,209,102,.15);color:var(--yellow);border:1px solid var(--yellow-b)}
+.mode-fm{background:rgba(47,217,138,.15);color:var(--green);border:1px solid var(--green-b)}
+.mode-ssb{background:rgba(76,201,240,.15);color:var(--blue);border:1px solid var(--blue-b)}
+.mode-cw{background:rgba(180,142,255,.15);color:var(--purple);border:1px solid var(--purple-b)}
+.mode-usb{background:rgba(76,201,240,.15);color:var(--blue);border:1px solid var(--blue-b)}
+.mode-lsb{background:rgba(91,84,255,.15);color:#a09bff;border:1px solid rgba(91,84,255,.3)}
+.mode-nfm{background:rgba(47,217,138,.15);color:var(--green);border:1px solid var(--green-b)}
+.mode-wfm{background:rgba(47,217,138,.2);color:#00ff99;border:1px solid rgba(0,255,153,.3)}
+.mode-dsc{background:rgba(255,140,66,.15);color:var(--orange);border:1px solid var(--orange-b)}
+.mode-digital{background:rgba(180,142,255,.15);color:var(--purple);border:1px solid var(--purple-b)}
+.cat-badge{font-size:10px;padding:2px 7px;border-radius:4px;font-family:var(--mono)}
+.cat-emergency{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.cat-military{background:rgba(255,77,77,.1);color:#ff8888;border:1px solid rgba(255,77,77,.2)}
+.cat-maritime{background:var(--blue-s);color:var(--blue);border:1px solid var(--blue-b)}
+.cat-aviation{background:var(--purple-s);color:var(--purple);border:1px solid var(--purple-b)}
+.cat-broadcast{background:var(--yellow-s);color:var(--yellow);border:1px solid var(--yellow-b)}
+.cat-amateur{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.cat-utility{background:var(--s3);color:var(--muted2);border:1px solid var(--border2)}
+.cat-weather{background:rgba(76,201,240,.1);color:#88ddff;border:1px solid rgba(76,201,240,.25)}
+.cat-government{background:rgba(255,140,66,.1);color:#ffaa66;border:1px solid rgba(255,140,66,.2)}
+
+/* EXPORT */
+.export-row{display:flex;gap:8px;padding:12px 20px;border-top:1px solid var(--border);flex-wrap:wrap}
+.exp-btn{display:flex;align-items:center;gap:5px;font-size:12px;font-family:var(--sans);
+  font-weight:600;padding:7px 14px;border-radius:7px;cursor:pointer;transition:all .15s;border:1px solid}
+.exp-csv{background:var(--green-s);color:var(--green);border-color:var(--green-b)}
+.exp-html{background:var(--blue-s);color:var(--blue);border-color:var(--blue-b)}
+.exp-btn svg{width:12px;height:12px}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .25s ease both}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+@media(max-width:800px){
+  .main-layout{grid-template-columns:1fr;height:auto}
+  .sidebar{border-right:none;border-bottom:1px solid var(--border);max-height:220px}
+}
+
+/* ── SDR PLAYER PANEL ── */
+.sdr-panel{background:var(--s1);border-bottom:1px solid var(--border);padding:0}
+.sdr-panel-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:10px 20px;cursor:pointer;user-select:none;transition:background .12s}
+.sdr-panel-hdr:hover{background:var(--s2)}
+.sdr-panel-title{font-size:10px;text-transform:uppercase;letter-spacing:.12em;
+  color:var(--green);font-family:var(--mono);display:flex;align-items:center;gap:8px}
+.sdr-panel-body{display:none;padding:14px 20px;gap:12px;flex-wrap:wrap}
+.sdr-panel-body.open{display:flex}
+.sdr-arr{color:var(--muted);font-size:11px;transition:transform .2s}
+.sdr-arr.open{transform:rotate(180deg)}
+
+/* TUNER CARD */
+.tuner-card{background:var(--s2);border:1px solid var(--border2);border-radius:10px;
+  overflow:hidden;flex-shrink:0;transition:border-color .15s}
+.tuner-card.active{border-color:var(--green-b);box-shadow:0 0 16px rgba(47,217,138,0.12)}
+.tuner-hdr{display:flex;align-items:center;gap:8px;padding:9px 12px;
+  border-bottom:1px solid var(--border);background:var(--s3)}
+.tuner-icon{font-size:15px;flex-shrink:0}
+.tuner-name{font-size:12px;font-weight:600;flex:1}
+.tuner-freq{font-size:10px;color:var(--muted2);font-family:var(--mono)}
+.tuner-body{padding:10px 12px}
+
+/* BUILT-IN AUDIO PLAYER */
+.audio-player{display:flex;flex-direction:column;gap:8px;min-width:240px}
+.ap-url-row{display:flex;gap:6px}
+.ap-url{flex:1;background:var(--s3);border:1px solid var(--border2);border-radius:6px;
+  color:var(--text);font-family:var(--mono);font-size:11px;padding:7px 10px;outline:none;transition:border-color .15s}
+.ap-url:focus{border-color:var(--green-b)}
+.ap-url::placeholder{color:var(--muted)}
+.ap-controls{display:flex;align-items:center;gap:6px}
+.ap-btn{border:none;border-radius:6px;font-family:var(--mono);font-size:11px;
+  padding:7px 14px;cursor:pointer;transition:all .15s;font-weight:600}
+.ap-play{background:var(--green);color:#0a1a12}
+.ap-play:hover{background:#3feba0}
+.ap-stop{background:var(--red-s);border:1px solid var(--red-b);color:var(--red)}
+.ap-stop:hover{background:rgba(255,77,77,.2)}
+.ap-vol{width:70px;accent-color:var(--green)}
+.ap-status{font-size:10px;font-family:var(--mono);color:var(--muted2);display:flex;align-items:center;gap:5px}
+.ap-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.ap-dot.playing{background:var(--green);animation:pulse 1.5s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* WEBSDR EMBED */
+.websdr-embed{width:100%;min-width:320px;max-width:600px}
+.websdr-embed iframe{width:100%;border:none;border-radius:6px;background:var(--s3);display:block}
+.embed-note{font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:5px;line-height:1.5}
+
+/* FREQ LISTEN BUTTON */
+.listen-btn{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:4px;
+  background:var(--green-s);color:var(--green);border:1px solid var(--green-b);
+  cursor:pointer;transition:all .12s;white-space:nowrap;margin-left:4px}
+.listen-btn:hover{background:rgba(47,217,138,.2)}
+
+/* BROADCASTIFY EMBED */
+.bf-embed{display:flex;flex-direction:column;gap:8px;min-width:220px}
+.bf-select{background:var(--s3);border:1px solid var(--border2);border-radius:6px;
+  color:var(--text);font-family:var(--mono);font-size:11px;padding:7px 10px;outline:none;width:100%}
+.bf-select option{background:var(--s2)}
+
+/* VU METER */
+.vu-meter{height:6px;background:var(--s3);border-radius:3px;overflow:hidden;margin-top:4px}
+.vu-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--green),var(--yellow),var(--red));
+  border-radius:3px;transition:width .1s linear}
+
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">📻</div>
+    <div>
+      <div class="brand-name">Radio Frequency Monitor</div>
+      <div class="brand-sub">Ghost Defense · Tool 28 · VHF · UHF · HF · AM · FM · SSB · SW · CB</div>
+    </div>
+  </div>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--muted2);background:var(--s2);
+    border:1px solid var(--border2);padding:4px 10px;border-radius:4px">ITU / FCC Public Allocations · TLP:CLEAR</span>
+</div>
+
+<!-- SPECTRUM VISUALIZATION -->
+<div class="spectrum-bar">
+  <div class="spectrum-title">Radio Spectrum — 9 kHz to 300 GHz (ITU Regions)</div>
+  <div class="spectrum-wrap" id="spectrumBar"></div>
+</div>
+
+<!-- SEARCH + FILTERS -->
+<div class="search-row">
+  <input class="search-input" id="searchInput" type="text" placeholder="Search frequency, band name, use, or mode…" oninput="applyFilter()">
+  <span class="filter-chip active" onclick="setFilter('all',this)">All</span>
+  <span class="filter-chip" onclick="setFilter('emergency',this)">Emergency</span>
+  <span class="filter-chip" onclick="setFilter('maritime',this)">Maritime</span>
+  <span class="filter-chip" onclick="setFilter('aviation',this)">Aviation</span>
+  <span class="filter-chip" onclick="setFilter('military',this)">Military</span>
+  <span class="filter-chip" onclick="setFilter('amateur',this)">Amateur</span>
+  <span class="filter-chip" onclick="setFilter('broadcast',this)">Broadcast</span>
+  <span class="filter-chip" onclick="setFilter('weather',this)">Weather</span>
+  <span class="filter-chip" onclick="setFilter('utility',this)">Utility</span>
+</div>
+
+<div class="main-layout">
+
+  <!-- SIDEBAR: Band Groups -->
+  <div class="sidebar">
+    <div class="sidebar-title">Frequency Bands</div>
+    <div id="bandList"></div>
+
+    <!-- Live Online Streams -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Live Web Receivers & Streams</div>
+      <div style="padding:10px 14px;display:flex;flex-direction:column;gap:6px" id="streamList"></div>
+    </div>
+
+    <!-- SDR Resources -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">SDR Tools & Resources</div>
+      <div style="padding:10px 14px;display:flex;flex-direction:column;gap:6px">
+        <a href="https://www.websdr.org" target="_blank" rel="noopener" style="font-size:11px;color:var(--blue);text-decoration:none;font-family:var(--mono)">🌐 WebSDR.org — live HF/VHF</a>
+        <a href="https://kiwisdr.com/public/" target="_blank" rel="noopener" style="font-size:11px;color:var(--blue);text-decoration:none;font-family:var(--mono)">🌐 KiwiSDR Public Network</a>
+        <a href="https://www.globaltuners.com" target="_blank" rel="noopener" style="font-size:11px;color:var(--blue);text-decoration:none;font-family:var(--mono)">🌐 GlobalTuners.com</a>
+        <a href="https://www.radioreference.com/db/" target="_blank" rel="noopener" style="font-size:11px;color:var(--blue);text-decoration:none;font-family:var(--mono)">📡 RadioReference Database</a>
+        <a href="https://www.sigidwiki.com" target="_blank" rel="noopener" style="font-size:11px;color:var(--blue);text-decoration:none;font-family:var(--mono)">🔍 Signal Identification Wiki</a>
+        <a href="https://www.rtl-sdr.com" target="_blank" rel="noopener" style="font-size:11px;color:var(--blue);text-decoration:none;font-family:var(--mono)">🔧 RTL-SDR Guide</a>
+        <a href="https://gqrx.dk" target="_blank" rel="noopener" style="font-size:11px;color:var(--blue);text-decoration:none;font-family:var(--mono)">🔧 GQRX SDR Software</a>
+        <a href="https://www.sdrsharp.com" target="_blank" rel="noopener" style="font-size:11px;color:var(--blue);text-decoration:none;font-family:var(--mono)">🔧 SDR# (Windows)</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT PANEL -->
+  <div class="content-panel">
+
+    <!-- Live Streams -->
+    <div class="listen-section">
+      <div class="listen-title">Internet Radio & Live Audio Streams (Public)</div>
+      <div class="listen-grid" id="listenGrid"></div>
+    </div>
+
+
+    <!-- SDR LISTENING PANEL -->
+    <div class="sdr-panel" id="sdrPanel">
+      <div class="sdr-panel-hdr" onclick="toggleSDR()">
+        <div class="sdr-panel-title">
+          <span class="ap-dot playing"></span>
+          📡 LIVE SDR LISTENING PANEL — Web Receivers &amp; Audio Streams
+          <span style="font-size:9px;color:var(--muted);font-weight:400">click to expand</span>
+        </div>
+        <span class="sdr-arr" id="sdrArr">▼</span>
+      </div>
+      <div class="sdr-panel-body" id="sdrBody">
+
+        <!-- ── BUILT-IN AUDIO PLAYER ── -->
+        <div class="tuner-card" id="builtinPlayer" style="flex:1;min-width:260px;max-width:360px">
+          <div class="tuner-hdr">
+            <span class="tuner-icon">🎵</span>
+            <div>
+              <div class="tuner-name">Audio Stream Player</div>
+              <div class="tuner-freq" id="playerFreqLabel">Paste stream URL below</div>
+            </div>
+          </div>
+          <div class="tuner-body">
+            <div class="audio-player">
+              <div class="ap-url-row">
+                <input class="ap-url" id="streamUrl" type="text"
+                  placeholder="https://... (mp3, ogg, aac stream URL)">
+              </div>
+              <div class="ap-controls">
+                <button class="ap-btn ap-play" onclick="playStream()">▶ PLAY</button>
+                <button class="ap-btn ap-stop" onclick="stopStream()">■ STOP</button>
+                <input class="ap-vol" id="streamVol" type="range" min="0" max="1" step="0.05" value="0.8"
+                  oninput="setVolume(this.value)" title="Volume">
+              </div>
+              <div class="ap-status">
+                <span class="ap-dot" id="playerDot"></span>
+                <span id="playerStatus">Ready — paste a stream URL or click a Quick Tune below</span>
+              </div>
+              <div class="vu-meter"><div class="vu-fill" id="vuFill"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── QUICK TUNE PRESETS ── -->
+        <div class="tuner-card" style="flex:1;min-width:220px;max-width:300px">
+          <div class="tuner-hdr">
+            <span class="tuner-icon">⚡</span>
+            <div>
+              <div class="tuner-name">Quick Tune Presets</div>
+              <div class="tuner-freq">Public broadcast streams</div>
+            </div>
+          </div>
+          <div class="tuner-body" style="display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:4px">NOAA Weather Radio (NWS)</div>
+            <button class="listen-btn" style="text-align:left;padding:5px 8px;width:100%"
+              onclick="quickTune('https://www.broadcastify.com/webPlayer/4090','NOAA Weather WX1 — 162.400 MHz')">
+              🌦️ NOAA WX1 — 162.400 MHz</button>
+            <button class="listen-btn" style="text-align:left;padding:5px 8px;width:100%"
+              onclick="quickTune('https://www.broadcastify.com/webPlayer/24896','NOAA Weather WX2 — 162.425 MHz')">
+              🌦️ NOAA WX2 — 162.425 MHz</button>
+            <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin:6px 0 4px">Aviation ATC (LiveATC)</div>
+            <button class="listen-btn" style="text-align:left;padding:5px 8px;width:100%"
+              onclick="openExternal('https://www.liveatc.net/search/?icao=KJFK','LiveATC — KJFK New York')">
+              ✈️ KJFK New York Approach</button>
+            <button class="listen-btn" style="text-align:left;padding:5px 8px;width:100%"
+              onclick="openExternal('https://www.liveatc.net/search/?icao=KLAX','LiveATC — KLAX Los Angeles')">
+              ✈️ KLAX Los Angeles Tower</button>
+            <button class="listen-btn" style="text-align:left;padding:5px 8px;width:100%"
+              onclick="openExternal('https://www.liveatc.net/search/?icao=EGLL','LiveATC — EGLL London Heathrow')">
+              ✈️ EGLL London Heathrow</button>
+            <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin:6px 0 4px">Public Safety</div>
+            <button class="listen-btn" style="text-align:left;padding:5px 8px;width:100%"
+              onclick="openExternal('https://www.broadcastify.com/listen/','Broadcastify Scanner Feed')">
+              🚨 Broadcastify — Scanner Feeds</button>
+          </div>
+        </div>
+
+        <!-- ── WEBSDR EMBED ── -->
+        <div class="tuner-card websdr-embed" style="flex:2;min-width:320px">
+          <div class="tuner-hdr">
+            <span class="tuner-icon">🌐</span>
+            <div>
+              <div class="tuner-name">WebSDR — Live HF/VHF Receiver</div>
+              <div class="tuner-freq" id="websdrFreqLabel">Tune any frequency via WebSDR network</div>
+            </div>
+          </div>
+          <div class="tuner-body">
+            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+              <button class="listen-btn" onclick="loadWebSDR('http://websdr.ewi.utwente.nl:8901/','Netherlands — Wide HF coverage')">🇳🇱 Netherlands HF</button>
+              <button class="listen-btn" onclick="loadWebSDR('http://www.websdr.org/','Global WebSDR Index')">🌍 WebSDR Index</button>
+              <button class="listen-btn" onclick="loadWebSDR('http://kiwisdr.com/public/','KiwiSDR Network')">📡 KiwiSDR Network</button>
+              <button class="listen-btn" onclick="loadWebSDR('http://sdr.hu/','SDR.hu Receivers')">🔍 SDR.hu</button>
+            </div>
+            <iframe id="websdrFrame" src="about:blank" height="320"
+              style="width:100%;border:1px solid var(--border2);border-radius:6px;background:var(--s3)"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+            <div class="embed-note">
+              ⓘ WebSDR receivers are third-party public services. If embed is blocked, click Open in Tab.
+              Tune to a specific frequency by clicking <b>TUNE</b> on any row in the frequency table below.
+              <button class="listen-btn" style="margin-left:4px" id="websdrTabBtn" onclick="openExternal(document.getElementById('websdrSrc').value||'http://websdr.org','WebSDR')">↗ Open in Tab</button>
+              <input type="hidden" id="websdrSrc" value="http://websdr.org">
+            </div>
+          </div>
+        </div>
+
+        <!-- ── KIWISDR TUNER ── -->
+        <div class="tuner-card" style="flex:1;min-width:220px;max-width:280px">
+          <div class="tuner-hdr">
+            <span class="tuner-icon">📻</span>
+            <div>
+              <div class="tuner-name">KiwiSDR Tuner</div>
+              <div class="tuner-freq">Global receiver network</div>
+            </div>
+          </div>
+          <div class="tuner-body" style="display:flex;flex-direction:column;gap:7px">
+            <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">Enter frequency (kHz) to tune:</div>
+            <div style="display:flex;gap:6px">
+              <input class="ap-url" id="kiwiFreqInput" type="number"
+                placeholder="e.g. 14300" style="width:120px" onkeydown="if(event.key==='Enter')tuneKiwi()">
+              <select class="ap-url" id="kiwiMode" style="width:80px">
+                <option>USB</option><option>LSB</option><option>AM</option>
+                <option>FM</option><option>CW</option><option>NBFM</option>
+              </select>
+            </div>
+            <button class="ap-btn ap-play" onclick="tuneKiwi()" style="width:100%">📡 TUNE KIWISDR</button>
+            <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:4px">Popular KiwiSDR stations:</div>
+            <button class="listen-btn" style="text-align:left;padding:5px 8px;width:100%"
+              onclick="loadKiwiPreset('kiwisdr.k2sdrmh.net:8073',14300,'USB','NJ USA — 20m Ham')">🇺🇸 New Jersey — 20m USB</button>
+            <button class="listen-btn" style="text-align:left;padding:5px 8px;width:100%"
+              onclick="loadKiwiPreset('sdrsyd.hopto.org:8073',7200,'USB','Sydney AU — 40m Ham')">🇦🇺 Sydney AU — 40m USB</button>
+            <button class="listen-btn" style="text-align:left;padding:5px 8px;width:100%"
+              onclick="loadKiwiPreset('80.211.64.58:8073',2182,'USB','EU — 2182kHz Maritime')">🌊 EU — 2182 kHz Maritime</button>
+            <button class="listen-btn" style="text-align:left;padding:5px 8px;width:100%"
+              onclick="loadKiwiPreset('sdr.hu',9400,'AM','SW Broadcast 31m')">📻 SW 31m Broadcast AM</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Frequency Table -->
+    <div class="table-wrap">
+      <table class="freq-table">
+        <thead>
+          <tr>
+            <th onclick="sortTable('freq')">Frequency ⇅</th>
+            <th onclick="sortTable('band')">Band</th>
+            <th onclick="sortTable('mode')">Mode</th>
+            <th onclick="sortTable('category')">Category</th>
+            <th>Description / Use</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody id="freqTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="export-row">
+      <button class="exp-btn exp-csv" onclick="exportCSV()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export CSV</button>
+      <button class="exp-btn exp-html" onclick="exportHTML()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Reference Sheet</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── FREQUENCY DATABASE ────────────────────────────────────────────────────────
+// Source: ITU Radio Regulations, FCC Part 97, NTIA, IMO, ICAO Annex 10,
+// EIA/TIA standards — all public domain / TLP:CLEAR
+var FREQS = [
+  // ─── VERY LOW FREQUENCY (VLF) ───────────────────────────────────────────────
+  { freqHz:16400,   freqStr:'16.4 kHz',  band:'VLF',  mode:'CW',      category:'military',   desc:'US Navy submarine ELF/VLF communications (NWC Harold E. Holt)', notes:'One-way broadcast to submerged submarines' },
+  { freqHz:17200,   freqStr:'17.2 kHz',  band:'VLF',  mode:'CW',      category:'military',   desc:'NAA Cutler, ME — US Navy TACAMO transmitter', notes:'US nuclear command authority' },
+  { freqHz:21400,   freqStr:'21.4 kHz',  band:'VLF',  mode:'CW',      category:'military',   desc:'NPM Pearl Harbor — US Navy', notes:'Pacific submarine communications' },
+  { freqHz:24000,   freqStr:'24.0 kHz',  band:'VLF',  mode:'CW',      category:'military',   desc:'NML LaMoure ND — US Navy submarine comms', notes:'' },
+
+  // ─── LONGWAVE / AM BROADCAST (LW) ───────────────────────────────────────────
+  { freqHz:153000,  freqStr:'153 kHz',   band:'LW',   mode:'AM',      category:'broadcast',  desc:'Longwave AM broadcast — Europe (France Inter)', notes:'Longwave broadcast region 1 (Europe/Africa)' },
+  { freqHz:198000,  freqStr:'198 kHz',   band:'LW',   mode:'AM',      category:'broadcast',  desc:'BBC Radio 4 LW — UK national', notes:'Emergency broadcast station UK' },
+  { freqHz:243000,  freqStr:'243 kHz',   band:'MF',   mode:'AM',      category:'emergency',  desc:'Military aeronautical emergency (GUARD) — NATO', notes:'International distress military aviation' },
+
+  // ─── AM BROADCAST (MF) ──────────────────────────────────────────────────────
+  { freqHz:530000,  freqStr:'530 kHz',   band:'AM',   mode:'AM',      category:'broadcast',  desc:'AM Broadcast Band start (US/ITU Region 2)', notes:'530–1700 kHz US AM broadcast' },
+  { freqHz:640000,  freqStr:'640 kHz',   band:'AM',   mode:'AM',      category:'emergency',  desc:'US Emergency Alert System primary entrypoint', notes:'640 & 1240 kHz EAS primary monitor' },
+  { freqHz:1240000, freqStr:'1240 kHz',  band:'AM',   mode:'AM',      category:'emergency',  desc:'US Emergency Alert System primary monitor', notes:'Check local EAS assignments' },
+  { freqHz:1700000, freqStr:'1700 kHz',  band:'AM',   mode:'AM',      category:'broadcast',  desc:'AM Broadcast Band end (US)', notes:'Also used for travel info/HAR' },
+
+  // ─── HF DISTRESS & CALLING ──────────────────────────────────────────────────
+  { freqHz:2182000, freqStr:'2182 kHz',  band:'HF',   mode:'USB',     category:'emergency',  desc:'INTERNATIONAL DISTRESS — Maritime MF/HF radiotelephone', notes:'⚠ PRIMARY global maritime distress frequency (ITU)' },
+  { freqHz:2187500, freqStr:'2187.5 kHz',band:'HF',   mode:'DSC',     category:'emergency',  desc:'MF DSC distress and calling — GMDSS', notes:'Digital Selective Calling distress' },
+  { freqHz:3023000, freqStr:'3023 kHz',  band:'HF',   mode:'USB',     category:'aviation',   desc:'SAR (Search and Rescue) coordination — Scene of Search', notes:'International SAR secondary' },
+  { freqHz:3155000, freqStr:'3155 kHz',  band:'HF',   mode:'USB',     category:'emergency',  desc:'Aeronautical emergency — US/Canada', notes:'Inter-facility aviation comms' },
+  { freqHz:4125000, freqStr:'4125 kHz',  band:'HF',   mode:'USB',     category:'emergency',  desc:'Maritime distress and safety calling (4 MHz band)', notes:'Watch maintained with 2182 kHz' },
+  { freqHz:4177500, freqStr:'4177.5 kHz',band:'HF',   mode:'DSC',     category:'emergency',  desc:'HF DSC distress — 4 MHz', notes:'GMDSS DSC distress' },
+  { freqHz:5680000, freqStr:'5680 kHz',  band:'HF',   mode:'USB',     category:'aviation',   desc:'SAR on-scene coordination — aeronautical', notes:'Primary SAR on-scene frequency' },
+  { freqHz:6215000, freqStr:'6215 kHz',  band:'HF',   mode:'USB',     category:'emergency',  desc:'Maritime distress and safety — 6 MHz', notes:'Supplementary distress' },
+  { freqHz:6312000, freqStr:'6312 kHz',  band:'HF',   mode:'DSC',     category:'emergency',  desc:'HF DSC distress — 6 MHz', notes:'GMDSS DSC' },
+  { freqHz:7300000, freqStr:'7300 kHz',  band:'HF',   mode:'USB',     category:'amateur',    desc:'40m Ham upper boundary / shortwave broadcast starts', notes:'40m voice — 7.2–7.3 MHz USB' },
+  { freqHz:8364000, freqStr:'8364 kHz',  band:'HF',   mode:'CW',      category:'emergency',  desc:'Survival craft distress — CW', notes:'Lifeboat/raft emergency CW' },
+  { freqHz:8291000, freqStr:'8291 kHz',  band:'HF',   mode:'USB',     category:'emergency',  desc:'Maritime distress and safety — 8 MHz', notes:'Primary HF oceanic distress' },
+  { freqHz:8414500, freqStr:'8414.5 kHz',band:'HF',   mode:'DSC',     category:'emergency',  desc:'HF DSC distress — 8 MHz (PRIMARY BAND)', notes:'⚠ Most widely monitored HF DSC band' },
+  { freqHz:11175000,freqStr:'11175 kHz', band:'HF',   mode:'USB',     category:'military',   desc:'USAF Global HF Network — primary', notes:'Andrews AFB + USAF HFGCS primary' },
+  { freqHz:11226000,freqStr:'11226 kHz', band:'HF',   mode:'USB',     category:'military',   desc:'USAF HFGCS secondary', notes:'High Frequency Global Communications System' },
+  { freqHz:12290000,freqStr:'12290 kHz', band:'HF',   mode:'USB',     category:'emergency',  desc:'Maritime distress — 12 MHz', notes:'Atlantic/Pacific offshore monitoring' },
+  { freqHz:12577000,freqStr:'12577 kHz', band:'HF',   mode:'DSC',     category:'emergency',  desc:'HF DSC distress — 12 MHz', notes:'GMDSS DSC' },
+  { freqHz:14300000,freqStr:'14300 kHz', band:'HF',   mode:'USB',     category:'emergency',  desc:'International Assistance & Traffic Net — IARN', notes:'Ham EMCOMM — disaster coordination' },
+  { freqHz:14313000,freqStr:'14313 kHz', band:'HF',   mode:'USB',     category:'amateur',    desc:'20m Maritime mobile net / Pacific net', notes:'Informal worldwide SSB net' },
+  { freqHz:16420000,freqStr:'16420 kHz', band:'HF',   mode:'USB',     category:'emergency',  desc:'Maritime distress — 16 MHz', notes:'16 MHz distress/safety' },
+  { freqHz:16804500,freqStr:'16804.5 kHz',band:'HF',  mode:'DSC',     category:'emergency',  desc:'HF DSC distress — 16 MHz', notes:'GMDSS DSC primary oceanic' },
+  { freqHz:17314000,freqStr:'17314 kHz', band:'HF',   mode:'USB',     category:'military',   desc:'USAF HFGCS auxiliary', notes:'' },
+  { freqHz:20915000,freqStr:'20915 kHz', band:'HF',   mode:'USB',     category:'military',   desc:'US Military HFGCS', notes:'' },
+  { freqHz:21960000,freqStr:'21960 kHz', band:'HF',   mode:'USB',     category:'military',   desc:'US Military Global HF', notes:'' },
+
+  // ─── SHORTWAVE BROADCAST ─────────────────────────────────────────────────────
+  { freqHz:5900000, freqStr:'5.9–6.2 MHz',band:'SW',  mode:'AM',      category:'broadcast',  desc:'49m Shortwave broadcast band — worldwide', notes:'VOA, BBC, RFI, Deutsche Welle, China Radio' },
+  { freqHz:7100000, freqStr:'7.1–7.35 MHz',band:'SW', mode:'AM',      category:'broadcast',  desc:'41m Shortwave broadcast', notes:'Region 1/3 primary band' },
+  { freqHz:9400000, freqStr:'9.4–9.9 MHz', band:'SW', mode:'AM',      category:'broadcast',  desc:'31m Shortwave broadcast (most popular)', notes:'VOA, BBC World Service, BBC Hindi' },
+  { freqHz:11600000,freqStr:'11.6–12.1 MHz',band:'SW',mode:'AM',      category:'broadcast',  desc:'25m Shortwave broadcast', notes:'Excellent daytime propagation' },
+  { freqHz:13570000,freqStr:'13.57–13.87 MHz',band:'SW',mode:'AM',    category:'broadcast',  desc:'22m Shortwave broadcast', notes:'Daytime tropical DX' },
+  { freqHz:15100000,freqStr:'15.1–15.8 MHz',band:'SW',mode:'AM',      category:'broadcast',  desc:'19m Shortwave broadcast', notes:'Excellent for inter-continental' },
+  { freqHz:17480000,freqStr:'17.48–17.9 MHz',band:'SW',mode:'AM',     category:'broadcast',  desc:'16m Shortwave broadcast', notes:'Daytime long-distance' },
+  { freqHz:21450000,freqStr:'21.45–21.85 MHz',band:'SW',mode:'AM',    category:'broadcast',  desc:'13m Shortwave broadcast', notes:'Best during solar maximum' },
+
+  // ─── VHF MARITIME ────────────────────────────────────────────────────────────
+  { freqHz:156000000,freqStr:'156.0 MHz',band:'VHF', mode:'NFM',     category:'maritime',   desc:'Ch 01 — Port operations and ship movement', notes:'VHF Marine Ch 01' },
+  { freqHz:156300000,freqStr:'156.3 MHz',band:'VHF', mode:'NFM',     category:'maritime',   desc:'Ch 06 — Intership safety / SAR primary', notes:'Primary SAR inter-ship' },
+  { freqHz:156525000,freqStr:'156.525 MHz',band:'VHF',mode:'DSC',    category:'emergency',  desc:'Ch 70 — INTERNATIONAL DISTRESS DSC (VHF)', notes:'⚠ GMDSS primary VHF DSC distress' },
+  { freqHz:156600000,freqStr:'156.6 MHz', band:'VHF', mode:'NFM',    category:'maritime',   desc:'Ch 12 — Port operations', notes:'Vessel traffic service' },
+  { freqHz:156650000,freqStr:'156.65 MHz',band:'VHF', mode:'NFM',    category:'maritime',   desc:'Ch 13 — Intership navigation safety (bridge-to-bridge)', notes:'Mandatory watchkeeping many areas' },
+  { freqHz:156700000,freqStr:'156.7 MHz', band:'VHF', mode:'NFM',    category:'maritime',   desc:'Ch 14 — Port operations / VTS', notes:'Vessel Traffic Service' },
+  { freqHz:156800000,freqStr:'156.8 MHz', band:'VHF', mode:'NFM',    category:'emergency',  desc:'Ch 16 — INTERNATIONAL DISTRESS, SAFETY & CALLING', notes:'⚠ PRIMARY VHF maritime distress — all vessels monitor' },
+  { freqHz:157025000,freqStr:'157.025 MHz',band:'VHF',mode:'NFM',    category:'maritime',   desc:'Ch 21A — US Coast Guard working channel', notes:'USCG tactical' },
+  { freqHz:157100000,freqStr:'157.1 MHz', band:'VHF', mode:'NFM',    category:'maritime',   desc:'Ch 22A — US Coast Guard liaison / SAR coordination', notes:'USCG primary liaison' },
+  { freqHz:161975000,freqStr:'161.975 MHz',band:'VHF',mode:'NFM',    category:'maritime',   desc:'AIS Channel A (87B)', notes:'Automatic Identification System' },
+  { freqHz:162025000,freqStr:'162.025 MHz',band:'VHF',mode:'NFM',    category:'maritime',   desc:'AIS Channel B (88B)', notes:'Automatic Identification System' },
+
+  // ─── VHF WEATHER ─────────────────────────────────────────────────────────────
+  { freqHz:162400000,freqStr:'162.400 MHz',band:'VHF',mode:'WFM',    category:'weather',    desc:'NOAA Weather Radio WX1', notes:'US NWS continuous weather broadcast' },
+  { freqHz:162425000,freqStr:'162.425 MHz',band:'VHF',mode:'WFM',    category:'weather',    desc:'NOAA Weather Radio WX2', notes:'SAME alerts — tornado/hurricane warnings' },
+  { freqHz:162450000,freqStr:'162.450 MHz',band:'VHF',mode:'WFM',    category:'weather',    desc:'NOAA Weather Radio WX3', notes:'' },
+  { freqHz:162475000,freqStr:'162.475 MHz',band:'VHF',mode:'WFM',    category:'weather',    desc:'NOAA Weather Radio WX4', notes:'' },
+  { freqHz:162500000,freqStr:'162.500 MHz',band:'VHF',mode:'WFM',    category:'weather',    desc:'NOAA Weather Radio WX5', notes:'' },
+  { freqHz:162525000,freqStr:'162.525 MHz',band:'VHF',mode:'WFM',    category:'weather',    desc:'NOAA Weather Radio WX6', notes:'' },
+  { freqHz:162550000,freqStr:'162.550 MHz',band:'VHF',mode:'WFM',    category:'weather',    desc:'NOAA Weather Radio WX7 (most common)', notes:'Primary US NWR frequency' },
+
+  // ─── VHF AVIATION ────────────────────────────────────────────────────────────
+  { freqHz:118000000,freqStr:'118.0 MHz', band:'VHF', mode:'AM',      category:'aviation',   desc:'Aviation VHF start — tower/approach/departure', notes:'118–136.975 MHz VHF airband' },
+  { freqHz:121500000,freqStr:'121.5 MHz', band:'VHF', mode:'AM',      category:'emergency',  desc:'INTERNATIONAL AERONAUTICAL EMERGENCY (GUARD)', notes:'⚠ Primary civilian aviation distress — all aircraft monitor' },
+  { freqHz:122750000,freqStr:'122.75 MHz',band:'VHF', mode:'AM',      category:'aviation',   desc:'CTAF / UNICOM — uncontrolled airports (US)', notes:'Common Traffic Advisory Frequency' },
+  { freqHz:123450000,freqStr:'123.45 MHz',band:'VHF', mode:'AM',      category:'aviation',   desc:'Aviation air-to-air frequency', notes:'GA air-to-air / sport aviation' },
+  { freqHz:123500000,freqStr:'123.5 MHz', band:'VHF', mode:'AM',      category:'aviation',   desc:'UNICOM / AWOS — airport advisory', notes:'' },
+  { freqHz:243000000,freqStr:'243.0 MHz', band:'UHF', mode:'AM',      category:'emergency',  desc:'MILITARY AERONAUTICAL EMERGENCY (GUARD) UHF', notes:'⚠ Military distress — NATO standard (10x 121.5 MHz)' },
+
+  // ─── FM BROADCAST ────────────────────────────────────────────────────────────
+  { freqHz:87500000, freqStr:'87.5 MHz',  band:'FM',  mode:'WFM',     category:'broadcast',  desc:'FM Broadcast Band start', notes:'87.5–108 MHz US/ITU Region 2' },
+  { freqHz:90900000, freqStr:'90.9 MHz',  band:'FM',  mode:'WFM',     category:'emergency',  desc:'Common EAS / public radio frequency (varies)', notes:'NPR / public station common assignment' },
+  { freqHz:108000000,freqStr:'108.0 MHz', band:'FM',  mode:'WFM',     category:'broadcast',  desc:'FM Broadcast Band end', notes:'108.0 MHz upper limit' },
+
+  // ─── VHF PUBLIC SAFETY ────────────────────────────────────────────────────────
+  { freqHz:151940000,freqStr:'151.940 MHz',band:'VHF',mode:'NFM',     category:'utility',    desc:'US itinerant business radio / on-site operations', notes:'FCC Part 90 itinerant' },
+  { freqHz:154800000,freqStr:'154.800 MHz',band:'VHF',mode:'NFM',     category:'emergency',  desc:'Fire / EMS dispatch (common US frequency)', notes:'Varies by jurisdiction' },
+  { freqHz:155340000,freqStr:'155.340 MHz',band:'VHF',mode:'NFM',     category:'emergency',  desc:'Law enforcement / interoperability', notes:'VCALL — national law enforcement calling' },
+  { freqHz:155475000,freqStr:'155.475 MHz',band:'VHF',mode:'NFM',     category:'emergency',  desc:'VTAC national interoperability channel', notes:'National interop — fire/EMS' },
+  { freqHz:155340000,freqStr:'156.075 MHz',band:'VHF',mode:'NFM',     category:'emergency',  desc:'ITAC interoperability — DHS', notes:'Federal/local coordination' },
+
+  // ─── HAM VHF/UHF ──────────────────────────────────────────────────────────────
+  { freqHz:144200000,freqStr:'144.200 MHz',band:'VHF', mode:'USB',    category:'amateur',    desc:'2m SSB calling frequency', notes:'Weak signal / DX / EME calling' },
+  { freqHz:144390000,freqStr:'144.390 MHz',band:'VHF', mode:'digital',category:'amateur',    desc:'APRS national frequency (US)', notes:'Automatic Packet Reporting System' },
+  { freqHz:146520000,freqStr:'146.520 MHz',band:'VHF', mode:'NFM',    category:'amateur',    desc:'2m National calling frequency (US)', notes:'Primary simplex calling — Ham VHF' },
+  { freqHz:146580000,freqStr:'146.580 MHz',band:'VHF', mode:'NFM',    category:'amateur',    desc:'2m simplex — common local', notes:'' },
+  { freqHz:223500000,freqStr:'223.500 MHz',band:'VHF', mode:'NFM',    category:'amateur',    desc:'1.25m national calling frequency', notes:'Less common band — 220 MHz' },
+  { freqHz:432100000,freqStr:'432.100 MHz',band:'UHF', mode:'USB',    category:'amateur',    desc:'70cm SSB calling frequency', notes:'Weak signal DX' },
+  { freqHz:446000000,freqStr:'446.000 MHz',band:'UHF', mode:'NFM',    category:'amateur',    desc:'70cm national simplex calling (US)', notes:'UHF Ham simplex' },
+  { freqHz:446006250,freqStr:'446.00625 MHz',band:'UHF',mode:'NFM',  category:'amateur',    desc:'PMR446 Channel 1 — Europe licence-free', notes:'EU equivalent of US FRS Ch1' },
+
+  // ─── FRS / GMRS / MURS ────────────────────────────────────────────────────────
+  { freqHz:462562500,freqStr:'462.5625 MHz',band:'UHF',mode:'NFM',    category:'utility',    desc:'FRS/GMRS Channel 1 (US)', notes:'Family Radio Service — no license required (FRS)' },
+  { freqHz:462587500,freqStr:'462.5875 MHz',band:'UHF',mode:'NFM',    category:'utility',    desc:'FRS/GMRS Channel 2', notes:'' },
+  { freqHz:462612500,freqStr:'462.6125 MHz',band:'UHF',mode:'NFM',    category:'utility',    desc:'FRS/GMRS Channel 3', notes:'' },
+  { freqHz:462637500,freqStr:'462.6375 MHz',band:'UHF',mode:'NFM',    category:'utility',    desc:'FRS/GMRS Channel 4', notes:'' },
+  { freqHz:462662500,freqStr:'462.6625 MHz',band:'UHF',mode:'NFM',    category:'utility',    desc:'FRS/GMRS Channel 5', notes:'' },
+  { freqHz:462687500,freqStr:'462.6875 MHz',band:'UHF',mode:'NFM',    category:'utility',    desc:'FRS/GMRS Channel 6', notes:'' },
+  { freqHz:462712500,freqStr:'462.7125 MHz',band:'UHF',mode:'NFM',    category:'utility',    desc:'FRS/GMRS Channel 7', notes:'' },
+  { freqHz:151940000,freqStr:'151.820 MHz', band:'VHF',mode:'NFM',    category:'utility',    desc:'MURS Channel 1 — Multi-Use Radio Service (US)', notes:'No license — 2W max' },
+  { freqHz:151940000,freqStr:'151.880 MHz', band:'VHF',mode:'NFM',    category:'utility',    desc:'MURS Channel 2', notes:'' },
+  { freqHz:154570000,freqStr:'154.570 MHz', band:'VHF',mode:'NFM',    category:'utility',    desc:'MURS Channel 3', notes:'' },
+  { freqHz:154600000,freqStr:'154.600 MHz', band:'VHF',mode:'NFM',    category:'utility',    desc:'MURS Channel 4', notes:'' },
+
+  // ─── CB RADIO ─────────────────────────────────────────────────────────────────
+  { freqHz:26965000, freqStr:'26.965 MHz', band:'CB',  mode:'AM',      category:'utility',    desc:'CB Channel 1', notes:'Citizens Band — 27 MHz AM/SSB' },
+  { freqHz:27065000, freqStr:'27.065 MHz', band:'CB',  mode:'AM',      category:'utility',    desc:'CB Channel 9 — EMERGENCY / MOTORIST AID', notes:'⚠ CB emergency calling — monitored by REACT' },
+  { freqHz:27085000, freqStr:'27.085 MHz', band:'CB',  mode:'AM',      category:'utility',    desc:'CB Channel 11 — general calling (some regions)', notes:'' },
+  { freqHz:27185000, freqStr:'27.185 MHz', band:'CB',  mode:'AM',      category:'utility',    desc:'CB Channel 19 — TRUCKERS / HIGHWAY (US)', notes:'Primary highway monitoring — 18-wheelers' },
+  { freqHz:27235000, freqStr:'27.235 MHz', band:'CB',  mode:'AM',      category:'utility',    desc:'CB Channel 23 — data / digital', notes:'' },
+  { freqHz:27415000, freqStr:'27.415 MHz', band:'CB',  mode:'USB',     category:'utility',    desc:'CB Channel 36 — SSB calling (US)', notes:'SSB CB primary calling' },
+
+  // ─── SATELLITE / GPS ─────────────────────────────────────────────────────────
+  { freqHz:1176450000,freqStr:'1176.45 MHz',band:'L',  mode:'digital', category:'utility',    desc:'GPS L5 — civilian safety-of-life signal', notes:'Most robust GPS signal' },
+  { freqHz:1227600000,freqStr:'1227.60 MHz',band:'L',  mode:'digital', category:'utility',    desc:'GPS L2 — carrier frequency', notes:'Semi-codeless civilian/military' },
+  { freqHz:1381000000,freqStr:'1381 MHz',   band:'L',  mode:'digital', category:'utility',    desc:'Iridium satellite phone uplink', notes:'L-band mobile satellite' },
+  { freqHz:1525000000,freqStr:'1525–1559 MHz',band:'L',mode:'digital', category:'maritime',   desc:'Inmarsat / GMDSS satellite — L-band', notes:'BGAN, FleetBroadband downlink' },
+  { freqHz:1559000000,freqStr:'1559–1610 MHz',band:'L',mode:'digital', category:'utility',    desc:'GPS/GNSS navigation signals (L1)', notes:'GPS L1 C/A 1575.42 MHz' },
+  { freqHz:1616000000,freqStr:'1616–1626.5 MHz',band:'L',mode:'digital',category:'utility',  desc:'Iridium satellite — primary band', notes:'66 satellites LEO constellation' },
+
+  // ─── ISM / UNLICENSED ─────────────────────────────────────────────────────────
+  { freqHz:433920000,freqStr:'433.92 MHz', band:'UHF', mode:'digital', category:'utility',    desc:'ISM band — remote controls, sensors, LoRa (EU)', notes:'433 MHz ISM Europe/Asia' },
+  { freqHz:868000000,freqStr:'868 MHz',    band:'UHF', mode:'digital', category:'utility',    desc:'EU SRD / LoRaWAN IoT band', notes:'European IoT / LPWAN' },
+  { freqHz:915000000,freqStr:'915 MHz',    band:'UHF', mode:'digital', category:'utility',    desc:'US ISM / LoRaWAN / RFID', notes:'North America IoT / LPWAN' },
+  { freqHz:2400000000,freqStr:'2.4 GHz',   band:'SHF', mode:'digital', category:'utility',    desc:'Wi-Fi 802.11 b/g/n, Bluetooth, ZigBee, drones', notes:'Heavily congested — drone control frequency' },
+  { freqHz:5800000000,freqStr:'5.8 GHz',   band:'SHF', mode:'digital', category:'utility',    desc:'Wi-Fi 802.11 a/n/ac, drone video links', notes:'Also used for drone FPV video' },
+];
+
+// ── BAND GROUPS ────────────────────────────────────────────────────────────────
+var BANDS = [
+  { id:'VLF', name:'VLF',  range:'3–30 kHz',    color:'#b48eff', desc:'Very Low Frequency — submarine comms' },
+  { id:'LW',  name:'LW',   range:'30–300 kHz',   color:'#b48eff', desc:'Longwave — broadcast Europe/Asia' },
+  { id:'AM',  name:'AM',   range:'530–1700 kHz', color:'#ffd166', desc:'AM Broadcast — medium wave' },
+  { id:'HF',  name:'HF',   range:'3–30 MHz',     color:'#4cc9f0', desc:'High Frequency — maritime, aviation, military, ham' },
+  { id:'SW',  name:'SW',   range:'2.3–26 MHz',   color:'#ff8c42', desc:'Shortwave Broadcast — international radio' },
+  { id:'CB',  name:'CB',   range:'26.9–27.4 MHz',color:'#ff8c42', desc:'Citizens Band — truckers, emergency, general' },
+  { id:'VHF', name:'VHF',  range:'30–300 MHz',   color:'#2fd98a', desc:'VHF — FM, aviation, maritime, weather, public safety' },
+  { id:'FM',  name:'FM',   range:'87.5–108 MHz', color:'#2fd98a', desc:'FM Broadcast — stereo radio' },
+  { id:'UHF', name:'UHF',  range:'300 MHz–3 GHz',color:'#ff4d4d', desc:'UHF — TV, cellular, ham, FRS, satellite' },
+  { id:'L',   name:'L-Band',range:'1–2 GHz',     color:'#5b54ff', desc:'Satellite comms — GPS, Inmarsat, Iridium' },
+  { id:'SHF', name:'SHF',  range:'3–30 GHz',     color:'#ff4d4d', desc:'Wi-Fi, microwave, radar, drones' },
+];
+
+// ── LIVE STREAM LINKS ──────────────────────────────────────────────────────────
+var STREAMS = [
+  { name:'WebSDR — HF Shortwave',  url:'http://websdr.org/',                         icon:'📻', desc:'Live HF worldwide' },
+  { name:'KiwiSDR Network',        url:'http://kiwisdr.com/public/',                 icon:'🌐', desc:'Global SDR receivers' },
+  { name:'VHF/UHF SDR — Global',  url:'https://www.globaltuners.com/',              icon:'📡', desc:'Remote tuner network' },
+  { name:'Liveatc.net — Aviation', url:'https://www.liveatc.net/',                   icon:'✈️', desc:'Live ATC audio worldwide' },
+  { name:'MarineTraffic VHF',      url:'https://www.marinetraffic.com/',             icon:'🚢', desc:'Maritime AIS + VHF' },
+  { name:'NOAA Weather Radio',     url:'https://www.weather.gov/nwr/',               icon:'🌦️', desc:'NWR stream locator' },
+  { name:'Broadcastify — Scanner', url:'https://www.broadcastify.com/',              icon:'🚨', desc:'Police/fire/EMS live' },
+  { name:'TuneIn AM/FM/SW',        url:'https://tunein.com/',                        icon:'📻', desc:'Worldwide AM/FM/SW' },
+  { name:'GlobalRadio — SW',       url:'https://short-wave.info/',                   icon:'🌍', desc:'SW schedule database' },
+  { name:'ADS-B Exchange',         url:'https://globe.adsbexchange.com/',            icon:'✈️', desc:'ADS-B + military squawk' },
+  { name:'Signal ID Wiki',         url:'https://www.sigidwiki.com/',                 icon:'🔍', desc:'Identify unknown signals' },
+  { name:'HFCC SW Schedule',       url:'https://www.hfcc.org/schedule',              icon:'📡', desc:'Shortwave broadcast schedule' },
+];
+
+// ── STATE ──────────────────────────────────────────────────────────────────────
+var activeCategory = 'all';
+var activeBand     = null;
+var sortKey        = 'freq';
+var sortDir        = 1;
+
+// ── SPECTRUM VISUALIZATION ─────────────────────────────────────────────────────
+function buildSpectrum() {
+  var segs = [
+    { label:'ELF/VLF', pct:3,  color:'#6633aa', title:'< 30 kHz — Submarine, WWVB' },
+    { label:'LW',       pct:3,  color:'#8844cc', title:'30–300 kHz — Longwave broadcast' },
+    { label:'MW/AM',    pct:5,  color:'#ffd166', title:'300 kHz–3 MHz — AM broadcast' },
+    { label:'HF/SW',    pct:12, color:'#4cc9f0', title:'3–30 MHz — HF shortwave, ham, maritime' },
+    { label:'VHF',      pct:18, color:'#2fd98a', title:'30–300 MHz — FM, aviation, maritime, VHF' },
+    { label:'UHF',      pct:22, color:'#ff8c42', title:'300 MHz–3 GHz — UHF TV, cellular, Wi-Fi' },
+    { label:'SHF',      pct:20, color:'#ff4d4d', title:'3–30 GHz — Wi-Fi 5G, radar, satellite Ku/Ka' },
+    { label:'EHF/mmWave',pct:17,color:'#ff2266', title:'30–300 GHz — mmWave 5G, automotive radar' },
+  ];
+
+  document.getElementById('spectrumBar').innerHTML = segs.map(function(s) {
+    return '<div class="spectrum-seg" style="width:'+s.pct+'%;background:'+s.color+';color:#fff" title="'+s.title+'">'
+      + '<span class="spectrum-seg-label">'+s.label+'</span>'
+      + '</div>';
+  }).join('');
+}
+
+// ── SIDEBAR: BAND LIST ─────────────────────────────────────────────────────────
+function renderBandList() {
+  document.getElementById('bandList').innerHTML = BANDS.map(function(b) {
+    var count = FREQS.filter(function(f){ return f.band === b.id; }).length;
+    var sel = activeBand === b.id;
+    return '<div class="band-item'+(sel?' selected':'')+'" onclick="selectBand(\''+b.id+'\')">'
+      + '<span class="band-dot" style="background:'+b.color+'"></span>'
+      + '<div style="flex:1"><div class="band-name">'+b.name+'</div>'
+        + '<div class="band-range">'+b.range+'</div></div>'
+      + '<span class="band-count">'+count+'</span>'
+      + '</div>';
+  }).join('');
+
+  document.getElementById('streamList').innerHTML = STREAMS.slice(0,6).map(function(s) {
+    return '<a href="'+s.url+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:7px;text-decoration:none">'
+      + '<span>'+s.icon+'</span>'
+      + '<div><div style="font-size:11px;color:var(--blue)">'+s.name+'</div>'
+        + '<div style="font-size:10px;color:var(--muted)">'+s.desc+'</div></div>'
+      + '</a>';
+  }).join('');
+}
+
+function selectBand(id) {
+  activeBand = activeBand === id ? null : id;
+  renderBandList();
+  applyFilter();
+}
+
+// ── LIVE STREAMS GRID ─────────────────────────────────────────────────────────
+function renderListenGrid() {
+  document.getElementById('listenGrid').innerHTML = STREAMS.map(function(s) {
+    return '<a class="listen-card" href="'+s.url+'" target="_blank" rel="noopener">'
+      + '<span class="listen-icon">'+s.icon+'</span>'
+      + '<div><div class="listen-name">'+s.name+'<span class="listen-live">LIVE</span></div>'
+        + '<div class="listen-freq">'+s.desc+'</div></div>'
+      + '</a>';
+  }).join('');
+}
+
+// ── FILTER & RENDER TABLE ──────────────────────────────────────────────────────
+function setFilter(cat, btn) {
+  activeCategory = cat;
+  document.querySelectorAll('.filter-chip').forEach(function(c){ c.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  applyFilter();
+}
+
+function applyFilter() {
+  var search = document.getElementById('searchInput').value.trim().toLowerCase();
+  var list = FREQS.filter(function(f) {
+    if (activeCategory !== 'all' && f.category !== activeCategory) return false;
+    if (activeBand && f.band !== activeBand) return false;
+    if (search) {
+      var haystack = (f.freqStr+' '+f.band+' '+f.mode+' '+f.category+' '+f.desc+' '+f.notes).toLowerCase();
+      return haystack.includes(search);
+    }
+    return true;
+  });
+
+  // Sort
+  list = list.slice().sort(function(a,b) {
+    if (sortKey==='freq')     return (a.freqHz - b.freqHz) * sortDir;
+    if (sortKey==='band')     return a.band.localeCompare(b.band) * sortDir;
+    if (sortKey==='mode')     return a.mode.localeCompare(b.mode) * sortDir;
+    if (sortKey==='category') return a.category.localeCompare(b.category) * sortDir;
+    return 0;
+  });
+
+  renderTable(list);
+}
+
+function sortTable(key) {
+  if (sortKey === key) sortDir *= -1;
+  else { sortKey = key; sortDir = 1; }
+  applyFilter();
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderTable(list) {
+  document.getElementById('freqTableBody').innerHTML = list.map(function(f) {
+    var modeCls = 'mode-'+f.mode.toLowerCase().replace('/','').replace('-','');
+    var catCls  = 'cat-'+f.category;
+    var isEmerg = f.category === 'emergency';
+    var tuneMode = f.mode === 'WFM' ? 'FM' : f.mode === 'NFM' ? 'NBFM' : f.mode === 'DSC' ? 'USB' : f.mode;
+    return '<tr class="fade-in"'+(isEmerg?' style="background:rgba(255,77,77,.03)"':'')+'>'
+      + '<td><span class="freq-cell"'+(isEmerg?' style="color:var(--red)"':'')+'>'+esc(f.freqStr)+'</span><button class="listen-btn" onclick="tuneToFreq('+f.freqHz/1000+',\''+tuneMode+'\',\''+esc(f.freqStr)+'\')" title="Open SDR tuned to this frequency">TUNE</button></td>'
+      + '<td style="font-family:var(--mono);font-size:11px;color:var(--muted2)">'+esc(f.band)+'</td>'
+      + '<td><span class="mode-badge '+modeCls+'">'+esc(f.mode)+'</span></td>'
+      + '<td><span class="cat-badge '+catCls+'">'+esc(f.category)+'</span></td>'
+      + '<td style="font-size:12px;color:var(--text);max-width:280px">'+esc(f.desc)+'</td>'
+      + '<td style="font-size:11px;color:var(--muted2);font-family:var(--mono);max-width:200px">'+esc(f.notes)+'</td>'
+      + '</tr>';
+  }).join('') || '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--muted)">No frequencies match your filter.</td></tr>';
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+function exportCSV() {
+  var rows = [['frequency','band','mode','category','description','notes'].join(',')];
+  FREQS.forEach(function(f) {
+    rows.push(['"'+f.freqStr+'"','"'+f.band+'"','"'+f.mode+'"','"'+f.category+'"','"'+f.desc.replace(/"/g,"'")+'"','"'+f.notes.replace(/"/g,"'")+'"'].join(','));
+  });
+  var blob = new Blob([rows.join('\n')],{type:'text/csv'});
+  var a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='radio-frequencies-ghost2210.csv'; a.click();
+}
+
+function exportHTML() {
+  var now = new Date();
+  function safe(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  var emergFreqs = FREQS.filter(function(f){ return f.category==='emergency'; });
+  var emgRows = emergFreqs.map(function(f,i){
+    return '<tr style="background:'+(i%2===0?'#fef2f2':'#fff')+'">'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-weight:600;color:#dc2626">'+safe(f.freqStr)+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:10px;color:#6b7280">'+safe(f.mode)+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:11px">'+safe(f.desc)+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:10px;color:#6b7280">'+safe(f.notes)+'</td>'
+      +'</tr>';
+  }).join('');
+
+  var allRows = FREQS.slice().sort(function(a,b){ return a.freqHz-b.freqHz; }).map(function(f,i){
+    var catColor = { emergency:'#dc2626', military:'#ef4444', maritime:'#2563eb', aviation:'#7c3aed', broadcast:'#ca8a04', amateur:'#16a34a', weather:'#0284c7', utility:'#6b7280', government:'#ea580c' }[f.category] || '#6b7280';
+    return '<tr style="background:'+(i%2===0?'#f9fafb':'#fff')+'">'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:11px;font-weight:600;color:#1d4ed8">'+safe(f.freqStr)+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:10px;color:#6b7280">'+safe(f.band)+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:10px">'+safe(f.mode)+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb"><span style="background:'+catColor+'22;color:'+catColor+';font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;border:1px solid '+catColor+'55">'+safe(f.category)+'</span></td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-size:11px">'+safe(f.desc)+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-size:10px;color:#6b7280">'+safe(f.notes)+'</td>'
+      +'</tr>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Radio Frequency Reference Sheet — Ghost Defense</title>'
+    +'<style>body{font-family:Calibri,Arial,sans-serif;margin:0;background:#f3f4f6}@media print{body{background:#fff}}</style></head><body>'
+    +'<div style="background:#0f172a;padding:20px 40px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div><div style="font-size:20px;font-weight:bold;color:#00ff41;letter-spacing:3px">GHOST DEFENSE</div>'
+        +'<div style="color:#9ca3af;font-size:12px;letter-spacing:2px;margin-top:2px">RADIO FREQUENCY REFERENCE SHEET — VHF · UHF · HF · AM · FM · SSB · SW</div></div>'
+      +'<div style="text-align:right;color:#9ca3af;font-size:11px">'+safe(now.toUTCString())+'<br>ITU / FCC / ICAO / IMO — TLP:CLEAR</div>'
+    +'</div>'
+
+    // Emergency quick-reference box
+    +'<div style="margin:16px 40px;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #fca5a5">'
+      +'<div style="background:#dc2626;padding:9px 16px"><span style="color:#fff;font-weight:bold;font-size:13px">⚠ EMERGENCY FREQUENCY QUICK REFERENCE</span></div>'
+      +'<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#fef2f2">'
+        +'<th style="padding:7px 8px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #fca5a5">Frequency</th>'
+        +'<th style="padding:7px 8px;font-size:10px;color:#6b7280;border-bottom:2px solid #fca5a5">Mode</th>'
+        +'<th style="padding:7px 8px;font-size:10px;color:#6b7280;border-bottom:2px solid #fca5a5">Use / Description</th>'
+        +'<th style="padding:7px 8px;font-size:10px;color:#6b7280;border-bottom:2px solid #fca5a5">Notes</th>'
+      +'</tr></thead><tbody>'+emgRows+'</tbody></table>'
+    +'</div>'
+
+    // Full frequency table
+    +'<div style="margin:0 40px 20px;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb">'
+      +'<div style="background:#1e293b;padding:9px 16px"><span style="color:#fff;font-weight:bold;font-size:12px">Complete Frequency Reference — '+FREQS.length+' Entries</span></div>'
+      +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#f1f5f9">'
+        +'<th style="padding:6px 8px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Frequency</th>'
+        +'<th style="padding:6px 8px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Band</th>'
+        +'<th style="padding:6px 8px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Mode</th>'
+        +'<th style="padding:6px 8px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Category</th>'
+        +'<th style="padding:6px 8px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Description</th>'
+        +'<th style="padding:6px 8px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Notes</th>'
+      +'</tr></thead><tbody>'+allRows+'</tbody></table></div>'
+    +'</div>'
+    +'<div style="background:#0f172a;padding:12px 40px;display:flex;justify-content:space-between;color:#9ca3af;font-size:11px">'
+      +'<span>Sources: ITU Radio Regulations · FCC Part 97 · ICAO Annex 10 · IMO GMDSS · NTIA Manual · All TLP:CLEAR</span>'
+      +'<span>Ghost Defense · DEFEND ALWAYS</span>'
+    +'</div></body></html>';
+
+  var blob = new Blob([html],{type:'text/html'});
+  var a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='radio-frequency-reference-'+now.toISOString().split('T')[0]+'.html'; a.click();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+buildSpectrum();
+renderBandList();
+renderListenGrid();
+applyFilter();
+
+// ── SDR PLAYER ────────────────────────────────────────────────────────────────
+var audioEl   = null;
+var audioCtx  = null;
+var analyser  = null;
+var vuTimer   = null;
+
+function toggleSDR() {
+  var body = document.getElementById('sdrBody');
+  var arr  = document.getElementById('sdrArr');
+  var open = body.classList.toggle('open');
+  arr.classList.toggle('open', open);
+}
+
+function setPlayerStatus(msg, playing) {
+  var dot = document.getElementById('playerDot');
+  var txt = document.getElementById('playerStatus');
+  if (dot) dot.className = 'ap-dot' + (playing ? ' playing' : '');
+  if (txt) txt.textContent = msg;
+}
+
+function playStream() {
+  var url = document.getElementById('streamUrl').value.trim();
+  if (!url) { setPlayerStatus('⚠ Paste a stream URL first', false); return; }
+
+  stopStream();
+
+  // Open SDR panel if closed
+  var body = document.getElementById('sdrBody');
+  if (!body.classList.contains('open')) toggleSDR();
+
+  // Use HTML5 audio for direct stream URLs
+  audioEl = new Audio();
+  audioEl.crossOrigin = 'anonymous';
+  audioEl.volume = parseFloat(document.getElementById('streamVol').value || 0.8);
+
+  audioEl.addEventListener('playing', function() {
+    setPlayerStatus('● RECEIVING — ' + url.split('/').pop(), true);
+    startVU();
+  });
+  audioEl.addEventListener('stalled', function() { setPlayerStatus('⟳ Buffering…', false); });
+  audioEl.addEventListener('error', function(e) {
+    setPlayerStatus('✗ Stream error — try another URL or use the WebSDR embed', false);
+    stopVU();
+  });
+  audioEl.addEventListener('ended', function() { setPlayerStatus('Stream ended', false); stopVU(); });
+
+  audioEl.src = url;
+  audioEl.play().catch(function(e) {
+    setPlayerStatus('✗ Playback blocked — browser requires HTTPS stream or user gesture. Try the WebSDR embed.', false);
+  });
+}
+
+function stopStream() {
+  if (audioEl) { audioEl.pause(); audioEl.src = ''; audioEl = null; }
+  stopVU();
+  setPlayerStatus('Stopped', false);
+}
+
+function setVolume(v) {
+  if (audioEl) audioEl.volume = parseFloat(v);
+}
+
+function startVU() {
+  // Simple VU animation — real analyser blocked by CORS on most streams
+  var fill = document.getElementById('vuFill');
+  if (!fill) return;
+  stopVU();
+  vuTimer = setInterval(function() {
+    if (!audioEl || audioEl.paused) { stopVU(); return; }
+    // Animate VU bar with pseudo-random signal simulation
+    var level = 20 + Math.random() * 60 + Math.sin(Date.now()/200) * 15;
+    fill.style.width = Math.min(100, Math.max(0, level)) + '%';
+  }, 80);
+}
+
+function stopVU() {
+  if (vuTimer) { clearInterval(vuTimer); vuTimer = null; }
+  var fill = document.getElementById('vuFill');
+  if (fill) fill.style.width = '0%';
+}
+
+function quickTune(url, label) {
+  document.getElementById('streamUrl').value = url;
+  document.getElementById('playerFreqLabel').textContent = label;
+  // Open panel
+  var body = document.getElementById('sdrBody');
+  if (!body.classList.contains('open')) toggleSDR();
+  // Open in new tab since Broadcastify requires it
+  openExternal(url, label);
+}
+
+function openExternal(url, label) {
+  window.open(url, '_blank', 'noopener');
+}
+
+// ── WEBSDR EMBED ──────────────────────────────────────────────────────────────
+function loadWebSDR(url, label) {
+  var frame = document.getElementById('websdrFrame');
+  var src   = document.getElementById('websdrSrc');
+  if (frame) { frame.src = url; }
+  if (src)   { src.value = url; }
+  var body = document.getElementById('sdrBody');
+  if (!body.classList.contains('open')) toggleSDR();
+  document.getElementById('websdrFreqLabel').textContent = label || url;
+}
+
+// ── KIWISDR TUNER ──────────────────────────────────────────────────────────────
+function tuneKiwi() {
+  var freqKHz = document.getElementById('kiwiFreqInput').value.trim();
+  var mode    = document.getElementById('kiwiMode').value;
+  if (!freqKHz) { alert('Enter a frequency in kHz (e.g. 14300 for 14.3 MHz)'); return; }
+  // Open KiwiSDR public list filtered to frequency
+  var url = 'http://kiwisdr.com/public/?f=' + freqKHz + '&m=' + mode.toLowerCase();
+  openExternal(url, 'KiwiSDR ' + freqKHz + ' kHz ' + mode);
+}
+
+function loadKiwiPreset(host, freqKHz, mode, label) {
+  // Build KiwiSDR direct URL
+  var url = 'http://' + host + '/?f=' + freqKHz + mode.toLowerCase();
+  document.getElementById('kiwiFreqInput').value = freqKHz;
+  document.getElementById('kiwiMode').value = mode;
+  loadWebSDR(url, label + ' — ' + freqKHz + ' kHz ' + mode);
+}
+
+// ── TUNE FROM TABLE ────────────────────────────────────────────────────────────
+function tuneToFreq(freqKHz, mode, label) {
+  // Open SDR panel
+  var body = document.getElementById('sdrBody');
+  if (!body.classList.contains('open')) toggleSDR();
+
+  document.getElementById('kiwiFreqInput').value = Math.round(freqKHz);
+  document.getElementById('kiwiMode').value = mode;
+  document.getElementById('websdrFreqLabel').textContent = 'Tuned: ' + label + ' — ' + freqKHz + ' kHz ' + mode;
+  document.getElementById('playerFreqLabel').textContent = label + ' — ' + freqKHz + ' kHz';
+
+  // Load KiwiSDR public list for this frequency
+  var kiwiUrl = 'http://kiwisdr.com/public/?f=' + Math.round(freqKHz) + '&m=' + mode.toLowerCase();
+  document.getElementById('websdrFrame').src = kiwiUrl;
+  document.getElementById('websdrSrc').value = kiwiUrl;
+
+  // Scroll to panel
+  var panel = document.getElementById('sdrPanel');
+  if (panel) panel.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+</script>
+</body>
+</html>

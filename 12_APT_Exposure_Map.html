@@ -1,0 +1,213 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>APT Profiler for ICS — Ghost Defense</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#000;--panel:#050f05;--panel2:#081408;--grn:#00ff41;--grn-dim:#00cc33;--cyan:#39c0ff;--red:#ff3333;--amber:#ffcc00;--yellow:#ffe14d;--txt:#c8e6cc;--mut:#5f7a63;--mut2:#3d5140;--line:rgba(0,255,65,.12);--line2:rgba(0,255,65,.22);--mono:'IBM Plex Mono',ui-monospace,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--mono);font-size:13px;line-height:1.5}
+a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:20px}
+header{border-bottom:1px solid var(--line2);padding-bottom:14px;margin-bottom:16px}
+.h-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.logo{width:34px;height:34px;border:2px solid var(--grn);border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--grn);font-weight:700;box-shadow:0 0 14px rgba(0,255,65,.3)}
+h1{font-size:19px;margin:0;color:var(--grn);letter-spacing:1px;text-shadow:0 0 12px rgba(0,255,65,.3)}
+.sub{font-size:10px;color:var(--mut);letter-spacing:.5px;margin-top:3px}
+.src-badge{margin-left:auto;font-size:10px;color:var(--cyan);border:1px solid var(--cyan);border-radius:5px;padding:5px 10px;white-space:nowrap}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}
+.stat{flex:1;min-width:120px;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:11px 13px}
+.stat b{font-size:24px;font-weight:800;color:var(--grn);display:block;text-shadow:0 0 10px rgba(0,255,65,.25)}
+.stat span{font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:1px}
+.ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.ctl input,.ctl select{font-family:var(--mono);font-size:12px;background:#030703;color:var(--txt);border:1px solid var(--line2);border-radius:5px;padding:8px 11px}
+.ctl input{flex:1;min-width:200px}
+.btn{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.5px;cursor:pointer;background:var(--grn);color:#04140b;border:none;border-radius:5px;padding:8px 14px}
+.btn.ghost{background:transparent;color:var(--cyan);border:1px solid var(--cyan)}
+.btn:hover{filter:brightness(1.1)}
+.layout{display:grid;grid-template-columns:300px 1fr;gap:16px}
+@media(max-width:760px){.layout{grid-template-columns:1fr}}
+.glist{border:1px solid var(--line);background:var(--panel);border-radius:6px;max-height:640px;overflow-y:auto}
+.gitem{padding:11px 13px;border-bottom:1px solid var(--line);cursor:pointer;transition:.12s}
+.gitem:hover{background:var(--panel2)}
+.gitem.on{background:rgba(0,255,65,.08);border-left:3px solid var(--grn)}
+.gitem .gn{font-weight:700;color:var(--txt);font-size:13px}
+.gitem.on .gn{color:var(--grn)}
+.gitem .ga{font-size:9.5px;color:var(--mut);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gitem .gmeta{font-size:9px;color:var(--cyan);margin-top:4px}
+.profile{border:1px solid var(--line2);background:var(--panel);border-radius:6px;padding:18px}
+.p-name{font-size:20px;font-weight:800;color:var(--grn);letter-spacing:1px}
+.p-id{font-size:11px;color:var(--mut);margin-left:8px}
+.p-aliases{font-size:11px;color:var(--cyan);margin-top:5px}
+.p-desc{font-size:12px;color:var(--txt);line-height:1.65;margin:14px 0;padding:12px;background:#030703;border-radius:5px;border-left:2px solid var(--line2)}
+.p-sec{margin:16px 0}
+.p-sec h3{font-size:11px;color:var(--grn);letter-spacing:1px;margin:0 0 8px;text-transform:uppercase}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{font-size:10.5px;padding:4px 10px;border-radius:12px;border:1px solid var(--line2);background:#030703}
+.chip.sec{color:var(--amber);border-color:rgba(255,204,0,.35)}
+.chip.mal{color:var(--red);border-color:rgba(255,51,51,.35)}
+.chip.tech{color:var(--cyan);border-color:rgba(57,192,255,.3)}
+.chip.tech b{color:var(--grn);font-weight:700}
+.none{color:var(--mut);font-size:11px;font-style:italic}
+.tac{font-size:8.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 5px}
+.note{font-size:10px;color:var(--mut2);line-height:1.6;margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+footer{margin-top:20px;padding-top:14px;border-top:1px solid var(--line2);font-size:9.5px;color:var(--mut);line-height:1.7;text-align:center}
+.status{font-size:10px;color:var(--cyan);min-height:14px}
+.secbar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.secbtn{font-family:var(--mono);font-size:10.5px;letter-spacing:.4px;cursor:pointer;background:#030703;color:var(--txt);
+  border:1px solid var(--line2);border-radius:14px;padding:6px 12px;transition:.13s;display:flex;align-items:center;gap:6px}
+.secbtn:hover{border-color:var(--amber);color:var(--amber)}
+.secbtn.on{background:rgba(255,204,0,.14);color:var(--amber);border-color:var(--amber);font-weight:700}
+.secbtn .sc{font-size:9px;color:var(--mut);background:#000;border-radius:8px;padding:1px 6px}
+.secbtn.on .sc{color:var(--amber)}
+</style></head><body>
+<div class="wrap">
+<header>
+  <div class="h-top">
+    <div class="logo">G</div>
+    <div>
+      <h1>APT PROFILER FOR ICS</h1>
+      <div class="sub">GHOST DEFENSE · Tool 12 · Grounded Handling Of Sourced Threat-intel · DEFENSIVE INTELLIGENCE ONLY</div>
+    </div>
+    <div class="src-badge" id="srcBadge">MITRE ATT&CK for ICS</div>
+  </div>
+  <div class="stats">
+    <div class="stat"><b id="stGroups">0</b><span>ICS Threat Groups</span></div>
+    <div class="stat"><b id="stTech">0</b><span>Technique Mappings</span></div>
+    <div class="stat"><b id="stMal">0</b><span>Malware / Tooling</span></div>
+    <div class="stat"><b id="stSec">0</b><span>CI Sectors Referenced</span></div>
+  </div>
+</header>
+<div class="ctl">
+  <input type="text" id="q" placeholder="Search group, alias, malware, technique, sector…" oninput="renderList()">
+  <button class="btn ghost" onclick="refreshFromMitre()" id="refreshBtn" title="Re-pull the live MITRE ATT&CK for ICS STIX and rebuild profiles">⟲ REFRESH FROM MITRE</button>
+  <button class="btn" onclick="exportCSV()">⬇ EXPORT CSV</button>
+</div>
+<div class="secbar" id="sectorBtns"></div>
+<div class="status" id="status"></div>
+<div class="layout">
+  <div class="glist" id="glist"></div>
+  <div class="profile" id="profile"></div>
+</div>
+<footer>
+  DATA: <b id="fSrc">MITRE ATT&amp;CK for ICS</b> · groups, techniques, and software are sourced from the MITRE ATT&amp;CK® for ICS knowledge base (attack.mitre.org).
+  Targeted-sector tags are parsed from MITRE group descriptions and reflect public reporting, not a complete targeting picture.
+  Cross-reference targeted sectors and vendors with <b>Tool 40 — ICS Advisory Command</b>. No fabricated intensity or regional figures are shown.<br>
+  DEFENSIVE / AUTHORIZED USE · TLP:CLEAR · GHOST — Grounded Handling Of Sourced Threat-intel · DEFEND ALWAYS 🛡️
+</footer>
+</div>
+<script>
+var DB={"meta":{"source":"MITRE ATT&CK for ICS","version":"19.1","extracted":"2026-07-11","count":14},"groups":[{"name":"OilRig","aliases":["COBALT GYPSY","IRN2","APT34","Helix Kitten","Evasive Serpens","Hazel Sandstorm","EUROPIUM","ITG13","Earth Simnavaz","Crambus","TA452"],"id":"G0049","url":"https://attack.mitre.org/groups/G0049","desc":"[OilRig](https://attack.mitre.org/groups/G0049) is a suspected Iranian threat group that has targeted Middle Eastern and international victims since at least 2014. The group has targeted a variety of sectors, including financial, government, energy, chemical, and telecommunications. It appears the group carries out supply chain attacks, leveraging the trust relationship between organizations to attack their primary targets. The group works on behalf of the Iranian government based on infrastructure details that contain references to Iran, use of Iranian infrastructure, and targeting that align","sectors":["Energy","Chemical","Oil","Telecommunications"],"techniques":[{"id":"T0817","name":"Drive-by Compromise","tactic":"initial-access","url":"https://attack.mitre.org/techniques/T0817"},{"id":"T0853","name":"Scripting","tactic":"execution","url":"https://attack.mitre.org/techniques/T0853"},{"id":"T0859","name":"Valid Accounts","tactic":"persistence","url":"https://attack.mitre.org/techniques/T0859"},{"id":"T0865","name":"Spearphishing Attachment","tactic":"initial-access","url":"https://attack.mitre.org/techniques/T0865"},{"id":"T0869","name":"Standard Application Layer Protocol","tactic":"command-and-control","url":"https://attack.mitre.org/techniques/T0869"}],"software":[]},{"name":"ALLANITE","aliases":["Palmetto Fusion"],"id":"G1000","url":"https://attack.mitre.org/groups/G1000","desc":"[ALLANITE](https://attack.mitre.org/groups/G1000) is a suspected Russian cyber espionage group, that has primarily targeted the electric utility sector within the United States and United Kingdom. The group's tactics and techniques are reportedly similar to [Dragonfly](https://attack.mitre.org/groups/G0035), although [ALLANITE](https://attack.mitre.org/groups/G1000)s technical capabilities have not exhibited disruptive or destructive abilities. It has been suggested that the group maintains a presence in ICS for the purpose of gaining understanding of processes and to maintain persistence.","sectors":["Electric"],"techniques":[{"id":"T0817","name":"Drive-by Compromise","tactic":"initial-access","url":"https://attack.mitre.org/techniques/T0817"},{"id":"T0852","name":"Screen Capture","tactic":"collection","url":"https://attack.mitre.org/techniques/T0852"},{"id":"T0859","name":"Valid Accounts","tactic":"persistence","url":"https://attack.mitre.org/techniques/T0859"},{"id":"T0865","name":"Spearphishing Attachment","tactic":"initial-access","url":"https://attack.mitre.org/techniques/T0865"}],"software":[]},{"name":"Sandworm Team","aliases":["ELECTRUM","Telebots","IRON VIKING","BlackEnergy (Group)","Quedagh","Voodoo Bear","IRIDIUM","Seashell Blizzard","FROZENBARENTS","APT44"],"id":"G0034","url":"https://attack.mitre.org/groups/G0034","desc":"[Sandworm Team](https://attack.mitre.org/groups/G0034) is a destructive threat group that has been attributed to Russia's General Staff Main Intelligence Directorate (GRU) Main Center for Special Technologies (GTsST) military unit 74455. This group has been active since at least 2009.\n\nIn October 2020, the US indicted six GRU Unit 74455 officers associated with [Sandworm Team](https://attack.mitre.org/groups/G0034) for the following cyber operations: the 2015 and 2016 attacks against Ukrainian electrical companies and government organizations, the 2017 worldwide [NotPetya](https://attack.mitre","sectors":["Electric","Chemical"],"techniques":[{"id":"T0807","name":"Command-Line Interface","tactic":"execution","url":"https://attack.mitre.org/techniques/T0807"},{"id":"T0819","name":"Exploit Public-Facing Application","tactic":"initial-access","url":"https://attack.mitre.org/techniques/T0819"},{"id":"T0884","name":"Connection Proxy","tactic":"command-and-control","url":"https://attack.mitre.org/techniques/T0884"}],"software":["Bad Rabbit","BlackEnergy","Industroyer","Industroyer2","KillDisk","NotPetya","VPNFilter"]},{"name":"APT33","aliases":["HOLMIUM","Elfin","Peach Sandstorm"],"id":"G0064","url":"https://attack.mitre.org/groups/G0064","desc":"[APT33](https://attack.mitre.org/groups/G0064) is a suspected Iranian threat group that has carried out operations since at least 2013. The group has targeted organizations across multiple industries in the United States, Saudi Arabia, and South Korea, with a particular interest in the aviation and energy sectors.","sectors":["Energy","Aviation"],"techniques":[{"id":"T0852","name":"Screen Capture","tactic":"collection","url":"https://attack.mitre.org/techniques/T0852"},{"id":"T0853","name":"Scripting","tactic":"execution","url":"https://attack.mitre.org/techniques/T0853"},{"id":"T0865","name":"Spearphishing Attachment","tactic":"initial-access","url":"https://attack.mitre.org/techniques/T0865"}],"software":[]},{"name":"Dragonfly","aliases":["TEMP.Isotope","DYMALLOY","Berserk Bear","TG-4192","Crouching Yeti","IRON LIBERTY","Energetic Bear","Ghost Blizzard","BROMINE"],"id":"G0035","url":"https://attack.mitre.org/groups/G0035","desc":"[Dragonfly](https://attack.mitre.org/groups/G0035) is a cyber espionage group that has been attributed to Russia's Federal Security Service (FSB) Center 16. Active since at least 2010, [Dragonfly](https://attack.mitre.org/groups/G0035) has targeted defense and aviation companies, government entities, companies related to industrial control systems, and critical infrastructure sectors worldwide through supply chain, spearphishing, and drive-by compromise attacks.","sectors":["Defense","Aviation"],"techniques":[{"id":"T0817","name":"Drive-by Compromise","tactic":"initial-access","url":"https://attack.mitre.org/techniques/T0817"},{"id":"T0862","name":"Supply Chain Compromise","tactic":"initial-access","url":"https://attack.mitre.org/techniques/T0862"}],"software":["Backdoor.Oldrea"]},{"name":"TEMP.Veles","aliases":["XENOTIME"],"id":"G0088","url":"https://attack.mitre.org/groups/G0088","desc":"[TEMP.Veles](https://attack.mitre.org/groups/G0088) is a Russia-based threat group that has targeted critical infrastructure. The group has been observed utilizing [TRITON](https://attack.mitre.org/software/S0609), a malware framework designed to manipulate industrial safety systems.","sectors":[],"techniques":[{"id":"T0817","name":"Drive-by Compromise","tactic":"initial-access","url":"https://attack.mitre.org/techniques/T0817"},{"id":"T0862","name":"Supply Chain Compromise","tactic":"initial-access","url":"https://attack.mitre.org/techniques/T0862"}],"software":["Triton"]},{"name":"Lazarus Group","aliases":["Labyrinth Chollima","HIDDEN COBRA","Guardians of Peace","ZINC","NICKEL ACADEMY","Diamond Sleet"],"id":"G0032","url":"https://attack.mitre.org/groups/G0032","desc":"[Lazarus Group](https://attack.mitre.org/groups/G0032) is a North Korean state-sponsored cyber threat group attributed to the Reconnaissance General Bureau (RGB).   [Lazarus Group](https://attack.mitre.org/groups/G0032) has been active since at least 2009 and is reportedly responsible for the November 2014 destructive wiper attack on Sony Pictures Entertainment, identified by Novetta as part of Operation Blockbuster. Malware used by [Lazarus Group](https://attack.mitre.org/groups/G0032) correlates to other reported campaigns, including Operation Flame, Operation 1Mission, Operation Troy, DarkS","sectors":[],"techniques":[{"id":"T0865","name":"Spearphishing Attachment","tactic":"initial-access","url":"https://attack.mitre.org/techniques/T0865"}],"software":["WannaCry"]},{"name":"FIN6","aliases":["Magecart Group 6","ITG08","Skeleton Spider","TAAL","Camouflage Tempest"],"id":"G0037","url":"https://attack.mitre.org/groups/G0037","desc":"[FIN6](https://attack.mitre.org/groups/G0037) is a cyber crime group that has stolen payment card data and sold it for profit on underground marketplaces. This group has aggressively targeted and compromised point of sale (PoS) systems in the hospitality and retail sectors.","sectors":[],"techniques":[],"software":["LockerGoga","Ryuk"]},{"name":"APT38","aliases":["NICKEL GLADSTONE","BeagleBoyz","Bluenoroff","Stardust Chollima","Sapphire Sleet","COPERNICIUM"],"id":"G0082","url":"https://attack.mitre.org/groups/G0082","desc":"[APT38](https://attack.mitre.org/groups/G0082) is a North Korean state-sponsored threat group that specializes in financial cyber operations; it has been attributed to the Reconnaissance General Bureau. Active since at least 2014, [APT38](https://attack.mitre.org/groups/G0082) has targeted banks, financial institutions, casinos, cryptocurrency exchanges, SWIFT system endpoints, and ATMs in at least 38 countries worldwide. Significant operations include the 2016 Bank of Bangladesh heist, during which [APT38](https://attack.mitre.org/groups/G0082) stole $81 million, as well as attacks against Ba","sectors":[],"techniques":[],"software":["KillDisk"]},{"name":"FIN7","aliases":["GOLD NIAGARA","ITG14","Carbon Spider","ELBRUS","Sangria Tempest"],"id":"G0046","url":"https://attack.mitre.org/groups/G0046","desc":"[FIN7](https://attack.mitre.org/groups/G0046) is a financially-motivated threat group that has been active since 2013. [FIN7](https://attack.mitre.org/groups/G0046) has targeted the retail, restaurant, hospitality, software, consulting, financial services, medical equipment, cloud services, media, food and beverage, transportation, pharmaceutical, and utilities industries in the United States. A portion of [FIN7](https://attack.mitre.org/groups/G0046) was operated out of a front company called Combi Security and often used point-of-sale malware for targeting efforts. Since 2020, [FIN7](https:/","sectors":["Transportation","Pharmaceutical","Utilities"],"techniques":[],"software":["REvil"]},{"name":"GOLD SOUTHFIELD","aliases":["Pinchy Spider"],"id":"G0115","url":"https://attack.mitre.org/groups/G0115","desc":"[GOLD SOUTHFIELD](https://attack.mitre.org/groups/G0115) is a financially motivated threat group active since at least 2018 that operates the [REvil](https://attack.mitre.org/software/S0496) Ransomware-as-a Service (RaaS). [GOLD SOUTHFIELD](https://attack.mitre.org/groups/G0115) provides backend infrastructure for affiliates recruited on underground forums to perpetrate high value deployments. By early 2020, [GOLD SOUTHFIELD](https://attack.mitre.org/groups/G0115) started capitalizing on the new trend of stealing data and further extorting the victim to pay for their data to not get publicly l","sectors":[],"techniques":[],"software":["REvil"]},{"name":"Wizard Spider","aliases":["UNC1878","TEMP.MixMaster","Grim Spider","FIN12","GOLD BLACKBURN","ITG23","Periwinkle Tempest","DEV-0193","Pistachio Tempest","DEV-0237"],"id":"G0102","url":"https://attack.mitre.org/groups/G0102","desc":"[Wizard Spider](https://attack.mitre.org/groups/G0102) is a Russia-based financially motivated threat group originally known for the creation and deployment of [TrickBot](https://attack.mitre.org/software/S0266) since at least 2016. [Wizard Spider](https://attack.mitre.org/groups/G0102) possesses a diverse arsenal of tools and has conducted ransomware campaigns against a variety of organizations, ranging from major corporations to hospitals.","sectors":[],"techniques":[],"software":["Ryuk"]},{"name":"CyberAv3ngers","aliases":["Soldiers of Soloman"],"id":"G1027","url":"https://attack.mitre.org/groups/G1027","desc":"The [CyberAv3ngers](https://attack.mitre.org/groups/G1027) are a suspected Iranian Government Islamic Revolutionary Guard Corps (IRGC)-affiliated APT group. The [CyberAv3ngers](https://attack.mitre.org/groups/G1027) have been known to be active since at least 2020, with disputed and false claims of critical infrastructure compromises in Israel.\n\nIn 2023, the [CyberAv3ngers](https://attack.mitre.org/groups/G1027) engaged in a global targeting and hacking of the Unitronics [Programmable Logic Controller (PLC)](https://attack.mitre.org/assets/A0003) with [Human-Machine Interface (HMI)](https://at","sectors":["Energy","Water","Wastewater","Manufacturing","Healthcare"],"techniques":[],"software":[]},{"name":"HEXANE","aliases":["Lyceum","Siamesekitten","Spirlin"],"id":"G1001","url":"https://attack.mitre.org/groups/G1001","desc":"[HEXANE](https://attack.mitre.org/groups/G1001) is a cyber espionage threat group that has targeted oil & gas, telecommunications, aviation, and internet service provider organizations since at least 2017. Targeted companies have been located in the Middle East and Africa, including Israel, Saudi Arabia, Kuwait, Morocco, and Tunisia. [HEXANE](https://attack.mitre.org/groups/G1001)'s TTPs appear similar to [APT33](https://attack.mitre.org/groups/G0064) and [OilRig](https://attack.mitre.org/groups/G0049) but due to differences in victims and tools it is tracked as a separate entity.","sectors":["Oil","Gas","Aviation","Telecommunications"],"techniques":[],"software":[]}]};
+var GROUPS=DB.groups.slice(); var META=DB.meta; var SEL=0; var SECTOR_FILTER='';
+var MITRE_ICS_URL='https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/ics-attack/ics-attack.json';
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+function computeStats(){
+  var tech=0,mal={},sec={};
+  GROUPS.forEach(function(g){ tech+=g.techniques.length; (g.software||[]).forEach(function(m){mal[m]=1;}); (g.sectors||[]).forEach(function(s){sec[s]=1;}); });
+  document.getElementById('stGroups').textContent=GROUPS.length;
+  document.getElementById('stTech').textContent=tech;
+  document.getElementById('stMal').textContent=Object.keys(mal).length;
+  document.getElementById('stSec').textContent=Object.keys(sec).length;
+  document.getElementById('srcBadge').textContent='MITRE ATT&CK for ICS v'+(META.version||'?');
+  document.getElementById('fSrc').textContent='MITRE ATT&CK for ICS v'+(META.version||'?')+' (extracted '+(META.extracted||'')+')';
+  // sector buttons — one click to filter, active state highlighted
+  var secs=Object.keys(sec).sort();
+  var bar=document.getElementById('sectorBtns');
+  bar.innerHTML='<button class="secbtn'+(SECTOR_FILTER===''?' on':'')+'" onclick="setSector(\'\')">ALL SECTORS</button>'
+    +secs.map(function(s){
+      var n=GROUPS.filter(function(g){return (g.sectors||[]).indexOf(s)>-1;}).length;
+      return '<button class="secbtn'+(SECTOR_FILTER===s?' on':'')+'" onclick="setSector(\''+s.replace(/'/g,"")+'\')">'+esc(s)+' <span class="sc">'+n+'</span></button>';
+    }).join('');
+}
+function setSector(s){ SECTOR_FILTER=s; computeStats(); renderList(); }
+function filtered(){
+  var q=document.getElementById('q').value.trim().toLowerCase();
+  var fs=SECTOR_FILTER;
+  return GROUPS.filter(function(g){
+    if(fs && (g.sectors||[]).indexOf(fs)<0) return false;
+    if(!q) return true;
+    var hay=(g.name+' '+(g.aliases||[]).join(' ')+' '+(g.software||[]).join(' ')+' '+(g.sectors||[]).join(' ')+' '+g.techniques.map(function(t){return t.name+' '+t.id;}).join(' ')).toLowerCase();
+    return hay.indexOf(q)>-1;
+  });
+}
+function renderList(){
+  var list=filtered(); var el=document.getElementById('glist');
+  if(!list.length){ el.innerHTML='<div class="gitem"><span class="none">No groups match.</span></div>'; document.getElementById('profile').innerHTML=''; return; }
+  el.innerHTML=list.map(function(g){
+    var gi=GROUPS.indexOf(g);
+    return '<div class="gitem'+(gi===SEL?' on':'')+'" onclick="SEL='+gi+';renderList();renderProfile();">'
+      +'<div class="gn">'+esc(g.name)+'</div>'
+      +(g.aliases&&g.aliases.length?'<div class="ga">'+esc(g.aliases.slice(0,4).join(' · '))+'</div>':'')
+      +'<div class="gmeta">'+g.techniques.length+' tech · '+(g.software||[]).length+' malware'+((g.sectors||[]).length?' · '+g.sectors.length+' sectors':'')+'</div></div>';
+  }).join('');
+  if(list.indexOf(GROUPS[SEL])<0){ SEL=GROUPS.indexOf(list[0]); }
+  renderProfile();
+}
+function renderProfile(){
+  var g=GROUPS[SEL]; if(!g){document.getElementById('profile').innerHTML='';return;}
+  var tacs={};
+  g.techniques.forEach(function(t){ (tacs[t.tactic||'other']=tacs[t.tactic||'other']||[]).push(t); });
+  var techHtml=Object.keys(tacs).sort().map(function(tac){
+    return '<div class="tac">'+esc(tac.replace(/-/g,' '))+'</div><div class="chips">'
+      +tacs[tac].map(function(t){return '<a class="chip tech" href="'+esc(t.url||('https://attack.mitre.org/techniques/'+(t.id||'').replace(/\./g,'/')))+'" target="_blank" rel="noopener"><b>'+esc(t.id)+'</b> '+esc(t.name)+'</a>';}).join('')
+      +'</div>';
+  }).join('');
+  document.getElementById('profile').innerHTML=
+    '<div><span class="p-name">'+esc(g.name)+'</span>'+(g.id?'<a class="p-id" href="'+esc(g.url||('https://attack.mitre.org/groups/'+g.id))+'" target="_blank" rel="noopener">'+esc(g.id)+' ↗</a>':'')+'</div>'
+    +(g.aliases&&g.aliases.length?'<div class="p-aliases">aka '+esc(g.aliases.join(' · '))+'</div>':'')
+    +(g.desc?'<div class="p-desc">'+esc(g.desc)+(g.desc.length>=590?'… ':' ')+(g.url?'<a href="'+esc(g.url)+'" target="_blank" rel="noopener">[MITRE]</a>':'')+'</div>':'')
+    +'<div class="p-sec"><h3>Targeted Critical-Infrastructure Sectors</h3>'
+      +((g.sectors&&g.sectors.length)?'<div class="chips">'+g.sectors.map(function(s){return '<span class="chip sec">'+esc(s)+'</span>';}).join('')+'</div>':'<span class="none">No sector explicitly named in MITRE description — verify via CISA/Dragos reporting.</span>')+'</div>'
+    +'<div class="p-sec"><h3>Confirmed Malware / Tooling</h3>'
+      +((g.software&&g.software.length)?'<div class="chips">'+g.software.map(function(m){return '<span class="chip mal">'+esc(m)+'</span>';}).join('')+'</div>':'<span class="none">No ICS malware/tooling attributed in MITRE ATT&CK for ICS.</span>')+'</div>'
+    +'<div class="p-sec"><h3>MITRE ATT&CK for ICS Techniques ('+g.techniques.length+')</h3>'
+      +(g.techniques.length?techHtml:'<span class="none">No ICS techniques mapped to this group in MITRE ATT&CK for ICS.</span>')+'</div>'
+    +'<div class="note">Profile sourced from MITRE ATT&CK for ICS v'+esc(META.version||'?')+'. Absence of a technique/malware here means it is not mapped in MITRE ATT&CK for ICS — not that the group lacks the capability. Cross-reference with Tool 40 (ICS Advisory Command) for vendor/product exposure in these sectors.</div>'
+    +((g.sectors&&g.sectors.length)?'<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)"><div style="font-size:9px;color:var(--grn);letter-spacing:1px;margin-bottom:8px">↳ PIVOT — GHOST DEFENSE INTELLIGENCE CHAIN</div><div class="chips">'
+      +g.sectors.map(function(s){return '<a class="chip" href="40_ICS_Advisory_Command.html?q='+encodeURIComponent(s)+'" style="color:var(--cyan);border-color:rgba(57,192,255,.4);text-decoration:none">🏭 ICS advisories in '+esc(s)+' →</a>';}).join('')
+      +'</div></div>':'');
+}
+function exportCSV(){
+  var out=[['group','mitre_id','aliases','sectors','malware','technique_count','technique_ids'].join(',')];
+  GROUPS.forEach(function(g){
+    out.push([g.name,g.id,'"'+(g.aliases||[]).join('; ')+'"','"'+(g.sectors||[]).join('; ')+'"','"'+(g.software||[]).join('; ')+'"',g.techniques.length,'"'+g.techniques.map(function(t){return t.id;}).join('; ')+'"'].join(','));
+  });
+  var b=new Blob([out.join('\n')],{type:'text/csv'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ics-apt-profiles-mitre.csv';a.click();
+}
+function setStatus(m){document.getElementById('status').textContent=m;}
+async function refreshFromMitre(){
+  var btn=document.getElementById('refreshBtn');btn.disabled=true;
+  setStatus('Pulling live MITRE ATT&CK for ICS STIX (~4MB)…');
+  try{
+    var r=await fetch(MITRE_ICS_URL); if(!r.ok) throw new Error('HTTP '+r.status);
+    var d=await r.json();
+    var objs={};d.objects.forEach(function(o){objs[o.id]=o;});
+    function extid(o){var e=(o.external_references||[]).find(function(x){return (x.source_name||'').indexOf('mitre')===0;});return e?[e.external_id,e.url]:['',''];}
+    function clean(t){return (t||'').replace(/\(Citation:[^)]*\)/g,'').trim();}
+    var SECT=['Energy','Electric','Power','Grid','Water','Wastewater','Manufacturing','Chemical','Oil','Gas','Transportation','Nuclear','Defense','Aviation','Maritime','Healthcare','Pharmaceutical','Petrochemical','Utilities','Telecommunications'];
+    var ver='';d.objects.forEach(function(o){if(o.type==='x-mitre-collection')ver=o.x_mitre_version||'';});
+    var groups=d.objects.filter(function(o){return o.type==='intrusion-set'&&!o.revoked&&!o.x_mitre_deprecated;});
+    var prof={};groups.forEach(function(g){prof[g.id]={name:g.name,aliases:(g.aliases||[]).filter(function(a){return a!==g.name;}),ext:extid(g),desc:clean(g.description||'').slice(0,600),techniques:[],software:[]};});
+    d.objects.filter(function(o){return o.type==='relationship'&&o.relationship_type==='uses';}).forEach(function(rel){
+      var p=prof[rel.source_ref];if(!p)return;var to=objs[rel.target_ref];if(!to)return;
+      if(to.type==='attack-pattern'){var e=extid(to);var tac=(to.kill_chain_phases||[])[0];p.techniques.push({id:e[0],name:to.name,tactic:tac?tac.phase_name:'',url:e[1]});}
+      else if(to.type==='malware'||to.type==='tool'){p.software.push(to.name);}
+    });
+    var out=Object.keys(prof).map(function(k){var p=prof[k];var secs=SECT.filter(function(s){return new RegExp('\b'+s,'i').test(p.desc);});
+      return {name:p.name,aliases:p.aliases,id:p.ext[0],url:p.ext[1],desc:p.desc,sectors:secs,techniques:p.techniques.sort(function(a,b){return (a.id>b.id)?1:-1;}),software:Array.from(new Set(p.software)).sort()};});
+    out.sort(function(a,b){return b.techniques.length-a.techniques.length||b.software.length-a.software.length;});
+    GROUPS=out;META={source:'MITRE ATT&CK for ICS',version:ver,extracted:new Date().toISOString().slice(0,10),count:out.length};SEL=0;
+    computeStats();renderList();
+    setStatus('Refreshed live from MITRE ATT&CK for ICS v'+ver+' — '+out.length+' groups.');
+  }catch(e){ setStatus('Live refresh failed ('+e.message+'). Showing embedded MITRE data (v'+(META.version||'?')+'). raw.githubusercontent.com may be blocked on this network.'); }
+  finally{ btn.disabled=false; }
+}
+computeStats();
+(function(){
+  // Cross-tool deep link: open with ?q=<sector/group/malware> from another Ghost Defense tool
+  try{ var p=new URLSearchParams(location.search); var q=p.get('q')||p.get('sector')||'';
+    if(q){ document.getElementById('q').value=q; } }catch(e){}
+})();
+renderList();
+</script></body></html>

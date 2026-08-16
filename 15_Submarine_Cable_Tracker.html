@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Submarine Cable Tracker — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020507;--s1:#060d0a;--s2:#0a150f;--s3:#0f1f16;--s4:#162b1e;
+  --b1:rgba(0,255,65,0.07);--b2:rgba(0,255,65,0.14);--b3:rgba(0,255,65,0.25);
+  --ng:#00ff41;--ng2:#39ff14;--ng-d:rgba(0,255,65,0.10);--ng-dd:rgba(0,255,65,0.05);
+  --red:#ff3737;--red-g:rgba(255,55,55,0.13);--red-b:rgba(255,55,55,0.26);
+  --orange:#ff8c00;--orange-g:rgba(255,140,0,0.12);
+  --yellow:#ffe600;--yellow-g:rgba(255,230,0,0.09);
+  --cyan:#00e5ff;--cyan-g:rgba(0,229,255,0.09);
+  --muted:rgba(0,255,65,0.32);--muted2:rgba(0,255,65,0.58);
+  --mono:'Share Tech Mono',monospace;
+  --display:'Orbitron',sans-serif;
+  --body:'Exo 2',sans-serif;
+}
+html{background:var(--bg);scroll-behavior:smooth}
+body{font-family:var(--body);color:var(--ng);min-height:100vh;overflow-x:hidden;
+  text-shadow:0 0 5px rgba(0,255,65,0.15)}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:500;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.13) 2px,rgba(0,0,0,0.13) 4px)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:499;
+  background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,0.7) 100%)}
+.grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(0,255,65,0.025) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(0,255,65,0.025) 1px,transparent 1px);
+  background-size:44px 44px}
+.wrap{position:relative;z-index:1;max-width:1360px;margin:0 auto;padding:0 16px 60px}
+
+/* TOP BAR */
+.topbar{border-bottom:1px solid var(--b2);padding:12px 0;
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;
+  position:sticky;top:0;z-index:200;background:rgba(2,5,7,0.96);backdrop-filter:blur(10px)}
+.tl{display:flex;align-items:center;gap:12px}
+.logo{font-family:var(--display);font-size:14px;font-weight:900;letter-spacing:.18em;
+  color:var(--ng);text-shadow:0 0 14px var(--ng),0 0 30px rgba(0,255,65,.35)}
+.logo span{color:var(--cyan);text-shadow:0 0 12px var(--cyan)}
+.tsep{color:var(--b3);font-family:var(--mono)}
+.tsub{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.12em}
+.tr{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tb{font-size:10px;font-family:var(--mono);padding:4px 10px;border-radius:3px;
+  display:flex;align-items:center;gap:5px;letter-spacing:.07em}
+.tb-ng{background:var(--ng-d);border:1px solid var(--b2);color:var(--ng)}
+.tb-red{background:var(--red-g);border:1px solid var(--red-b);color:var(--red)}
+.tb-cy{background:var(--cyan-g);border:1px solid rgba(0,229,255,.25);color:var(--cyan)}
+.blink{animation:blink 1.1s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+#clk{font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+/* AI KEY BAR */
+.key-bar{background:var(--s1);border:1px solid rgba(0,229,255,0.18);border-radius:5px;
+  padding:12px 16px;margin-bottom:18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.kb-icon{font-size:16px;flex-shrink:0}
+.kb-label{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--cyan)}
+.kb-desc{font-size:10px;font-family:var(--mono);color:var(--muted);flex:1;min-width:180px}
+.kb-desc a{color:var(--cyan);text-decoration:none}
+.key-in{background:var(--s2);border:1px solid rgba(0,229,255,0.2);border-radius:3px;
+  color:var(--ng);font-family:var(--mono);font-size:10px;padding:7px 10px;
+  outline:none;width:200px;text-shadow:none}
+.key-in::placeholder{color:var(--muted)}
+.key-in:focus{border-color:rgba(0,229,255,.45)}
+.test-btn{background:var(--ng-d);border:1px solid var(--b2);border-radius:3px;
+  color:var(--ng);font-family:var(--mono);font-size:10px;font-weight:700;
+  letter-spacing:.1em;padding:7px 12px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.test-btn:hover{background:rgba(0,255,65,.18)}
+.ai-update-btn{background:var(--cyan-g);border:1px solid rgba(0,229,255,.3);border-radius:3px;
+  color:var(--cyan);font-family:var(--mono);font-size:10px;font-weight:700;
+  letter-spacing:.1em;padding:7px 12px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.ai-update-btn:hover{background:rgba(0,229,255,.18)}
+.ai-update-btn:disabled{opacity:.35;pointer-events:none}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:18px}
+.sbox{background:var(--s1);border:1px solid var(--b1);border-radius:4px;padding:12px 14px;
+  position:relative;overflow:hidden}
+.sbox::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,currentColor,transparent);opacity:.4}
+.sn{font-family:var(--display);font-size:20px;font-weight:700;line-height:1;margin-bottom:4px}
+.sl{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+
+/* ALERT BANNER */
+.alert-banner{background:rgba(255,55,55,0.07);border:1px solid var(--red-b);
+  border-left:3px solid var(--red);border-radius:4px;padding:12px 16px;
+  margin-bottom:18px;font-size:12px;color:var(--muted2);line-height:1.7;font-family:var(--mono)}
+.alert-banner strong{color:var(--red)}
+
+/* FILTERS */
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center}
+.fl{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em}
+.fchip{font-size:10px;font-family:var(--mono);padding:5px 12px;border-radius:3px;
+  border:1px solid var(--b1);color:var(--muted);cursor:pointer;transition:all .12s;
+  -webkit-tap-highlight-color:transparent}
+.fchip:hover,.fchip.active{background:var(--ng-d);border-color:var(--b2);color:var(--ng)}
+.search-in{background:var(--s2);border:1px solid var(--b1);border-radius:3px;
+  color:var(--ng);font-family:var(--mono);font-size:11px;padding:6px 12px;
+  outline:none;width:220px;margin-left:auto;text-shadow:none}
+.search-in::placeholder{color:var(--muted)}
+.search-in:focus{border-color:var(--b2)}
+
+/* MAIN LAYOUT */
+.main-layout{display:grid;grid-template-columns:1fr 340px;gap:14px;margin-bottom:18px}
+
+/* CABLE MAP SVG */
+.map-panel{background:var(--s1);border:1px solid var(--b1);border-radius:5px;overflow:hidden}
+.panel-hdr{padding:10px 14px;border-bottom:1px solid var(--b1);
+  font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:.18em;
+  color:var(--ng);text-transform:uppercase;display:flex;align-items:center;justify-content:space-between}
+.map-wrap{background:#020c14;position:relative}
+#cableMap{width:100%;display:block}
+
+/* INCIDENT FEED */
+.feed-panel{background:var(--s1);border:1px solid var(--b1);border-radius:5px;
+  display:flex;flex-direction:column;overflow:hidden}
+.feed-list{overflow-y:auto;flex:1;max-height:600px}
+.inc-item{padding:12px 14px;border-bottom:1px solid var(--b1);cursor:pointer;
+  transition:background .1s;position:relative}
+.inc-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.inc-item:hover{background:var(--ng-dd)}
+.inc-item.expanded{background:var(--ng-dd)}
+.inc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px}
+.inc-cable{font-family:var(--display);font-size:11px;font-weight:700;color:var(--cyan);letter-spacing:.05em}
+.inc-status{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 7px;
+  border-radius:2px;letter-spacing:.06em;white-space:nowrap;flex-shrink:0}
+.st-cut{background:var(--red-g);color:var(--red);border:1px solid var(--red-b)}
+.st-degraded{background:var(--orange-g);color:var(--orange);border:1px solid rgba(255,140,0,.28)}
+.st-repair{background:var(--yellow-g);color:var(--yellow);border:1px solid rgba(255,230,0,.25)}
+.st-resolved{background:var(--ng-d);color:var(--ng);border:1px solid var(--b2)}
+.st-monitoring{background:var(--cyan-g);color:var(--cyan);border:1px solid rgba(0,229,255,.22)}
+.inc-region{font-size:10px;font-family:var(--mono);color:var(--muted);margin-bottom:4px}
+.inc-desc{font-size:11px;color:var(--muted2);line-height:1.6;margin-bottom:5px}
+.inc-meta{display:flex;gap:10px;flex-wrap:wrap}
+.im{font-size:10px;font-family:var(--mono);color:var(--muted);display:flex;align-items:center;gap:3px}
+.im span{color:var(--muted2)}
+.inc-detail{display:none;padding:10px 0 4px;border-top:1px solid var(--b1);margin-top:8px}
+.inc-item.expanded .inc-detail{display:block}
+.det-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}
+.det-cell{background:var(--s3);border:1px solid var(--b1);border-radius:2px;padding:7px 9px}
+.dc-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.08em;
+  text-transform:uppercase;margin-bottom:3px}
+.dc-val{font-size:11px;font-family:var(--mono);color:var(--ng);line-height:1.4;word-break:break-word}
+.threat-tag{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 7px;
+  border-radius:2px;margin-right:4px;letter-spacing:.05em}
+.tt-sabotage{background:var(--red-g);color:var(--red)}
+.tt-accident{background:var(--orange-g);color:var(--orange)}
+.tt-weather{background:var(--yellow-g);color:var(--yellow)}
+.tt-hybrid{background:rgba(192,132,252,.12);color:#c084fc}
+
+/* CABLE CARDS */
+.cables-section{margin-bottom:18px}
+.cable-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
+.cable-card{background:var(--s1);border:1px solid var(--b1);border-radius:5px;
+  overflow:hidden;transition:border-color .15s;cursor:pointer}
+.cable-card:hover{border-color:var(--b2)}
+.cable-card.expanded{border-color:var(--b2)}
+.cc-stripe{height:3px}
+.cc-hdr{padding:13px 15px 10px;border-bottom:1px solid var(--b1)}
+.cc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px}
+.cc-name{font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:.06em}
+.cc-badges{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+.cc-meta{display:flex;gap:10px;flex-wrap:wrap}
+.ccm{font-size:10px;font-family:var(--mono);color:var(--muted)}
+.ccm span{color:var(--muted2)}
+.cc-summary{padding:10px 15px;font-size:11px;color:var(--muted2);line-height:1.65;
+  border-bottom:1px solid var(--b1)}
+.cc-countries{padding:9px 15px;border-bottom:1px solid var(--b1)}
+.country-chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.cchip{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:2px;
+  background:var(--s2);border:1px solid var(--b1);color:var(--muted2)}
+.cc-footer{padding:8px 15px;display:flex;align-items:center;justify-content:space-between}
+.exp-lbl{font-size:10px;font-family:var(--mono);color:var(--muted);
+  display:flex;align-items:center;gap:5px}
+.exp-ico{transition:transform .2s}
+.cable-card.expanded .exp-ico{transform:rotate(180deg)}
+.cc-detail{display:none;background:var(--s2);border-top:1px solid var(--b1)}
+.cable-card.expanded .cc-detail{display:block}
+.cc-det-sec{padding:12px 15px;border-bottom:1px solid var(--b1)}
+.cc-det-sec:last-child{border-bottom:none}
+.cc-det-title{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.12em;
+  text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--b1)}
+.risk-bar-wrap{height:6px;background:var(--s3);border-radius:3px;overflow:hidden;margin-bottom:5px}
+.risk-bar{height:100%;border-radius:3px;transition:width .8s ease}
+.risk-label{font-size:10px;font-family:var(--mono);color:var(--muted)}
+.threat-list{display:flex;flex-direction:column;gap:4px}
+.tl-item{font-size:11px;font-family:var(--mono);color:var(--muted2);padding:5px 8px;
+  background:var(--s3);border:1px solid var(--b1);border-radius:2px}
+.def-list{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.def-item{font-size:10px;font-family:var(--mono);color:var(--muted2);padding:5px 8px;
+  background:var(--s3);border:1px solid var(--b1);border-left:2px solid var(--ng);border-radius:2px}
+
+/* AI UPDATE LOG */
+.ai-log{background:var(--s2);border:1px solid var(--b1);border-radius:3px;
+  padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--muted2);
+  line-height:1.7;display:none;max-height:100px;overflow-y:auto;margin-top:8px}
+.ai-log.show{display:block}
+.ll{display:flex;gap:6px;margin-bottom:2px}
+.lt{font-size:8px;font-weight:700;padding:2px 5px;border-radius:2px;flex-shrink:0;
+  letter-spacing:.06em;margin-top:2px}
+.lt-q{background:rgba(0,229,255,.12);color:var(--cyan)}
+.lt-ok{background:var(--ng-d);color:var(--ng)}
+.lt-err{background:var(--red-g);color:var(--red)}
+
+/* FOOTER */
+.ghost-footer{margin-top:28px;padding:18px 0 8px;border-top:1px solid var(--b1);text-align:center}
+.gf-rule{height:1px;background:linear-gradient(90deg,transparent,var(--ng),transparent);
+  opacity:.3;margin-bottom:16px}
+.ghost-by{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--muted);margin-bottom:4px}
+.ghost-name{font-family:var(--display);font-size:16px;font-weight:900;letter-spacing:.2em;
+  color:var(--ng);text-shadow:0 0 12px var(--ng),0 0 30px rgba(0,255,65,.45)}
+.gf-sub{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--muted);margin-top:5px}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+
+@media(max-width:900px){
+  .main-layout{grid-template-columns:1fr}
+  .stats-row{grid-template-columns:repeat(3,1fr)}
+  .cable-grid{grid-template-columns:1fr}
+  .def-list{grid-template-columns:1fr}
+  .det-grid{grid-template-columns:1fr}
+}
+@media(max-width:500px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="wrap">
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="tl">
+    <div class="logo">SUBCABLE<span>TRACKER</span></div>
+    <div class="tsep">|</div>
+    <div class="tsub">SUBMARINE CABLE STATUS INTELLIGENCE</div>
+  </div>
+  <div class="tr">
+    <div class="tb tb-red"><span class="blink">●</span>44 INCIDENTS 2024-25</div>
+    <div class="tb tb-cy">GLOBAL MONITOR</div>
+    <div id="clk"></div>
+  </div>
+</div>
+
+<!-- API KEY BAR -->
+<div class="key-bar">
+  <div class="kb-icon">⚡</div>
+  <div>
+    <div class="kb-label">AI LIVE INTEL UPDATE</div>
+    <div class="kb-desc">Paste your <a href="https://console.anthropic.com/settings/keys" target="_blank">Anthropic API key</a> to pull latest cable incident intel.</div>
+  </div>
+  <input class="key-in" id="apiKeyInput" type="password" placeholder="sk-ant-... API key">
+  <button class="test-btn" id="testKeyBtn" onclick="testAPIKey()">TEST KEY</button>
+  <button class="ai-update-btn" id="aiUpdateBtn" onclick="runAIUpdate()">⚡ AI UPDATE</button>
+  <div class="ai-log" id="aiLog"></div>
+</div>
+
+<!-- STATS -->
+<div class="stats-row">
+  <div class="sbox" style="color:var(--red)"><div class="sn">44</div><div class="sl">Incidents 2024-25</div></div>
+  <div class="sbox" style="color:var(--orange)"><div class="sn">200+</div><div class="sl">Annual Outages</div></div>
+  <div class="sbox" style="color:var(--yellow)"><div class="sn">530+</div><div class="sl">Active Cables</div></div>
+  <div class="sbox" style="color:var(--ng)"><div class="sn">1.4M</div><div class="sl">KM Total Length</div></div>
+  <div class="sbox" style="color:var(--cyan)"><div class="sn">95%</div><div class="sl">Internet Traffic</div></div>
+  <div class="sbox" style="color:var(--red)"><div class="sn" id="sActive">0</div><div class="sl">Active Incidents</div></div>
+</div>
+
+<!-- ALERT -->
+<div class="alert-banner">
+  <strong>ELEVATED THREAT ENVIRONMENT:</strong> Insikt Group recorded 44 cable damage events across 32 locations in 2024-2025.
+  Baltic Sea, Red Sea, and Taiwan Strait identified as primary high-risk corridors.
+  NATO warns of deliberate hybrid warfare targeting undersea infrastructure.
+  EstLink 2 (Dec 25 2024), BCS East-West + C-Lion1 (Nov 2024), AAE-1/SEACOM Red Sea (2024-25) all damaged.
+</div>
+
+<!-- FILTERS -->
+<div class="filter-row">
+  <span class="fl">FILTER:</span>
+  <span class="fchip active" onclick="setFilter('all',this)">ALL</span>
+  <span class="fchip" onclick="setFilter('cut',this)">SEVERED</span>
+  <span class="fchip" onclick="setFilter('degraded',this)">DEGRADED</span>
+  <span class="fchip" onclick="setFilter('repair',this)">UNDER REPAIR</span>
+  <span class="fchip" onclick="setFilter('sabotage',this)">SABOTAGE SUSPECTED</span>
+  <span class="fchip" onclick="setFilter('resolved',this)">RESOLVED</span>
+  <input class="search-in" id="searchIn" type="text" placeholder="Search cable, region, country..." oninput="doSearch()">
+</div>
+
+<!-- MAP + INCIDENT FEED -->
+<div class="main-layout">
+
+  <!-- SVG MAP -->
+  <div class="map-panel">
+    <div class="panel-hdr">
+      <span>// GLOBAL CABLE RISK MAP</span>
+      <span style="font-size:9px;color:var(--muted)">RED = HIGH RISK CORRIDOR</span>
+    </div>
+    <div class="map-wrap" id="cableMapWrap" style="min-height:460px;background:#020c14">
+      <svg id="cableMap" style="width:100%;display:block"></svg>
+    </div>tml lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Submarine Cable Tracker — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020507;--s1:#060d0a;--s2:#0a150f;--s3:#0f1f16;--s4:#162b1e;
+  --b1:rgba(0,255,65,0.07);--b2:rgba(0,255,65,0.14);--b3:rgba(0,255,65,0.25);
+  --ng:#00ff41;--ng2:#39ff14;--ng-d:rgba(0,255,65,0.10);--ng-dd:rgba(0,255,65,0.05);
+  --red:#ff3737;--red-g:rgba(255,55,55,0.13);--red-b:rgba(255,55,55,0.26);
+  --orange:#ff8c00;--orange-g:rgba(255,140,0,0.12);
+  --yellow:#ffe600;--yellow-g:rgba(255,230,0,0.09);
+  --cyan:#00e5ff;--cyan-g:rgba(0,229,255,0.09);
+  --muted:rgba(0,255,65,0.32);--muted2:rgba(0,255,65,0.58);
+  --mono:'Share Tech Mono',monospace;
+  --display:'Orbitron',sans-serif;
+  --body:'Exo 2',sans-serif;
+}
+html{background:var(--bg);scroll-behavior:smooth}
+body{font-family:var(--body);color:var(--ng);min-height:100vh;overflow-x:hidden;
+  text-shadow:0 0 5px rgba(0,255,65,0.15)}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:500;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.13) 2px,rgba(0,0,0,0.13) 4px)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:499;
+  background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,0.7) 100%)}
+.grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(0,255,65,0.025) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(0,255,65,0.025) 1px,transparent 1px);
+  background-size:44px 44px}
+.wrap{position:relative;z-index:1;max-width:1360px;margin:0 auto;padding:0 16px 60px}
+
+/* TOP BAR */
+.topbar{border-bottom:1px solid var(--b2);padding:12px 0;
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;
+  position:sticky;top:0;z-index:200;background:rgba(2,5,7,0.96);backdrop-filter:blur(10px)}
+.tl{display:flex;align-items:center;gap:12px}
+.logo{font-family:var(--display);font-size:14px;font-weight:900;letter-spacing:.18em;
+  color:var(--ng);text-shadow:0 0 14px var(--ng),0 0 30px rgba(0,255,65,.35)}
+.logo span{color:var(--cyan);text-shadow:0 0 12px var(--cyan)}
+.tsep{color:var(--b3);font-family:var(--mono)}
+.tsub{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.12em}
+.tr{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tb{font-size:10px;font-family:var(--mono);padding:4px 10px;border-radius:3px;
+  display:flex;align-items:center;gap:5px;letter-spacing:.07em}
+.tb-ng{background:var(--ng-d);border:1px solid var(--b2);color:var(--ng)}
+.tb-red{background:var(--red-g);border:1px solid var(--red-b);color:var(--red)}
+.tb-cy{background:var(--cyan-g);border:1px solid rgba(0,229,255,.25);color:var(--cyan)}
+.blink{animation:blink 1.1s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+#clk{font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+/* AI KEY BAR */
+.key-bar{background:var(--s1);border:1px solid rgba(0,229,255,0.18);border-radius:5px;
+  padding:12px 16px;margin-bottom:18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.kb-icon{font-size:16px;flex-shrink:0}
+.kb-label{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--cyan)}
+.kb-desc{font-size:10px;font-family:var(--mono);color:var(--muted);flex:1;min-width:180px}
+.kb-desc a{color:var(--cyan);text-decoration:none}
+.key-in{background:var(--s2);border:1px solid rgba(0,229,255,0.2);border-radius:3px;
+  color:var(--ng);font-family:var(--mono);font-size:10px;padding:7px 10px;
+  outline:none;width:200px;text-shadow:none}
+.key-in::placeholder{color:var(--muted)}
+.key-in:focus{border-color:rgba(0,229,255,.45)}
+.test-btn{background:var(--ng-d);border:1px solid var(--b2);border-radius:3px;
+  color:var(--ng);font-family:var(--mono);font-size:10px;font-weight:700;
+  letter-spacing:.1em;padding:7px 12px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.test-btn:hover{background:rgba(0,255,65,.18)}
+.ai-update-btn{background:var(--cyan-g);border:1px solid rgba(0,229,255,.3);border-radius:3px;
+  color:var(--cyan);font-family:var(--mono);font-size:10px;font-weight:700;
+  letter-spacing:.1em;padding:7px 12px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.ai-update-btn:hover{background:rgba(0,229,255,.18)}
+.ai-update-btn:disabled{opacity:.35;pointer-events:none}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:18px}
+.sbox{background:var(--s1);border:1px solid var(--b1);border-radius:4px;padding:12px 14px;
+  position:relative;overflow:hidden}
+.sbox::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,currentColor,transparent);opacity:.4}
+.sn{font-family:var(--display);font-size:20px;font-weight:700;line-height:1;margin-bottom:4px}
+.sl{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+
+/* ALERT BANNER */
+.alert-banner{background:rgba(255,55,55,0.07);border:1px solid var(--red-b);
+  border-left:3px solid var(--red);border-radius:4px;padding:12px 16px;
+  margin-bottom:18px;font-size:12px;color:var(--muted2);line-height:1.7;font-family:var(--mono)}
+.alert-banner strong{color:var(--red)}
+
+/* FILTERS */
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center}
+.fl{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em}
+.fchip{font-size:10px;font-family:var(--mono);padding:5px 12px;border-radius:3px;
+  border:1px solid var(--b1);color:var(--muted);cursor:pointer;transition:all .12s;
+  -webkit-tap-highlight-color:transparent}
+.fchip:hover,.fchip.active{background:var(--ng-d);border-color:var(--b2);color:var(--ng)}
+.search-in{background:var(--s2);border:1px solid var(--b1);border-radius:3px;
+  color:var(--ng);font-family:var(--mono);font-size:11px;padding:6px 12px;
+  outline:none;width:220px;margin-left:auto;text-shadow:none}
+.search-in::placeholder{color:var(--muted)}
+.search-in:focus{border-color:var(--b2)}
+
+/* MAIN LAYOUT */
+.main-layout{display:grid;grid-template-columns:1fr 340px;gap:14px;margin-bottom:18px}
+
+/* CABLE MAP SVG */
+.map-panel{background:var(--s1);border:1px solid var(--b1);border-radius:5px;overflow:hidden}
+.panel-hdr{padding:10px 14px;border-bottom:1px solid var(--b1);
+  font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:.18em;
+  color:var(--ng);text-transform:uppercase;display:flex;align-items:center;justify-content:space-between}
+.map-wrap{background:#020c14;position:relative}
+#cableMap{width:100%;display:block}
+
+/* INCIDENT FEED */
+.feed-panel{background:var(--s1);border:1px solid var(--b1);border-radius:5px;
+  display:flex;flex-direction:column;overflow:hidden}
+.feed-list{overflow-y:auto;flex:1;max-height:600px}
+.inc-item{padding:12px 14px;border-bottom:1px solid var(--b1);cursor:pointer;
+  transition:background .1s;position:relative}
+.inc-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.inc-item:hover{background:var(--ng-dd)}
+.inc-item.expanded{background:var(--ng-dd)}
+.inc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px}
+.inc-cable{font-family:var(--display);font-size:11px;font-weight:700;color:var(--cyan);letter-spacing:.05em}
+.inc-status{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 7px;
+  border-radius:2px;letter-spacing:.06em;white-space:nowrap;flex-shrink:0}
+.st-cut{background:var(--red-g);color:var(--red);border:1px solid var(--red-b)}
+.st-degraded{background:var(--orange-g);color:var(--orange);border:1px solid rgba(255,140,0,.28)}
+.st-repair{background:var(--yellow-g);color:var(--yellow);border:1px solid rgba(255,230,0,.25)}
+.st-resolved{background:var(--ng-d);color:var(--ng);border:1px solid var(--b2)}
+.st-monitoring{background:var(--cyan-g);color:var(--cyan);border:1px solid rgba(0,229,255,.22)}
+.inc-region{font-size:10px;font-family:var(--mono);color:var(--muted);margin-bottom:4px}
+.inc-desc{font-size:11px;color:var(--muted2);line-height:1.6;margin-bottom:5px}
+.inc-meta{display:flex;gap:10px;flex-wrap:wrap}
+.im{font-size:10px;font-family:var(--mono);color:var(--muted);display:flex;align-items:center;gap:3px}
+.im span{color:var(--muted2)}
+.inc-detail{display:none;padding:10px 0 4px;border-top:1px solid var(--b1);margin-top:8px}
+.inc-item.expanded .inc-detail{display:block}
+.det-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}
+.det-cell{background:var(--s3);border:1px solid var(--b1);border-radius:2px;padding:7px 9px}
+.dc-label{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.08em;
+  text-transform:uppercase;margin-bottom:3px}
+.dc-val{font-size:11px;font-family:var(--mono);color:var(--ng);line-height:1.4;word-break:break-word}
+.threat-tag{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 7px;
+  border-radius:2px;margin-right:4px;letter-spacing:.05em}
+.tt-sabotage{background:var(--red-g);color:var(--red)}
+.tt-accident{background:var(--orange-g);color:var(--orange)}
+.tt-weather{background:var(--yellow-g);color:var(--yellow)}
+.tt-hybrid{background:rgba(192,132,252,.12);color:#c084fc}
+
+/* CABLE CARDS */
+.cables-section{margin-bottom:18px}
+.cable-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
+.cable-card{background:var(--s1);border:1px solid var(--b1);border-radius:5px;
+  overflow:hidden;transition:border-color .15s;cursor:pointer}
+.cable-card:hover{border-color:var(--b2)}
+.cable-card.expanded{border-color:var(--b2)}
+.cc-stripe{height:3px}
+.cc-hdr{padding:13px 15px 10px;border-bottom:1px solid var(--b1)}
+.cc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px}
+.cc-name{font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:.06em}
+.cc-badges{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+.cc-meta{display:flex;gap:10px;flex-wrap:wrap}
+.ccm{font-size:10px;font-family:var(--mono);color:var(--muted)}
+.ccm span{color:var(--muted2)}
+.cc-summary{padding:10px 15px;font-size:11px;color:var(--muted2);line-height:1.65;
+  border-bottom:1px solid var(--b1)}
+.cc-countries{padding:9px 15px;border-bottom:1px solid var(--b1)}
+.country-chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.cchip{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:2px;
+  background:var(--s2);border:1px solid var(--b1);color:var(--muted2)}
+.cc-footer{padding:8px 15px;display:flex;align-items:center;justify-content:space-between}
+.exp-lbl{font-size:10px;font-family:var(--mono);color:var(--muted);
+  display:flex;align-items:center;gap:5px}
+.exp-ico{transition:transform .2s}
+.cable-card.expanded .exp-ico{transform:rotate(180deg)}
+.cc-detail{display:none;background:var(--s2);border-top:1px solid var(--b1)}
+.cable-card.expanded .cc-detail{display:block}
+.cc-det-sec{padding:12px 15px;border-bottom:1px solid var(--b1)}
+.cc-det-sec:last-child{border-bottom:none}
+.cc-det-title{font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.12em;
+  text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--b1)}
+.risk-bar-wrap{height:6px;background:var(--s3);border-radius:3px;overflow:hidden;margin-bottom:5px}
+.risk-bar{height:100%;border-radius:3px;transition:width .8s ease}
+.risk-label{font-size:10px;font-family:var(--mono);color:var(--muted)}
+.threat-list{display:flex;flex-direction:column;gap:4px}
+.tl-item{font-size:11px;font-family:var(--mono);color:var(--muted2);padding:5px 8px;
+  background:var(--s3);border:1px solid var(--b1);border-radius:2px}
+.def-list{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.def-item{font-size:10px;font-family:var(--mono);color:var(--muted2);padding:5px 8px;
+  background:var(--s3);border:1px solid var(--b1);border-left:2px solid var(--ng);border-radius:2px}
+
+/* AI UPDATE LOG */
+.ai-log{background:var(--s2);border:1px solid var(--b1);border-radius:3px;
+  padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--muted2);
+  line-height:1.7;display:none;max-height:100px;overflow-y:auto;margin-top:8px}
+.ai-log.show{display:block}
+.ll{display:flex;gap:6px;margin-bottom:2px}
+.lt{font-size:8px;font-weight:700;padding:2px 5px;border-radius:2px;flex-shrink:0;
+  letter-spacing:.06em;margin-top:2px}
+.lt-q{background:rgba(0,229,255,.12);color:var(--cyan)}
+.lt-ok{background:var(--ng-d);color:var(--ng)}
+.lt-err{background:var(--red-g);color:var(--red)}
+
+/* FOOTER */
+.ghost-footer{margin-top:28px;padding:18px 0 8px;border-top:1px solid var(--b1);text-align:center}
+.gf-rule{height:1px;background:linear-gradient(90deg,transparent,var(--ng),transparent);
+  opacity:.3;margin-bottom:16px}
+.ghost-by{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--muted);margin-bottom:4px}
+.ghost-name{font-family:var(--display);font-size:16px;font-weight:900;letter-spacing:.2em;
+  color:var(--ng);text-shadow:0 0 12px var(--ng),0 0 30px rgba(0,255,65,.45)}
+.gf-sub{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--muted);margin-top:5px}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+
+@media(max-width:900px){
+  .main-layout{grid-template-columns:1fr}
+  .stats-row{grid-template-columns:repeat(3,1fr)}
+  .cable-grid{grid-template-columns:1fr}
+  .def-list{grid-template-columns:1fr}
+  .det-grid{grid-template-columns:1fr}
+}
+@media(max-width:500px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="wrap">
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="tl">
+    <div class="logo">SUBCABLE<span>TRACKER</span></div>
+    <div class="tsep">|</div>
+    <div class="tsub">SUBMARINE CABLE STATUS INTELLIGENCE</div>
+  </div>
+  <div class="tr">
+    <div class="tb tb-red"><span class="blink">●</span>44 INCIDENTS 2024-25</div>
+    <div class="tb tb-cy">GLOBAL MONITOR</div>
+    <div id="clk"></div>
+  </div>
+</div>
+
+<!-- API KEY BAR -->
+<div class="key-bar">
+  <div class="kb-icon">⚡</div>
+  <div>
+    <div class="kb-label">AI LIVE INTEL UPDATE</div>
+    <div class="kb-desc">Paste your <a href="https://console.anthropic.com/settings/keys" target="_blank">Anthropic API key</a> to pull latest cable incident intel.</div>
+  </div>
+  <input class="key-in" id="apiKeyInput" type="password" placeholder="sk-ant-... API key">
+  <button class="test-btn" id="testKeyBtn" onclick="testAPIKey()">TEST KEY</button>
+  <button class="ai-update-btn" id="aiUpdateBtn" onclick="runAIUpdate()">⚡ AI UPDATE</button>
+  <div class="ai-log" id="aiLog"></div>
+</div>
+
+<!-- STATS -->
+<div class="stats-row">
+  <div class="sbox" style="color:var(--red)"><div class="sn">44</div><div class="sl">Incidents 2024-25</div></div>
+  <div class="sbox" style="color:var(--orange)"><div class="sn">200+</div><div class="sl">Annual Outages</div></div>
+  <div class="sbox" style="color:var(--yellow)"><div class="sn">530+</div><div class="sl">Active Cables</div></div>
+  <div class="sbox" style="color:var(--ng)"><div class="sn">1.4M</div><div class="sl">KM Total Length</div></div>
+  <div class="sbox" style="color:var(--cyan)"><div class="sn">95%</div><div class="sl">Internet Traffic</div></div>
+  <div class="sbox" style="color:var(--red)"><div class="sn" id="sActive">0</div><div class="sl">Active Incidents</div></div>
+</div>
+
+<!-- ALERT -->
+<div class="alert-banner">
+  <strong>ELEVATED THREAT ENVIRONMENT:</strong> Insikt Group recorded 44 cable damage events across 32 locations in 2024-2025.
+  Baltic Sea, Red Sea, and Taiwan Strait identified as primary high-risk corridors.
+  NATO warns of deliberate hybrid warfare targeting undersea infrastructure.
+  EstLink 2 (Dec 25 2024), BCS East-West + C-Lion1 (Nov 2024), AAE-1/SEACOM Red Sea (2024-25) all damaged.
+</div>
+
+<!-- FILTERS -->
+<div class="filter-row">
+  <span class="fl">FILTER:</span>
+  <span class="fchip active" onclick="setFilter('all',this)">ALL</span>
+  <span class="fchip" onclick="setFilter('cut',this)">SEVERED</span>
+  <span class="fchip" onclick="setFilter('degraded',this)">DEGRADED</span>
+  <span class="fchip" onclick="setFilter('repair',this)">UNDER REPAIR</span>
+  <span class="fchip" onclick="setFilter('sabotage',this)">SABOTAGE SUSPECTED</span>
+  <span class="fchip" onclick="setFilter('resolved',this)">RESOLVED</span>
+  <input class="search-in" id="searchIn" type="text" placeholder="Search cable, region, country..." oninput="doSearch()">
+</div>
+
+<!-- MAP + INCIDENT FEED -->
+<div class="main-layout">
+
+  <!-- SVG MAP -->
+  <div class="map-panel">
+    <div class="panel-hdr">
+      <span>// GLOBAL CABLE RISK MAP</span>
+      <span style="font-size:9px;color:var(--muted)">RED = HIGH RISK CORRIDOR</span>
+    </div>
+    <div class="map-wrap">
+      <svg id="cableMap" viewBox="0 0 900 450" xmlns="http://www.w3.org/2000/svg">
+        <!-- Ocean background -->
+        <rect width="900" height="450" fill="#020810"/>
+        <!-- Grid -->
+        <g stroke="rgba(0,255,65,0.04)" stroke-width="0.5">
+          <line x1="0" y1="150" x2="900" y2="150"/>
+          <line x1="0" y1="225" x2="900" y2="225"/>
+          <line x1="0" y1="300" x2="900" y2="300"/>
+          <line x1="225" y1="0" x2="225" y2="450"/>
+          <line x1="450" y1="0" x2="450" y2="450"/>
+          <line x1="675" y1="0" x2="675" y2="450"/>
+        </g>
+        <!-- Equator -->
+        <line x1="0" y1="225" x2="900" y2="225" stroke="rgba(0,255,65,0.08)" stroke-width="1" stroke-dasharray="4,8"/>
+
+        <!-- CONTINENTS (simplified) -->
+        <g fill="#0a1a0a" stroke="rgba(0,255,65,0.15)" stroke-width="0.8">
+          <!-- North America -->
+          <polygon points="60,80 180,70 200,100 220,130 200,170 160,180 120,200 80,190 60,160 40,130"/>
+          <!-- South America -->
+          <polygon points="140,200 180,195 200,220 210,270 190,320 160,340 140,310 120,270 130,230"/>
+          <!-- Europe -->
+          <polygon points="380,80 440,75 460,95 450,115 420,120 400,110 380,100"/>
+          <!-- Africa -->
+          <polygon points="380,130 450,125 470,160 460,220 440,270 410,300 380,280 360,240 360,180 370,150"/>
+          <!-- Asia -->
+          <polygon points="460,75 600,70 680,90 720,110 700,140 660,150 620,130 580,140 540,130 500,120 470,105"/>
+          <!-- Russia/Siberia -->
+          <polygon points="460,50 680,45 720,70 680,80 620,70 540,75 480,70"/>
+          <!-- India -->
+          <polygon points="560,150 600,145 610,175 590,210 570,220 550,200 545,170"/>
+          <!-- SE Asia -->
+          <polygon points="660,160 720,155 740,175 720,195 690,185 660,175"/>
+          <!-- Australia -->
+          <polygon points="680,270 760,265 790,290 780,330 740,340 700,320 675,300"/>
+          <!-- Japan -->
+          <polygon points="730,110 755,105 760,120 745,130 730,125"/>
+          <!-- UK -->
+          <polygon points="375,90 390,87 392,100 380,103 375,98"/>
+          <!-- Greenland -->
+          <polygon points="230,40 280,35 290,55 275,65 245,60 225,50"/>
+        </g>
+
+        <!-- SUBMARINE CABLE ROUTES -->
+        <!-- Trans-Atlantic (US-Europe) - OPERATIONAL -->
+        <path d="M 170,140 Q 290,120 375,100" stroke="#00ff41" stroke-width="2" fill="none" opacity="0.7" stroke-dasharray="none"/>
+        <!-- Trans-Pacific (US-Asia) - OPERATIONAL -->
+        <path d="M 130,150 Q 430,130 680,140" stroke="#00ff41" stroke-width="2" fill="none" opacity="0.6"/>
+        <!-- US-South America - OPERATIONAL -->
+        <path d="M 170,160 Q 200,230 165,290" stroke="#00ff41" stroke-width="1.5" fill="none" opacity="0.5"/>
+        <!-- Europe-Africa - OPERATIONAL -->
+        <path d="M 390,115 Q 385,200 400,290" stroke="#00ff41" stroke-width="1.5" fill="none" opacity="0.5"/>
+        <!-- Europe-Asia (through Suez/Red Sea) - DEGRADED/DAMAGED -->
+        <path d="M 410,115 Q 460,155 490,175 Q 520,195 545,205 Q 580,210 620,200 Q 660,185 700,165" stroke="#ff8c00" stroke-width="2.5" fill="none" opacity="0.9" stroke-dasharray="6,3"/>
+        <!-- Red Sea segment - SEVERED marker -->
+        <path d="M 490,175 Q 505,185 520,190" stroke="#ff3737" stroke-width="3" fill="none" opacity="1"/>
+        <!-- Baltic Sea cables - DAMAGED -->
+        <path d="M 415,82 Q 435,78 455,80" stroke="#ff3737" stroke-width="2.5" fill="none" opacity="1" stroke-dasharray="4,2"/>
+        <!-- APCN/Asia cables - OPERATIONAL -->
+        <path d="M 700,165 Q 720,150 740,140 Q 760,125 745,118" stroke="#00ff41" stroke-width="1.5" fill="none" opacity="0.6"/>
+        <!-- Australia-Asia - OPERATIONAL -->
+        <path d="M 720,280 Q 710,230 700,185" stroke="#00ff41" stroke-width="1.5" fill="none" opacity="0.5"/>
+        <!-- South Atlantic - OPERATIONAL -->
+        <path d="M 165,290 Q 280,310 390,290" stroke="#00ff41" stroke-width="1.5" fill="none" opacity="0.4"/>
+        <!-- Africa-Asia (around Cape) - OPERATIONAL -->
+        <path d="M 410,290 Q 520,310 620,270 Q 670,250 700,230" stroke="#00ff41" stroke-width="1.5" fill="none" opacity="0.4"/>
+        <!-- Taiwan Strait - MONITORING -->
+        <path d="M 710,150 Q 718,160 712,170" stroke="#ffe600" stroke-width="2" fill="none" opacity="0.9" stroke-dasharray="3,3"/>
+
+        <!-- INCIDENT MARKERS -->
+        <!-- Red Sea -->
+        <g transform="translate(508,182)">
+          <circle r="10" fill="rgba(255,55,55,0.2)" stroke="#ff3737" stroke-width="1.5">
+            <animate attributeName="r" values="10;16;10" dur="2s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>
+          </circle>
+          <circle r="5" fill="#ff3737"/>
+          <text x="12" y="4" fill="#ff3737" font-family="Share Tech Mono" font-size="7" font-weight="bold">RED SEA</text>
+        </g>
+        <!-- Baltic Sea -->
+        <g transform="translate(435,79)">
+          <circle r="8" fill="rgba(255,55,55,0.2)" stroke="#ff3737" stroke-width="1.5">
+            <animate attributeName="r" values="8;14;8" dur="2.5s" repeatCount="indefinite"/>
+          </circle>
+          <circle r="4" fill="#ff3737"/>
+          <text x="10" y="-2" fill="#ff3737" font-family="Share Tech Mono" font-size="7" font-weight="bold">BALTIC</text>
+        </g>
+        <!-- Taiwan Strait monitoring -->
+        <g transform="translate(712,160)">
+          <circle r="7" fill="rgba(255,230,0,0.2)" stroke="#ffe600" stroke-width="1.5">
+            <animate attributeName="r" values="7;12;7" dur="3s" repeatCount="indefinite"/>
+          </circle>
+          <circle r="3" fill="#ffe600"/>
+          <text x="10" y="4" fill="#ffe600" font-family="Share Tech Mono" font-size="7">TAIWAN</text>
+        </g>
+        <!-- West Africa 2024 -->
+        <g transform="translate(345,230)">
+          <circle r="6" fill="rgba(255,140,0,0.2)" stroke="#ff8c00" stroke-width="1">
+            <animate attributeName="r" values="6;10;6" dur="3.5s" repeatCount="indefinite"/>
+          </circle>
+          <circle r="3" fill="#ff8c00"/>
+          <text x="10" y="4" fill="#ff8c00" font-family="Share Tech Mono" font-size="6">W.AFRICA</text>
+        </g>
+        <!-- Gulf of Finland -->
+        <g transform="translate(455,72)">
+          <circle r="5" fill="rgba(255,55,55,0.2)" stroke="#ff3737" stroke-width="1">
+            <animate attributeName="r" values="5;9;5" dur="2s" repeatCount="indefinite"/>
+          </circle>
+          <circle r="3" fill="#ff3737"/>
+        </g>
+
+        <!-- LEGEND -->
+        <g transform="translate(10,380)">
+          <line x1="0" y1="6" x2="20" y2="6" stroke="#00ff41" stroke-width="2"/>
+          <text x="24" y="10" fill="rgba(0,255,65,0.7)" font-family="Share Tech Mono" font-size="8">OPERATIONAL</text>
+          <line x1="120" y1="6" x2="140" y2="6" stroke="#ff8c00" stroke-width="2" stroke-dasharray="4,2"/>
+          <text x="144" y="10" fill="rgba(255,140,0,0.8)" font-family="Share Tech Mono" font-size="8">DEGRADED</text>
+          <line x1="240" y1="6" x2="260" y2="6" stroke="#ff3737" stroke-width="2"/>
+          <circle cx="250" cy="6" r="4" fill="#ff3737" opacity="0.7"/>
+          <text x="265" y="10" fill="rgba(255,55,55,0.9)" font-family="Share Tech Mono" font-size="8">INCIDENT</text>
+          <line x1="360" y1="6" x2="380" y2="6" stroke="#ffe600" stroke-width="2" stroke-dasharray="3,3"/>
+          <text x="384" y="10" fill="rgba(255,230,0,0.8)" font-family="Share Tech Mono" font-size="8">MONITORING</text>
+        </g>
+
+        <!-- REGION LABELS -->
+        <text x="120" y="135" fill="rgba(0,255,65,0.2)" font-family="Share Tech Mono" font-size="9" text-anchor="middle">NORTH ATLANTIC</text>
+        <text x="400" y="200" fill="rgba(0,255,65,0.2)" font-family="Share Tech Mono" font-size="8" text-anchor="middle">INDIAN OCEAN</text>
+        <text x="600" y="220" fill="rgba(0,255,65,0.2)" font-family="Share Tech Mono" font-size="8" text-anchor="middle">PACIFIC</text>
+        <text x="280" y="290" fill="rgba(0,255,65,0.15)" font-family="Share Tech Mono" font-size="8" text-anchor="middle">SOUTH ATLANTIC</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- INCIDENT FEED -->
+  <div class="feed-panel">
+    <div class="panel-hdr">
+      <span>// INCIDENT FEED</span>
+      <span id="feedCount" style="font-size:9px;color:var(--muted)">Loading...</span>
+    </div>
+    <div class="feed-list" id="incidentFeed"></div>
+  </div>
+</div>
+
+<!-- CABLE DATABASE -->
+<div class="cables-section">
+  <div class="panel-hdr" style="background:var(--s1);border:1px solid var(--b1);border-radius:4px 4px 0 0;padding:10px 14px;border-bottom:none">
+    <span>// MAJOR CABLE DATABASE — CLICK TO EXPAND</span>
+    <span id="cableCount" style="font-size:9px;color:var(--muted)">Loading...</span>
+  </div>
+  <div class="cable-grid" id="cableGrid"></div>
+</div>
+
+<!-- FOOTER -->
+<div class="ghost-footer">
+  <div class="gf-rule"></div>
+  <div class="ghost-by">BUILT BY</div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px">
+    <span style="font-size:20px">👻</span>
+    <div class="ghost-name">GHOST DEFENSE</div>
+    <span style="font-size:20px">👻</span>
+  </div>
+  <div class="gf-sub">SUBCABLE TRACKER v1.0 &nbsp;.&nbsp; BUILT BY GHOST DEFENSE &nbsp;.&nbsp; SOURCES: ICPC, TELEGEOGRAPHY, RECORDED FUTURE, ISOC, NATO &nbsp;.&nbsp; DEFENSIVE USE &nbsp;.&nbsp; DEFEND ALWAYS</div>
+</div>
+
+</div>
+<script>
+// -- CLOCK --
+setInterval(function(){
+  document.getElementById('clk').textContent =
+    new Date().toUTCString().replace('GMT','UTC').split(' ').slice(1,5).join(' ');
+},1000);
+
+// -- INCIDENT DATABASE --
+// Sources: ICPC, TeleGeography, Recorded Future, Wikipedia, public news
+var INCIDENTS = [
+  {
+    id:'red-sea-2025', cable:'AAE-1 / EIG / SEACOM / TGN-EA',
+    region:'Red Sea / Gulf of Aden', status:'degraded',
+    date:'2024-02 to 2025-09', threat:'sabotage',
+    summary:'Multiple cables severed in Red Sea corridor during Houthi maritime conflict. AAE-1, EIG, SEACOM, and TGN-EA all damaged. Carries significant Europe-Asia traffic. Houthi forces denied involvement. Traffic rerouted via longer African routes causing latency spikes.',
+    capacity:'~25% Europe-Asia bandwidth', repairETA:'Ongoing - access restricted',
+    suspects:'Houthi maritime activity / conflict zone',
+    impact:'Major latency increase on Europe-India-Asia routes',
+    countries:['Egypt','Djibouti','Yemen','India','Saudi Arabia'],
+    sources:'TeleGeography, ThousandEyes, BBC'
+  },
+  {
+    id:'baltic-nov-2024', cable:'BCS East-West Interlink + C-Lion1',
+    region:'Baltic Sea', status:'resolved',
+    date:'2024-11-17', threat:'sabotage',
+    summary:'Two cables severed near-simultaneously on Nov 17-18 2024. Yi Peng 3 (Chinese cargo vessel) under scrutiny for presence at incident site. NATO and EU officials warned of hybrid warfare. No conclusive attribution made. Investigation ongoing.',
+    capacity:'Germany-Finland-Lithuania backbone', repairETA:'Restored Q1 2025',
+    suspects:'Yi Peng 3 vessel (Chinese-flagged) - under investigation',
+    impact:'Disrupted Baltic regional connectivity - redundancy absorbed most traffic',
+    countries:['Germany','Finland','Lithuania','Sweden','Latvia'],
+    sources:'NATO, EU Commission, Wikipedia'
+  },
+  {
+    id:'estlink-dec-2024', cable:'EstLink 2 + 4 Telecom Cables',
+    region:'Gulf of Finland / Baltic Sea', status:'resolved',
+    date:'2024-12-25', threat:'sabotage',
+    summary:'Christmas Day 2024: EstLink 2 power cable and four telecom cables severed. Eagle S (Russian shadow fleet tanker) suspected after making U-turn directly over cable route. Finnish authorities detained vessel. 8 crew members placed on travel bans. Reduced Estonia-Finland power capacity from 1016MW to 358MW.',
+    capacity:'Estonia-Finland power + telecom', repairETA:'Restored 2025',
+    suspects:'Eagle S - Russian shadow fleet tanker',
+    impact:'Estonia-Finland power reduction, telecom disruption on Christmas Day',
+    countries:['Estonia','Finland','Russia'],
+    sources:'Finnish Border Guard, Wikipedia, Reuters'
+  },
+  {
+    id:'taiwan-2025', cable:'Matsu Islands Cables',
+    region:'Taiwan Strait', status:'monitoring',
+    date:'2023-ongoing', threat:'hybrid',
+    summary:'Repeated cable cuts near Taiwan Matsu Islands since 2023. Chinese vessels repeatedly implicated. Part of broader pattern of infrastructure pressure on Taiwan. 5 incidents involving Taiwan-connected cables documented in 2024-2025. Raises concerns about pre-conflict infrastructure preparation.',
+    capacity:'Matsu Islands connectivity', repairETA:'Repeated incidents',
+    suspects:'China-nexus vessel activity (assessed with medium confidence)',
+    impact:'Periodic isolation of Matsu Islands - satellite backup activated',
+    countries:['Taiwan','China'],
+    sources:'Recorded Future Insikt Group, Reuters'
+  },
+  {
+    id:'westafrica-2024', cable:'ACE / MainOne / SAT-3 / WACS',
+    region:'West Africa', status:'resolved',
+    date:'2024-03', threat:'accident',
+    summary:'Multiple cable cuts off West Africa coast in March 2024 caused massive outages across Cote d\'Ivoire, Liberia, Ghana, Benin, and other nations. ISOC Pulse Platform showed latency surges and availability collapse. Demonstrated lack of route diversity in West African connectivity.',
+    capacity:'Primary West African internet backbone', repairETA:'Restored April 2024',
+    suspects:'Anchor drag / seabed fault (accidental)',
+    impact:'Major internet outages across 12+ West African countries for 2-3 weeks',
+    countries:['Ghana','Nigeria','Cote d\'Ivoire','Liberia','Benin','Cameroon'],
+    sources:'Internet Society ISOC, NetBlocks, TeleGeography'
+  },
+  {
+    id:'balticconnector-2023', cable:'Balticconnector Pipeline + EE-S1 Cable',
+    region:'Baltic Sea', status:'resolved',
+    date:'2023-10-07', threat:'sabotage',
+    summary:'Gas pipeline Balticconnector and EE-S1 data cable between Finland and Estonia damaged simultaneously. Chinese vessel Newnew Polar Bear identified as suspect after anchor drag across seabed. NATO invoked Article 4 consultations. Repair took months.',
+    capacity:'Finland-Estonia gas + data link', repairETA:'Restored 2024',
+    suspects:'Newnew Polar Bear - Chinese-flagged vessel',
+    impact:'Finland forced to use alternative gas sources, Estonia data link degraded',
+    countries:['Finland','Estonia','China'],
+    sources:'NATO, Finnish authorities, Reuters'
+  },
+  {
+    id:'red-sea-sep2025', cable:'AAE-1 / SMW5',
+    region:'Red Sea', status:'cut',
+    date:'2025-09', threat:'sabotage',
+    summary:'Further cable cuts in Red Sea September 2025. AAE-1 and SMW5 damaged in environment of heightened Houthi maritime activity. Repair access denied due to conflict zone restrictions. Adds to cumulative bandwidth reduction on Europe-Asia routes.',
+    capacity:'~15% additional Europe-Asia bandwidth lost', repairETA:'Unknown - conflict zone',
+    suspects:'Under investigation - conflict zone',
+    impact:'Compounding degradation on trans-Indian Ocean routes',
+    countries:['Yemen','Egypt','Djibouti'],
+    sources:'ComplexDiscovery, Recorded Future'
+  },
+  {
+    id:'gulf-finland-2025', cable:'Multiple Baltic Telecom Cables',
+    region:'Gulf of Finland / Baltic Sea', status:'monitoring',
+    date:'2025', threat:'hybrid',
+    summary:'Ongoing pattern of incidents in Baltic Sea region through 2025. Russia shadow fleet vessels continue operating near cable routes. NATO and EU increased surveillance of Baltic seabed. 8 distinct cable damage events in Baltic recorded 2024-2025 per Insikt Group.',
+    capacity:'Multiple regional links', repairETA:'Ongoing monitoring',
+    suspects:'Russia shadow fleet activity - assessed with high confidence',
+    impact:'Elevated risk posture - no major outages but sustained threat',
+    countries:['Finland','Estonia','Latvia','Lithuania','Germany','Sweden'],
+    sources:'Insikt Group, NATO, EU'
+  },
+];
+
+// -- CABLE DATABASE --
+var CABLES = [
+  {
+    id:'aae1', name:'AAE-1',
+    fullname:'Asia Africa Europe 1',
+    status:'degraded', riskScore:92, color:'#ff3737',
+    length:'25,000 km', capacity:'40 Tbps', launched:'2017',
+    route:'Hong Kong - Singapore - India - Djibouti - Egypt - France',
+    summary:'One of the most important cables connecting Asia to Europe. Multiple sections damaged in Red Sea corridor 2024-2025 due to conflict zone. Significant traffic rerouted adding latency.',
+    countries:['China','Hong Kong','Vietnam','Cambodia','Malaysia','Singapore','Sri Lanka','India','Oman','UAE','Djibouti','Egypt','Greece','Italy','France'],
+    threatVectors:['Red Sea conflict zone - Houthi maritime activity','Chokepoint at Suez/Bab-el-Mandeb Strait','High-value target for state actors','Limited repair vessel access in conflict zones'],
+    defenses:['Monitor via TeleGeography alerts','Route critical traffic via alternative paths (Africa cable)','Implement BGP monitoring for latency spikes','Ensure carrier diversity for critical operations']
+  },
+  {
+    id:'clion1', name:'C-Lion1',
+    fullname:'C-Lion1 Cable System',
+    status:'resolved', riskScore:75, color:'#ff8c00',
+    length:'1,172 km', capacity:'144 Tbps', launched:'2016',
+    route:'Helsinki, Finland - Rostock, Germany',
+    summary:'Direct Finland-Germany submarine link. Severed November 2024 near-simultaneously with BCS East-West Interlink in suspected hybrid warfare incident. Yi Peng 3 vessel investigated. Restored 2025.',
+    countries:['Finland','Germany'],
+    threatVectors:['Baltic Sea hybrid warfare incidents','Shadow fleet vessel activity','Strategic chokepoint for Baltic connectivity','Proximity to Russian maritime activity'],
+    defenses:['Monitor Baltic AIS tracking for suspicious vessels','Ensure redundant terrestrial routes via Scandinavia','Subscribe to NATO undersea infrastructure alerts','Implement diverse carrier routing for Baltic traffic']
+  },
+  {
+    id:'seacom', name:'SEACOM',
+    fullname:'SEACOM Cable System',
+    status:'degraded', riskScore:80, color:'#ff8c00',
+    length:'17,000 km', capacity:'1.28 Tbps', launched:'2009',
+    route:'South Africa - Mozambique - Tanzania - Kenya - Djibouti - India - Malaysia',
+    summary:'Primary connectivity cable for East Africa. Damaged in Red Sea incidents 2024-2025. Critical for connecting East African nations. Limited redundancy in the region amplifies impact.',
+    countries:['South Africa','Mozambique','Tanzania','Kenya','Djibouti','India','Malaysia'],
+    threatVectors:['Red Sea conflict zone damage','Aging infrastructure (launched 2009)','Limited redundancy in East Africa corridor','Single point of failure for several East African nations'],
+    defenses:['Advocate for TEAMS/EASSy/Lion2 route diversity','Monitor incident reports from SEACOM operator','Implement satellite backup for critical East Africa links','Engage ISP for redundant route commitments']
+  },
+  {
+    id:'tpc5', name:'Trans-Pacific (TPC-5)',
+    fullname:'Trans-Pacific Cable Network 5',
+    status:'monitoring', riskScore:55, color:'#ffe600',
+    length:'25,000 km', capacity:'Multiple Tbps', launched:'1996',
+    route:'US West Coast - Hawaii - Guam - Japan - Philippines',
+    summary:'Aging trans-Pacific cable aging infrastructure. Taiwan Strait proximity creates risk. Chinese vessel activity near Pacific cable routes increasing. Guam as strategic node raises military significance.',
+    countries:['USA','Hawaii','Guam','Japan','Philippines'],
+    threatVectors:['Chinese vessel activity near Taiwan Strait','Aging infrastructure vulnerability','Guam as military strategic node elevates targeting risk','Taiwan Strait chokepoint'],
+    defenses:['PLCN, FASTER, NCP cables provide some redundancy','Monitor FCC submarine cable outage reports','BGP monitoring for Pacific route anomalies','US DoD strategic redundancy planning for Guam']
+  },
+  {
+    id:'marea', name:'MAREA',
+    fullname:'MAREA Trans-Atlantic Cable',
+    status:'monitoring', riskScore:40, color:'#ffe600',
+    length:'6,600 km', capacity:'200 Tbps', launched:'2017',
+    route:'Virginia Beach, USA - Bilbao, Spain',
+    summary:'Microsoft/Facebook owned high-capacity trans-Atlantic cable. One of the highest capacity cables ever deployed. North Atlantic cables generally lower risk but increasing Russian submarine activity in North Atlantic is a concern per NATO.',
+    countries:['USA','Spain'],
+    threatVectors:['Russian submarine activity in North Atlantic (NATO concern)','High-value target due to Microsoft/Meta ownership','Landing station physical security at Virginia Beach and Bilbao'],
+    defenses:['Multiple trans-Atlantic cables provide strong redundancy','Monitor NATO North Atlantic surveillance updates','Landing station physical security protocols','Route diversity between MAREA/AEC/Dunant/Amitie']
+  },
+  {
+    id:'smw5', name:'SeaMeWe-5',
+    fullname:'Southeast Asia Middle East Western Europe 5',
+    status:'cut', riskScore:88, color:'#ff3737',
+    length:'20,000 km', capacity:'24 Tbps', launched:'2016',
+    route:'Singapore - Bangladesh - Sri Lanka - Oman - Djibouti - Saudi Arabia - Egypt - Italy - France',
+    summary:'Critical Asia-Europe backbone damaged in Red Sea incidents 2025. Passes through Bab-el-Mandeb Strait chokepoint. Part of consortium serving South Asia connectivity. September 2025 damage adds to cumulative bandwidth reduction.',
+    countries:['Singapore','Malaysia','Bangladesh','India','Sri Lanka','Oman','UAE','Djibouti','Saudi Arabia','Egypt','Italy','France'],
+    threatVectors:['Red Sea conflict zone - repeat incidents','Bab-el-Mandeb Strait chokepoint','High dependency for South Asia connectivity','Limited alternate routing options at Red Sea segment'],
+    defenses:['Route via Africa cables (EIG/SAFE/PEACE) where possible','Monitor Telegeography cable outage database','Engage NOC for real-time status monitoring','Ensure bandwidth contracts include rerouting provisions']
+  },
+  {
+    id:'peace', name:'PEACE Cable',
+    fullname:'Pakistan and East Africa Connecting Europe',
+    status:'monitoring', riskScore:60, color:'#ffe600',
+    length:'15,000 km', capacity:'Multiple Tbps', launched:'2022',
+    route:'Karachi - Kenya - Djibouti - Egypt - France - UK',
+    summary:'Newer cable providing alternative routing for Pakistan and East Africa. Partially avoids Red Sea chokepoint but still vulnerable in Djibouti landing zone. Provides some redundancy for Red Sea damaged cables.',
+    countries:['Pakistan','Kenya','Djibouti','Egypt','France','UK'],
+    threatVectors:['Djibouti landing station geopolitical risk (Chinese-operated port nearby)','Red Sea segment vulnerability','Emerging cable with less proven redundancy testing'],
+    defenses:['Leverage as alternative to Red Sea damaged cables','Monitor landing station security in Djibouti','Include in route diversity planning for South Asia traffic']
+  },
+  {
+    id:'hkguam', name:'HK-G / APG',
+    fullname:'Hong Kong Guam + Asia Pacific Gateway',
+    status:'monitoring', riskScore:70, color:'#ffe600',
+    length:'10,400 km', capacity:'54.8 Tbps', launched:'2016',
+    route:'Hong Kong - Philippines - Guam - Japan - South Korea - China',
+    summary:'Key Asia Pacific cable serving Guam (strategic US military node). Taiwan Strait proximity and Chinese vessel activity monitoring ongoing. Critical for US military communications redundancy in Indo-Pacific.',
+    countries:['Hong Kong','Philippines','Guam','Japan','South Korea','China'],
+    threatVectors:['Taiwan Strait conflict scenario - pre-positioning risk','Chinese vessel activity near cable routes','Guam as high-value military target','Hong Kong landing station sovereignty concerns'],
+    defenses:['US military alternative communication planning','Monitor Taiwan Strait AIS for suspicious vessel patterns','APRICOT/ADC cables provide some Pacific redundancy','Engage Guam Telecom Authority for status monitoring']
+  },
+];
+
+// -- STATE --
+var activeFilter = 'all';
+var searchQuery  = '';
+
+// -- D3 MAP INIT --
+var cableSvg, cableProj, cablePath, cableG;
+
+function initCableMap() {
+  var wrap = document.getElementById('cableMapWrap');
+  var W = wrap.clientWidth || 800;
+  var H = 460;
+
+  cableSvg = d3.select('#cableMap').attr('width', W).attr('height', H);
+  cableProj = d3.geoNaturalEarth1().scale(W / 6.5).translate([W / 2, H / 2]);
+  cablePath = d3.geoPath().projection(cableProj);
+
+  // Ocean
+  cableSvg.append('rect').attr('width', W).attr('height', H).attr('fill', '#020c14');
+
+  // Graticule
+  var grat = d3.geoGraticule()();
+  cableSvg.append('path').datum(grat).attr('d', cablePath)
+    .attr('fill','none').attr('stroke','rgba(0,255,65,0.04)').attr('stroke-width',0.5);
+
+  cableG = cableSvg.append('g');
+
+  // Zoom
+  cableSvg.call(d3.zoom().scaleExtent([0.8,10]).on('zoom', function(e){
+    cableG.attr('transform', e.transform);
+  }));
+
+  fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+    .then(function(r){ return r.json(); })
+    .then(function(world) {
+      // Land
+      cableG.selectAll('.land')
+        .data(topojson.feature(world, world.objects.countries).features)
+        .enter().append('path').attr('class','land')
+        .attr('d', cablePath)
+        .attr('fill','#0a1a0a')
+        .attr('stroke','rgba(0,255,65,0.15)')
+        .attr('stroke-width',0.5);
+
+      // Borders
+      cableG.append('path')
+        .datum(topojson.mesh(world, world.objects.countries))
+        .attr('d', cablePath).attr('fill','none')
+        .attr('stroke','rgba(0,255,65,0.07)').attr('stroke-width',0.3);
+
+      drawCableRoutes();
+      drawIncidentMarkers();
+      document.getElementById('mapStatus').textContent = 'Interactive — scroll to zoom, drag to pan';
+    })
+    .catch(function() {
+      drawCableRoutes();
+      drawIncidentMarkers();
+      document.getElementById('mapStatus').textContent = 'Topology unavailable — cable overlays shown';
+    });
+}
+
+function drawCableRoutes() {
+  var routes = [
+    // [lon1,lat1, lon2,lat2, status, label]
+    // Trans-Atlantic
+    {points:[[-76,37],[2,43],[10,54]], status:'operational', label:'Trans-Atlantic'},
+    // Trans-Pacific
+    {points:[[-120,37],[160,35],[114,22],[103,1]], status:'operational', label:'Trans-Pacific'},
+    // Europe-Asia Red Sea
+    {points:[[2,43],[32,30],[43,12],[57,21],[80,13],[103,1]], status:'degraded', label:'AAE-1/EIG'},
+    // Red Sea severed segment
+    {points:[[43,12],[44,11.5],[45,11]], status:'cut', label:'RED SEA CUT'},
+    // Baltic cables
+    {points:[[10,54],[18,57],[25,60],[28,59]], status:'cut', label:'Baltic'},
+    // West Africa
+    {points:[[2,43],[-15,15],[-1,5],[-5,-5]], status:'resolved', label:'W.Africa'},
+    // Asia-Australia
+    {points:[[114,22],[115,5],[115,-30],[151,-33]], status:'operational', label:'Asia-AU'},
+    // South Atlantic
+    {points:[[-43,-23],[-15,-8],[18,-34]], status:'operational', label:'S.Atlantic'},
+  ];
+
+  routes.forEach(function(r) {
+    var col = r.status==='cut'?'#ff3737':r.status==='degraded'?'#ff8c00':r.status==='resolved'?'rgba(0,255,65,0.4)':'rgba(0,255,65,0.6)';
+    var dash = r.status==='cut'?'4,3':r.status==='degraded'?'6,3':null;
+    var width = r.status==='cut'?2.5:r.status==='degraded'?2:1.5;
+
+    // Build line from points
+    var pts = r.points.map(function(p){ return cableProj(p); }).filter(function(p){ return p; });
+    if(pts.length < 2) return;
+
+    var line = 'M'+pts[0][0]+','+pts[0][1];
+    for(var i=1;i<pts.length;i++) line += ' L'+pts[i][0]+','+pts[i][1];
+
+    var el = cableG.append('path').attr('d', line)
+      .attr('fill','none')
+      .attr('stroke', col)
+      .attr('stroke-width', width)
+      .attr('opacity', r.status==='operational'?0.65:1);
+    if(dash) el.attr('stroke-dasharray', dash);
+  });
+}
+
+function drawIncidentMarkers() {
+  var markers = [
+    {lon:44.5, lat:12.0, col:'#ff3737', label:'RED SEA', size:10, pulse:true},
+    {lon:18.5, lat:57.0, col:'#ff3737', label:'BALTIC',  size:8,  pulse:true},
+    {lon:120.8,lat:24.5, col:'#ffe600', label:'TAIWAN',  size:7,  pulse:false},
+    {lon:-5.0, lat:5.0,  col:'#ff8c00', label:'W.AFRICA',size:6,  pulse:false},
+    {lon:24.5, lat:59.8, col:'#ff3737', label:'ESTLINK2',size:7,  pulse:true},
+  ];
+
+  markers.forEach(function(m) {
+    var pos = cableProj([m.lon, m.lat]);
+    if(!pos) return;
+
+    if(m.pulse) {
+      var ring = cableG.append('circle')
+        .attr('cx', pos[0]).attr('cy', pos[1])
+        .attr('r', m.size).attr('fill','none')
+        .attr('stroke', m.col).attr('stroke-width',1).attr('opacity',0.7);
+      function doPulse() {
+        ring.attr('r', m.size*0.6).attr('opacity',0.8)
+          .transition().duration(1800)
+          .attr('r', m.size*1.8).attr('opacity',0)
+          .on('end', doPulse);
+      }
+      doPulse();
+    }
+
+    cableG.append('circle')
+      .attr('cx', pos[0]).attr('cy', pos[1])
+      .attr('r', m.size*0.5).attr('fill', m.col);
+
+    cableG.append('text')
+      .attr('x', pos[0]+8).attr('y', pos[1]+4)
+      .attr('fill', m.col)
+      .attr('font-family','Share Tech Mono,monospace')
+      .attr('font-size', 8).attr('font-weight','bold')
+      .text(m.label);
+  });
+
+  // Legend
+  var leg = [
+    {col:'rgba(0,255,65,0.7)', label:'Operational', dash:null},
+    {col:'#ff8c00',            label:'Degraded',    dash:'5,2'},
+    {col:'#ff3737',            label:'Severed',     dash:null},
+  ];
+  leg.forEach(function(l, i) {
+    var y = 20 + i*14;
+    var el = cableSvg.append('line').attr('x1',10).attr('y1',y).attr('x2',34).attr('y2',y)
+      .attr('stroke',l.col).attr('stroke-width',2);
+    if(l.dash) el.attr('stroke-dasharray',l.dash);
+    cableSvg.append('text').attr('x',38).attr('y',y+4)
+      .attr('fill',l.col).attr('font-family','Share Tech Mono').attr('font-size',8)
+      .text(l.label);
+  });
+}
+
+// -- STATS --
+var activeCount = INCIDENTS.filter(function(i){ return i.status === 'cut' || i.status === 'degraded'; }).length;
+document.getElementById('sActive').textContent = activeCount;
+
+// -- FILTER --
+function setFilter(f, el){
+  activeFilter = f;
+  document.querySelectorAll('.fchip').forEach(function(c){ c.classList.remove('active'); });
+  el.classList.add('active');
+  renderFeed();
+}
+function doSearch(){ searchQuery = document.getElementById('searchIn').value.toLowerCase(); renderFeed(); }
+
+function filteredIncidents(){
+  return INCIDENTS.filter(function(inc){
+    var mf = true;
+    if(activeFilter === 'cut') mf = inc.status === 'cut';
+    else if(activeFilter === 'degraded') mf = inc.status === 'degraded';
+    else if(activeFilter === 'repair') mf = inc.status === 'repair';
+    else if(activeFilter === 'sabotage') mf = inc.threat === 'sabotage' || inc.threat === 'hybrid';
+    else if(activeFilter === 'resolved') mf = inc.status === 'resolved';
+    if(!mf) return false;
+    if(!searchQuery) return true;
+    return (inc.cable + inc.region + inc.summary + inc.countries.join('')).toLowerCase().includes(searchQuery);
+  });
+}
+
+function safeStr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function statusClass(s){
+  return s==='cut'?'st-cut':s==='degraded'?'st-degraded':s==='repair'?'st-repair':s==='monitoring'?'st-monitoring':'st-resolved';
+}
+function statusLabel(s){
+  return s==='cut'?'SEVERED':s==='degraded'?'DEGRADED':s==='repair'?'UNDER REPAIR':s==='monitoring'?'MONITORING':'RESOLVED';
+}
+function threatClass(t){
+  return t==='sabotage'?'tt-sabotage':t==='accident'?'tt-accident':t==='weather'?'tt-weather':'tt-hybrid';
+}
+function threatLabel(t){
+  return t==='sabotage'?'SABOTAGE':t==='accident'?'ACCIDENT':t==='weather'?'WEATHER':'HYBRID WARFARE';
+}
+function statusBorderColor(s){
+  return s==='cut'?'var(--red)':s==='degraded'?'var(--orange)':s==='monitoring'?'var(--yellow)':'var(--ng)';
+}
+
+// -- RENDER INCIDENT FEED --
+function renderFeed(){
+  var list = filteredIncidents();
+  document.getElementById('feedCount').textContent = list.length + ' incidents';
+  var feed = document.getElementById('incidentFeed');
+  if(!list.length){
+    feed.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:11px">No incidents match filter</div>';
+    return;
+  }
+  feed.innerHTML = list.map(function(inc, i){
+    return '<div class="inc-item" id="inc'+i+'" onclick="toggleInc('+i+')" style="border-left-color:'+statusBorderColor(inc.status)+'">'
+      +'<div class="inc-top">'
+        +'<div class="inc-cable">'+safeStr(inc.cable)+'</div>'
+        +'<span class="inc-status '+statusClass(inc.status)+'">'+statusLabel(inc.status)+'</span>'
+      +'</div>'
+      +'<div class="inc-region">'+inc.region+' &nbsp;·&nbsp; '+inc.date+'</div>'
+      +'<div class="inc-desc">'+safeStr(inc.summary.slice(0,120))+'...</div>'
+      +'<div class="inc-meta">'
+        +'<div class="im"><span class="threat-tag '+threatClass(inc.threat)+'">'+threatLabel(inc.threat)+'</span></div>'
+      +'</div>'
+      +'<div class="inc-detail" id="id'+i+'">'
+        +'<div class="det-grid">'
+          +'<div class="det-cell"><div class="dc-label">Capacity Affected</div><div class="dc-val">'+safeStr(inc.capacity)+'</div></div>'
+          +'<div class="det-cell"><div class="dc-label">Repair ETA</div><div class="dc-val">'+safeStr(inc.repairETA)+'</div></div>'
+          +'<div class="det-cell"><div class="dc-label">Suspects</div><div class="dc-val">'+safeStr(inc.suspects)+'</div></div>'
+          +'<div class="det-cell"><div class="dc-label">Impact</div><div class="dc-val">'+safeStr(inc.impact)+'</div></div>'
+        +'</div>'
+        +'<div style="font-size:10px;font-family:var(--mono);color:var(--muted);margin-top:6px">COUNTRIES: '+inc.countries.map(function(c){return'<span style="background:var(--s3);padding:1px 5px;border-radius:2px;margin-right:3px">'+safeStr(c)+'</span>';}).join('')+'</div>'
+        +'<div style="font-size:10px;font-family:var(--mono);color:var(--muted);margin-top:5px">SOURCES: '+safeStr(inc.sources)+'</div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function toggleInc(i){
+  var el = document.getElementById('inc'+i);
+  if(el) el.classList.toggle('expanded');
+}
+
+// -- RENDER CABLE GRID --
+function renderCables(){
+  document.getElementById('cableCount').textContent = CABLES.length + ' major cables';
+  document.getElementById('cableGrid').innerHTML = CABLES.map(function(c, i){
+    var nc = c.color || 'var(--ng)';
+    var riskColor = c.riskScore >= 80 ? 'var(--red)' : c.riskScore >= 60 ? 'var(--orange)' : 'var(--yellow)';
+    return '<div class="cable-card" id="cc'+i+'" onclick="toggleCable('+i+')">'
+      +'<div class="cc-stripe" style="background:linear-gradient(90deg,'+nc+',transparent)"></div>'
+      +'<div class="cc-hdr">'
+        +'<div class="cc-top">'
+          +'<div>'
+            +'<div class="cc-name" style="color:'+nc+';text-shadow:0 0 8px '+nc+'55">'+safeStr(c.name)+'</div>'
+            +'<div style="font-size:10px;font-family:var(--mono);color:var(--muted)">'+safeStr(c.fullname)+'</div>'
+          +'</div>'
+          +'<div class="cc-badges">'
+            +'<span class="inc-status '+statusClass(c.status)+'">'+statusLabel(c.status)+'</span>'
+            +'<span style="font-family:var(--display);font-size:11px;font-weight:700;color:'+riskColor+'">RISK: '+c.riskScore+'</span>'
+          +'</div>'
+        +'</div>'
+        +'<div class="cc-meta">'
+          +'<div class="ccm">LENGTH: <span>'+safeStr(c.length)+'</span></div>'
+          +'<div class="ccm">CAP: <span>'+safeStr(c.capacity)+'</span></div>'
+          +'<div class="ccm">SINCE: <span>'+safeStr(c.launched)+'</span></div>'
+        +'</div>'
+      +'</div>'
+      +'<div class="cc-summary">'+safeStr(c.summary.slice(0,150))+'...</div>'
+      +'<div class="cc-countries">'
+        +'<div style="font-size:9px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px">ROUTE COUNTRIES</div>'
+        +'<div class="country-chips">'+c.countries.slice(0,6).map(function(cn){return'<span class="cchip">'+safeStr(cn)+'</span>';}).join('')+(c.countries.length>6?'<span class="cchip">+'+( c.countries.length-6)+' more</span>':'')+'</div>'
+      +'</div>'
+      +'<div class="cc-footer">'
+        +'<div class="exp-lbl"><span class="exp-ico">&#9660;</span> FULL PROFILE</div>'
+        +'<div style="font-size:10px;font-family:var(--mono);color:var(--muted)">'
+          +'ROUTE: '+safeStr(c.route.slice(0,40))+'...'
+        +'</div>'
+      +'</div>'
+      +'<div class="cc-detail" id="cd'+i+'">'
+        +'<div class="cc-det-sec">'
+          +'<div class="cc-det-title">RISK ASSESSMENT</div>'
+          +'<div class="risk-bar-wrap"><div class="risk-bar" id="rb'+i+'" style="width:0;background:'+riskColor+'"></div></div>'
+          +'<div class="risk-label">Risk Score: <strong style="color:'+riskColor+'">'+c.riskScore+'/100</strong></div>'
+        +'</div>'
+        +'<div class="cc-det-sec">'
+          +'<div class="cc-det-title">FULL ROUTE</div>'
+          +'<div style="font-size:11px;font-family:var(--mono);color:var(--muted2);line-height:1.7">'+safeStr(c.route)+'</div>'
+        +'</div>'
+        +'<div class="cc-det-sec">'
+          +'<div class="cc-det-title">THREAT VECTORS</div>'
+          +'<div class="threat-list">'+c.threatVectors.map(function(t){return'<div class="tl-item">&#9656; '+safeStr(t)+'</div>';}).join('')+'</div>'
+        +'</div>'
+        +'<div class="cc-det-sec">'
+          +'<div class="cc-det-title">DEFENSIVE RECOMMENDATIONS</div>'
+          +'<div class="def-list">'+c.defenses.map(function(d){return'<div class="def-item">'+safeStr(d)+'</div>';}).join('')+'</div>'
+        +'</div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+
+  // Animate risk bars after render
+  setTimeout(function(){
+    CABLES.forEach(function(c,i){
+      var bar = document.getElementById('rb'+i);
+      if(bar) bar.style.width = c.riskScore + '%';
+    });
+  }, 150);
+}
+
+function toggleCable(i){
+  var el = document.getElementById('cc'+i);
+  if(el) el.classList.toggle('expanded');
+}
+
+// -- API KEY TESTER --
+async function testAPIKey() {
+  var keyEl = document.getElementById('apiKeyInput');
+  var apiKey = keyEl ? keyEl.value.trim() : '';
+  if (!apiKey) { alert('Paste your API key first.'); return; }
+  var btn = document.getElementById('testKeyBtn');
+  if (btn) { btn.textContent = 'TESTING...'; btn.disabled = true; }
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: 'Say OK.' }]
+      })
+    });
+    var data = await resp.json();
+    if (resp.ok) {
+      alert('SUCCESS - API key is valid!\nYou are ready to use AI updates.');
+      if (btn) { btn.textContent = 'KEY OK'; btn.style.color = 'var(--ng)'; }
+    } else {
+      var msg = (data.error && data.error.message) ? data.error.message : JSON.stringify(data);
+      if (resp.status === 401) msg = 'Invalid key - copy fresh from console.anthropic.com/settings/keys';
+      if (resp.status === 429) msg = 'Rate limited - wait 30s and retry';
+      alert('ERROR ' + resp.status + ':\n\n' + msg);
+      if (btn) { btn.textContent = 'FAILED'; btn.style.color = 'var(--red)'; }
+    }
+  } catch (err) {
+    alert('NETWORK ERROR:\n\n' + err.message);
+    if (btn) { btn.textContent = 'NET ERR'; btn.style.color = 'var(--red)'; }
+  }
+  setTimeout(function() {
+    if (btn) { btn.textContent = 'TEST KEY'; btn.disabled = false; btn.style.color = ''; }
+  }, 4000);
+}
+
+// -- AI UPDATE --
+function addLog(tag, cls, msg) {
+  var log = document.getElementById('aiLog');
+  if (!log) return;
+  log.classList.add('show');
+  var d = document.createElement('div');
+  d.className = 'll';
+  d.innerHTML = '<span class="lt ' + cls + '">' + tag + '</span><span>' + String(msg).replace(/</g, '&lt;') + '</span>';
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function runAIUpdate() {
+  var keyEl = document.getElementById('apiKeyInput');
+  var apiKey = keyEl ? keyEl.value.trim() : '';
+  if (!apiKey) { alert('Paste your API key first.'); return; }
+
+  var btn = document.getElementById('aiUpdateBtn');
+  btn.disabled = true;
+  btn.textContent = 'QUERYING...';
+
+  var log = document.getElementById('aiLog');
+  log.classList.add('show');
+  log.innerHTML = '';
+  addLog('INIT', 'lt-q', 'Querying Claude for latest submarine cable incident intelligence...');
+
+  var prompt = 'You are a submarine cable infrastructure intelligence analyst. Date: June 6, 2026. '
+    + 'Provide the latest publicly reported submarine cable incidents, outages, and threat intelligence from 2025-2026. '
+    + 'Return ONLY raw JSON - no markdown, no backticks. '
+    + 'Schema: {"last_updated":"YYYY-MM","total_incidents_2025":150,"high_risk_regions":["region1"],'
+    + '"active_incidents":[{"cable":"cable name","region":"region","status":"cut or degraded or monitoring",'
+    + '"date":"YYYY-MM","summary":"brief description","threat_type":"sabotage or accident or hybrid"}],'
+    + '"key_developments":["development 1","development 2"],'
+    + '"threat_assessment":"2-3 sentence overall threat landscape assessment"}';
+
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!resp.ok) {
+      var et = ''; try { et = await resp.text(); } catch(e) {}
+      var ej = {}; try { ej = JSON.parse(et); } catch(e) {}
+      var em = (ej.error && ej.error.message) ? ej.error.message : et.slice(0, 100);
+      if (resp.status === 401) em = 'Invalid API key';
+      throw new Error('HTTP ' + resp.status + ': ' + em);
+    }
+
+    var data = await resp.json();
+    var raw = (data.content || []).filter(function(b){ return b.type === 'text'; })
+      .map(function(b){ return b.text; }).join('').trim();
+    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+    var hit = raw.match(/\{[\s\S]*\}/);
+    if (!hit) throw new Error('No JSON in response');
+
+    var intel = JSON.parse(hit[0].replace(/,\s*]/g, ']').replace(/,\s*}/g, '}'));
+
+    addLog('DONE', 'lt-ok', 'Intelligence updated - ' + (intel.total_incidents_2025 || '?') + ' total 2025 incidents reported');
+
+    if (intel.key_developments && intel.key_developments.length) {
+      intel.key_developments.forEach(function(d) {
+        addLog('INTEL', 'lt-ok', d);
+      });
+    }
+
+    if (intel.threat_assessment) {
+      addLog('ASSESS', 'lt-q', intel.threat_assessment);
+    }
+
+    // Inject new incidents if returned
+    if (intel.active_incidents && intel.active_incidents.length) {
+      intel.active_incidents.forEach(function(inc) {
+        var exists = INCIDENTS.some(function(i){ return i.cable === inc.cable; });
+        if (!exists) {
+          INCIDENTS.unshift({
+            id: 'ai-' + Date.now(),
+            cable: inc.cable || 'Unknown',
+            region: inc.region || 'Unknown',
+            status: inc.status || 'monitoring',
+            date: inc.date || '2026',
+            threat: inc.threat_type || 'unknown',
+            summary: inc.summary || '',
+            capacity: 'See sources', repairETA: 'Unknown',
+            suspects: 'Under investigation', impact: 'Under assessment',
+            countries: [], sources: 'AI Intel Update - verify independently'
+          });
+          addLog('NEW', 'lt-ok', 'Added new incident: ' + inc.cable);
+        }
+      });
+      renderFeed();
+      var ac = INCIDENTS.filter(function(i){ return i.status === 'cut' || i.status === 'degraded'; }).length;
+      document.getElementById('sActive').textContent = ac;
+    }
+
+  } catch (err) {
+    addLog('ERR', 'lt-err', err.message || String(err));
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'AI UPDATE';
+}
+
+// -- INIT --
+initCableMap();
+renderFeed();
+renderCables();
+
+// Resize handler
+window.addEventListener('resize', function(){
+  var w = (document.getElementById('cableMapWrap')||{}).clientWidth||800;
+  if(cableSvg) cableSvg.attr('width',w);
+  if(cableProj&&cableSvg) { cableProj.scale(w/6.5).translate([w/2,230]); cableSvg.selectAll('path').attr('d',cablePath); drawCableRoutes(); drawIncidentMarkers(); }
+});
+</script>
+</body>
+</html>

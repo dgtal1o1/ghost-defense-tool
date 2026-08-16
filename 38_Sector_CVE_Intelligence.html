@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sector CVE Intelligence — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06080c;--s1:#0a0e16;--s2:#0f1520;--s3:#151c2a;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);
+  --text:#e8f0f8;--muted:#4a6080;--muted2:#7090b0;
+  --green:#00e676;--green-s:rgba(0,230,118,0.08);--green-b:rgba(0,230,118,0.25);
+  --red:#ff3d57;--red-s:rgba(255,61,87,0.1);--red-b:rgba(255,61,87,0.3);
+  --orange:#ff9100;--orange-s:rgba(255,145,0,0.1);--orange-b:rgba(255,145,0,0.28);
+  --yellow:#ffd740;--yellow-s:rgba(255,215,64,0.08);--yellow-b:rgba(255,215,64,0.25);
+  --blue:#448aff;--blue-s:rgba(68,138,255,0.08);--blue-b:rgba(68,138,255,0.25);
+  --cyan:#00e5ff;--cyan-s:rgba(0,229,255,0.08);--cyan-b:rgba(0,229,255,0.25);
+  --purple:#e040fb;--purple-s:rgba(224,64,251,0.08);--purple-b:rgba(224,64,251,0.25);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html,body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+body{display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:10px 20px;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:100;flex-shrink:0}
+.brand{display:flex;align-items:center;gap:9px}
+.brand-icon{width:28px;height:28px;background:var(--cyan-s);border:1px solid var(--cyan-b);
+  border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.brand-name{font-size:14px;font-weight:700}
+.brand-sub{font-size:10px;color:var(--muted2);font-family:var(--mono)}
+.tb-sep{width:1px;height:22px;background:var(--border2);flex-shrink:0}
+.tb-stat{text-align:center;min-width:70px}
+.tb-stat-num{font-family:var(--mono);font-size:16px;font-weight:700}
+.tb-stat-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.tb-btn{font-family:var(--mono);font-size:11px;padding:6px 12px;border-radius:5px;
+  cursor:pointer;border:1px solid;transition:all .15s;white-space:nowrap}
+.api-inp{background:var(--s2);border:1px solid var(--border2);border-radius:5px;
+  color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 10px;
+  outline:none;width:210px;margin-left:auto}
+.api-inp::placeholder{color:var(--muted)}
+.api-inp:focus{border-color:var(--cyan-b)}
+
+/* SECTOR SELECTOR */
+.sector-bar{background:var(--s1);border-bottom:1px solid var(--border);padding:10px 20px;
+  display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0}
+.sector-btn{display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);
+  padding:5px 12px;border-radius:5px;cursor:pointer;border:1px solid var(--border2);
+  background:transparent;color:var(--muted2);transition:all .15s}
+.sector-btn:hover{border-color:var(--cyan-b);color:var(--cyan)}
+.sector-btn.active{border-color:var(--cyan-b);color:var(--cyan);background:var(--cyan-s)}
+.sector-btn .risk-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+/* MAIN LAYOUT */
+.main{display:grid;grid-template-columns:300px 1fr 280px;flex:1;overflow:hidden;
+  height:calc(100vh - 110px);gap:1px;background:var(--border)}
+
+/* PANELS */
+.panel{background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+.panel-hdr{padding:9px 14px;background:var(--s1);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.ph-title{font-size:10px;font-weight:700;color:var(--text);text-transform:uppercase;
+  letter-spacing:.12em;font-family:var(--mono);display:flex;align-items:center;gap:6px}
+.ph-badge{font-size:9px;font-family:var(--mono);padding:2px 7px;border-radius:3px;font-weight:700}
+.panel-body{flex:1;overflow-y:auto}
+
+/* SECTOR PROFILE */
+.sector-profile{padding:14px}
+.sp-name{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px}
+.sp-risk{font-size:11px;font-family:var(--mono);padding:3px 9px;border-radius:4px;
+  display:inline-block;margin-bottom:10px;font-weight:700}
+.sp-desc{font-size:12px;color:var(--muted2);line-height:1.7;margin-bottom:12px}
+.sp-section{margin-bottom:12px}
+.sp-sec-title{font-size:10px;font-family:var(--mono);font-weight:700;color:var(--muted2);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.sp-actor{display:flex;align-items:center;gap:7px;padding:5px 8px;
+  background:var(--s2);border:1px solid var(--border);border-radius:5px;margin-bottom:4px}
+.sp-actor-name{font-size:11px;font-weight:600;color:var(--red);flex:1}
+.sp-actor-nation{font-size:12px}
+.sp-tech-item{font-size:11px;font-family:var(--mono);color:var(--muted2);
+  padding:3px 0;border-bottom:1px solid var(--border);display:flex;gap:6px}
+.sp-tech-item::before{content:'→';color:var(--cyan);flex-shrink:0}
+
+/* CVE FEED */
+.cve-item{padding:10px 14px;border-bottom:1px solid var(--border);
+  cursor:pointer;transition:background .1s}
+.cve-item:hover{background:var(--s2)}
+.cve-item.critical{border-left:3px solid var(--red)}
+.cve-item.high{border-left:3px solid var(--orange)}
+.cve-item.medium{border-left:3px solid var(--yellow)}
+.ci-hdr{display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap}
+.ci-id{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--red)}
+.ci-vendor{font-size:10px;font-family:var(--mono);color:var(--muted2)}
+.ci-desc{font-size:11px;color:var(--muted2);line-height:1.5;margin-bottom:5px}
+.ci-footer{display:flex;gap:6px;flex-wrap:wrap}
+.ci-badge{font-size:9px;font-family:var(--mono);padding:1px 6px;border-radius:3px;font-weight:700}
+.kev-badge{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.cvss-c{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.cvss-h{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.cvss-m{background:var(--yellow-s);color:var(--yellow);border:1px solid var(--yellow-b)}
+.epss-badge{background:var(--purple-s);color:var(--purple);border:1px solid var(--purple-b)}
+.ssvc-act{background:rgba(255,34,68,0.15);color:#ff2244;border:2px solid rgba(255,34,68,0.5);font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;font-family:var(--mono)}
+.ssvc-attend{background:rgba(255,145,0,0.12);color:#ff9100;border:2px solid rgba(255,145,0,0.4);font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;font-family:var(--mono)}
+.ssvc-trackplus{background:rgba(255,215,64,0.1);color:#ffd740;border:2px solid rgba(255,215,64,0.35);font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;font-family:var(--mono)}
+.ssvc-track{background:rgba(0,230,118,0.07);color:#00e676;border:1px solid rgba(0,230,118,0.25);font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;font-family:var(--mono)}
+.ssvc-label{font-size:8px;color:var(--muted2);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-right:2px}
+.exploit-badge{background:rgba(224,64,251,.1);color:var(--purple);border:1px solid var(--purple-b)}
+.actor-badge{background:var(--red-s);color:var(--red);border:1px solid var(--red-b);font-size:8px}
+
+/* ACTIONS */
+.ci-actions{display:flex;gap:4px;margin-top:5px}
+.ci-action{font-size:9px;font-family:var(--mono);padding:2px 7px;border-radius:3px;
+  cursor:pointer;border:1px solid;transition:all .12s;text-decoration:none}
+
+/* RIGHT PANEL */
+.summary-box{padding:12px 14px;border-bottom:1px solid var(--border)}
+.sb-title{font-size:10px;font-family:var(--mono);font-weight:700;color:var(--muted2);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.sb-stat{display:flex;justify-content:space-between;align-items:center;
+  padding:5px 0;border-bottom:1px solid var(--border);font-size:11px}
+.sb-stat:last-child{border-bottom:none}
+.sb-stat-label{color:var(--muted2);font-family:var(--mono)}
+.sb-stat-val{font-family:var(--mono);font-weight:700}
+
+.ai-box{padding:12px 14px;flex:1;display:flex;flex-direction:column}
+.ai-btn{background:var(--cyan);border:none;border-radius:6px;color:var(--bg);
+  font-family:var(--sans);font-size:12px;font-weight:700;padding:9px;
+  cursor:pointer;transition:all .15s;margin-bottom:8px;flex-shrink:0}
+.ai-btn:hover{background:#33eeff}
+.ai-btn:disabled{opacity:.5;cursor:not-allowed}
+.ai-output{flex:1;overflow-y:auto;font-family:var(--mono);font-size:11px;
+  color:var(--muted2);line-height:1.8;white-space:pre-wrap}
+
+.export-row{padding:8px 14px;border-top:1px solid var(--border);
+  display:flex;gap:6px;flex-shrink:0;background:var(--s1)}
+.exp-btn{font-size:11px;font-family:var(--mono);padding:6px 12px;border-radius:5px;
+  cursor:pointer;border:1px solid;transition:all .15s;flex:1;text-align:center}
+
+/* LOADING */
+.loading{padding:20px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.spin{animation:spin .8s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">🏭</div>
+    <div>
+      <div class="brand-name">Sector CVE Intelligence</div>
+      <div class="brand-sub">Ghost Defense · Tool 38 · CIS Control 7 · Sector-Specific Threat Intel</div>
+    </div>
+  </div>
+  <div class="tb-sep"></div>
+  <div class="tb-stat"><div class="tb-stat-num" id="statCVEs" style="color:var(--red)">—</div><div class="tb-stat-lbl">Sector CVEs</div></div>
+  <div class="tb-stat"><div class="tb-stat-num" id="statKEV" style="color:var(--red)">—</div><div class="tb-stat-lbl">KEV Entries</div></div>
+  <div class="tb-stat"><div class="tb-stat-num" id="statActors" style="color:var(--orange)">—</div><div class="tb-stat-lbl">Active Actors</div></div>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" style="background:var(--green-s);color:var(--green);border-color:var(--green-b)" onclick="refreshSector()">⟳ REFRESH</button>
+  <button class="tb-btn" style="background:var(--s2);color:var(--muted2);border-color:var(--border2)" onclick="exportSectorCSV()">📥 EXPORT</button>
+  <input class="api-inp" id="apiKey" type="password" placeholder="sk-ant-… for AI analysis">
+  <button class="tb-btn" id="testKeyBtn" style="background:var(--cyan-s);color:var(--cyan);border-color:var(--cyan-b)" onclick="testKey()">TEST KEY</button>
+  <span id="keyStatus" style="font-family:var(--mono);font-size:11px;color:var(--muted)">—</span>
+</div>
+
+<!-- SECTOR SELECTOR -->
+<div class="sector-bar" id="sectorBar"></div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT: SECTOR PROFILE -->
+  <div class="panel">
+    <div class="panel-hdr">
+      <div class="ph-title">🏭 Sector Profile</div>
+      <span class="ph-badge" id="sectorRiskBadge" style="background:var(--red-s);color:var(--red);border:1px solid var(--red-b)">CRITICAL</span>
+    </div>
+    <div class="panel-body">
+      <div id="sectorProfile" class="loading">Select a sector above</div>
+    </div>
+  </div>
+
+  <!-- CENTER: CVE FEED -->
+  <div class="panel">
+    <div class="panel-hdr">
+      <div class="ph-title">🔴 Sector CVE Feed</div>
+      <span class="ph-badge" id="cveFeedBadge" style="background:var(--red-s);color:var(--red);border:1px solid var(--red-b)">—</span>
+    </div>
+    <div class="panel-body" id="cveFeed">
+      <div class="loading">Select a sector to load CVEs</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: SUMMARY + AI -->
+  <div class="panel">
+    <div class="panel-hdr">
+      <div class="ph-title">📊 Analysis</div>
+      <span class="ph-badge" style="background:var(--cyan-s);color:var(--cyan);border:1px solid var(--cyan-b)">LIVE</span>
+    </div>
+    <div class="panel-body" style="display:flex;flex-direction:column;overflow:hidden">
+
+      <!-- Stats -->
+      <div class="summary-box">
+        <div class="sb-title">Sector Risk Summary</div>
+        <div class="sb-stat"><span class="sb-stat-label">Critical CVEs</span><span class="sb-stat-val" id="sumCrit" style="color:var(--red)">—</span></div>
+        <div class="sb-stat"><span class="sb-stat-label">KEV Entries</span><span class="sb-stat-val" id="sumKEV" style="color:var(--red)">—</span></div>
+        <div class="sb-stat"><span class="sb-stat-label">Active Exploits</span><span class="sb-stat-val" id="sumExploit" style="color:var(--purple)">—</span></div>
+        <div class="sb-stat"><span class="sb-stat-label">Active Actors</span><span class="sb-stat-val" id="sumActors" style="color:var(--orange)">—</span></div>
+        <div class="sb-stat"><span class="sb-stat-label">Avg EPSS</span><span class="sb-stat-val" id="sumEPSS" style="color:var(--yellow)">—</span></div>
+      <div class="sb-stat"><span class="sb-stat-label">SSVC ACT</span><span class="sb-stat-val" id="sumACT" style="color:#ff2244">—</span></div>
+      <div class="sb-stat"><span class="sb-stat-label">SSVC ATTEND</span><span class="sb-stat-val" id="sumATTEND" style="color:#ff9100">—</span></div>
+      </div>
+
+      <!-- Tool Integration -->
+      <div class="summary-box">
+        <div class="sb-title">Integrate with Ghost Defense</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <a class="ci-action" href="02_KEV_Scanner.html" target="_blank"
+            style="background:var(--red-s);color:var(--red);border-color:var(--red-b);padding:5px 8px;font-size:10px">
+            🔴 Open KEV Scanner
+          </a>
+          <a class="ci-action" href="06_KEV_Patch_Priority_Ranker.html" target="_blank"
+            style="background:var(--orange-s);color:var(--orange);border-color:var(--orange-b);padding:5px 8px;font-size:10px">
+            📊 Patch Priority Ranker
+          </a>
+          <a class="ci-action" href="18_KEV_Detection_Signatures.html" target="_blank"
+            style="background:var(--yellow-s);color:var(--yellow);border-color:var(--yellow-b);padding:5px 8px;font-size:10px">
+            📡 Detection Signatures
+          </a>
+          <a class="ci-action" href="29_IR_Playbook_Builder.html" target="_blank"
+            style="background:var(--green-s);color:var(--green);border-color:var(--green-b);padding:5px 8px;font-size:10px">
+            📋 IR Playbook Builder
+          </a>
+          <a class="ci-action" href="31_Realtime_Intrusion_Detection.html" target="_blank"
+            style="background:var(--purple-s);color:var(--purple);border-color:var(--purple-b);padding:5px 8px;font-size:10px">
+            🚨 Real-Time IDS
+          </a>
+          <a class="ci-action" href="33_Executive_COP_Dashboard.html" target="_blank"
+            style="background:var(--cyan-s);color:var(--cyan);border-color:var(--cyan-b);padding:5px 8px;font-size:10px">
+            📈 COP Dashboard
+          </a>
+        </div>
+      </div>
+
+      <!-- AI Analysis -->
+      <div class="ai-box">
+        <div class="sb-title">AI Sector Analysis</div>
+        <button class="ai-btn" id="aiBtn" onclick="generateAI()">🤖 GENERATE SECTOR BRIEF</button>
+        <div class="ai-output" id="aiOutput">Add your Anthropic API key and click Generate for an AI-synthesized sector threat brief with prioritized actions.</div>
+      </div>
+
+    </div>
+
+    <!-- Export -->
+    <div class="export-row">
+      <button class="exp-btn" style="background:var(--red-s);color:var(--red);border-color:var(--red-b)" onclick="exportSectorCSV()">📥 CSV</button>
+      <button class="exp-btn" style="background:var(--cyan-s);color:var(--cyan);border-color:var(--cyan-b)" onclick="sendToPatchRanker()">→ Patch Ranker</button>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+//  GHOST DEFENSE — SECTOR CVE INTELLIGENCE
+//  Tool 38 · Sector-specific vulnerability tracking with actor overlay
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── SECTOR DATABASE ───────────────────────────────────────────────────────────
+var SECTORS = [
+  {
+    id:'energy', icon:'⚡', name:'Energy', risk:'critical',
+    desc:'Electric utilities, oil & gas, pipelines, and renewable energy. Primary target for nation-state pre-positioning and destructive attacks.',
+    actors:[{name:'Volt Typhoon',nation:'🇨🇳',ttp:'Living-off-the-land, SOHO exploitation'},{name:'CyberAv3ngers',nation:'🇮🇷',ttp:'ICS default credentials, ATG targeting'},{name:'Sandworm',nation:'🇷🇺',ttp:'Industroyer, destructive wiper malware'}],
+    technologies:['SCADA/ICS Systems','Siemens SIMATIC','GE Vernova','Schneider Electric EcoStruxure','Modbus TCP','DNP3','OSIsoft PI','Honeywell DCS','ABB 800xA','Unitronics PLCs'],
+    frameworks:['NERC CIP','ICS-CERT','NIST SP 800-82','ISA/IEC 62443'],
+    cves:[
+      {id:'CVE-2024-3400',vendor:'Palo Alto',product:'PAN-OS GlobalProtect',cvss:10.0,epss:0.94,isKEV:true,isExploit:true,desc:'Command injection in GlobalProtect gateway. Used by threat actors for initial access to energy sector VPNs.',actors:['Volt Typhoon']},
+      {id:'CVE-2023-27997',vendor:'Fortinet',product:'FortiOS SSL-VPN',cvss:9.8,epss:0.97,isKEV:true,isExploit:true,desc:'Heap overflow RCE in SSL-VPN. Actively exploited for initial access by Chinese APT groups targeting energy.',actors:['Volt Typhoon','APT40']},
+      {id:'CVE-2023-20198',vendor:'Cisco',product:'IOS XE Web UI',cvss:10.0,epss:0.97,isKEV:true,isExploit:true,desc:'Privilege escalation via Web UI. Network devices in energy sector OT networks actively targeted.',actors:['Volt Typhoon']},
+      {id:'CVE-2024-8310',vendor:'Unitronics',product:'Vision Series PLC',cvss:9.8,epss:0.72,isKEV:true,isExploit:true,desc:'Default credentials on tank gauge systems. CyberAv3ngers actively exploiting at energy facilities.',actors:['CyberAv3ngers']},
+      {id:'CVE-2022-47966',vendor:'Zoho',product:'ManageEngine',cvss:9.8,epss:0.97,isKEV:true,isExploit:true,desc:'Pre-auth RCE in IT management platform widely used in energy sector corporate networks.',actors:['Multiple APTs']},
+      {id:'CVE-2021-44228',vendor:'Apache',product:'Log4j Log4Shell',cvss:10.0,epss:0.99,isKEV:true,isExploit:true,desc:'Remote code execution in Log4j. Still active in OT-adjacent systems in energy sector.',actors:['Multiple']},
+      {id:'CVE-2024-49138',vendor:'Microsoft',product:'Windows CLFS',cvss:7.8,epss:0.82,isKEV:true,isExploit:true,desc:'Privilege escalation used in ransomware campaigns targeting energy sector Windows systems.',actors:['Ransomware groups']},
+      {id:'CVE-2023-46747',vendor:'F5',product:'BIG-IP TMUI',cvss:9.8,epss:0.97,isKEV:true,isExploit:true,desc:'Authentication bypass RCE in F5 load balancers widely deployed in energy sector DMZs.',actors:['Nation-state']},
+    ]
+  },
+  {
+    id:'water', icon:'💧', name:'Water / WWS', risk:'critical',
+    desc:'Water treatment, distribution, and wastewater systems. ICS/SCADA exposure at many facilities creates significant risk of physical impact.',
+    actors:[{name:'CyberAv3ngers',nation:'🇮🇷',ttp:'PLC default credentials, ATG exploitation'},{name:'Sandworm',nation:'🇷🇺',ttp:'ICS targeting, potential destructive attacks'}],
+    technologies:['Unitronics PLCs','Schneider Electric','GE SCADA','AutomationDirect','ATG Systems','HMI Interfaces','Modbus','PROFINET','WaterSCADA','OSIsoft PI'],
+    frameworks:['AWIA 2018','CISA Water Sector','EPA Cybersecurity'],
+    cves:[
+      {id:'CVE-2024-8310',vendor:'Unitronics',product:'Vision PLC',cvss:9.8,epss:0.72,isKEV:true,isExploit:true,desc:'Default credential vulnerability actively exploited by CyberAv3ngers at US water utilities.',actors:['CyberAv3ngers']},
+      {id:'CVE-2024-8630',vendor:'Unitronics',product:'SAMBA PLC',cvss:9.1,epss:0.65,isKEV:true,isExploit:true,desc:'Authentication bypass in SAMBA series PLCs deployed at water treatment facilities.',actors:['CyberAv3ngers']},
+      {id:'CVE-2023-27997',vendor:'Fortinet',product:'FortiOS SSL-VPN',cvss:9.8,epss:0.97,isKEV:true,isExploit:true,desc:'Remote access VPN vulnerability affecting water utility corporate networks.',actors:['Multiple APTs']},
+      {id:'CVE-2021-34527',vendor:'Microsoft',product:'Print Spooler',cvss:8.8,epss:0.96,isKEV:true,isExploit:true,desc:'PrintNightmare RCE affecting Windows systems in water utility control environments.',actors:['Ransomware groups']},
+      {id:'CVE-2022-26134',vendor:'Atlassian',product:'Confluence',cvss:9.8,epss:0.98,isKEV:true,isExploit:true,desc:'Pre-auth RCE in collaboration tools used by water utility IT departments.',actors:['Multiple']},
+    ]
+  },
+  {
+    id:'comms', icon:'📡', name:'Communications', risk:'critical',
+    desc:'Telecommunications carriers, ISPs, satellite operators, and broadcast infrastructure. Salt Typhoon compromise of 9+ US carriers is an ongoing threat.',
+    actors:[{name:'Salt Typhoon',nation:'🇨🇳',ttp:'ISP infiltration, lawful intercept access'},{name:'Volt Typhoon',nation:'🇨🇳',ttp:'SOHO router botnet, living-off-the-land'}],
+    technologies:['Cisco IOS XE','Juniper JunOS','Fortinet FortiGate','F5 BIG-IP','SOHO Routers','SS7/Diameter','BGP Infrastructure','Cable Head-Ends','5G Core Networks','Lawful Intercept Systems'],
+    frameworks:['FCC Cybersecurity','CISA Comms Sector Plan','NIST SP 800-187'],
+    cves:[
+      {id:'CVE-2023-20198',vendor:'Cisco',product:'IOS XE Web UI',cvss:10.0,epss:0.97,isKEV:true,isExploit:true,desc:'Salt Typhoon exploited this to gain admin access to Cisco routers inside US telecom carriers.',actors:['Salt Typhoon','Volt Typhoon']},
+      {id:'CVE-2023-20273',vendor:'Cisco',product:'IOS XE Web UI RCE',cvss:7.2,epss:0.97,isKEV:true,isExploit:true,desc:'Chained with CVE-2023-20198 for persistent implant deployment on compromised network devices.',actors:['Salt Typhoon']},
+      {id:'CVE-2024-3400',vendor:'Palo Alto',product:'PAN-OS',cvss:10.0,epss:0.94,isKEV:true,isExploit:true,desc:'Exploited for initial access to telecom perimeter network devices.',actors:['Nation-state']},
+      {id:'CVE-2023-27997',vendor:'Fortinet',product:'FortiOS SSL-VPN',cvss:9.8,epss:0.97,isKEV:true,isExploit:true,desc:'VPN appliances at telecom carriers compromised for persistent access.',actors:['Salt Typhoon','Volt Typhoon']},
+      {id:'CVE-2023-4966',vendor:'Citrix',product:'NetScaler Bleed',cvss:9.4,epss:0.94,isKEV:true,isExploit:true,desc:'Session token disclosure used to access telecom corporate applications.',actors:['Multiple APTs']},
+    ]
+  },
+  {
+    id:'healthcare', icon:'🏥', name:'Healthcare', risk:'high',
+    desc:'Hospitals, health systems, medical device manufacturers, and health data processors. Ransomware causing patient care disruption is the primary threat.',
+    actors:[{name:'BlackSuit',nation:'🌐',ttp:'RDP exploitation, double extortion ransomware'},{name:'LockBit',nation:'🌐',ttp:'Phishing, lateral movement, data theft'},{name:'ALPHV/BlackCat',nation:'🌐',ttp:'Affiliate model, healthcare targeting'}],
+    technologies:['Epic EHR','Cerner PowerChart','Medical Imaging DICOM','HL7 Interfaces','Windows 10/11','VMware vSphere','Citrix Virtual Apps','Medical IoT Devices','PACS Systems','Remote Patient Monitoring'],
+    frameworks:['HIPAA Security Rule','HHS 405(d)','NIST CSF','HICP'],
+    cves:[
+      {id:'CVE-2021-34527',vendor:'Microsoft',product:'Print Spooler',cvss:8.8,epss:0.96,isKEV:true,isExploit:true,desc:'PrintNightmare widely exploited in healthcare networks for lateral movement and ransomware deployment.',actors:['BlackSuit','LockBit']},
+      {id:'CVE-2024-49138',vendor:'Microsoft',product:'Windows CLFS',cvss:7.8,epss:0.82,isKEV:true,isExploit:true,desc:'Privilege escalation used in ransomware campaigns actively targeting healthcare organizations.',actors:['BlackSuit','Ransomware']},
+      {id:'CVE-2023-4966',vendor:'Citrix',product:'NetScaler Bleed',cvss:9.4,epss:0.94,isKEV:true,isExploit:true,desc:'Session hijacking in Citrix widely used for healthcare application delivery. Exploited pre-patch.',actors:['Multiple']},
+      {id:'CVE-2021-26855',vendor:'Microsoft',product:'Exchange ProxyLogon',cvss:9.8,epss:0.98,isKEV:true,isExploit:true,desc:'Exchange server compromise giving persistent email access in healthcare organizations.',actors:['APT groups','Ransomware']},
+      {id:'CVE-2024-21887',vendor:'Ivanti',product:'Connect Secure',cvss:9.1,epss:0.96,isKEV:true,isExploit:true,desc:'Command injection in Ivanti VPN widely deployed in healthcare for remote clinical access.',actors:['Nation-state','Ransomware']},
+      {id:'CVE-2023-34362',vendor:'Progress',product:'MOVEit Transfer',cvss:9.8,epss:0.96,isKEV:true,isExploit:true,desc:'SQL injection used by Cl0p to steal patient data from healthcare organizations.',actors:['Cl0p']},
+    ]
+  },
+  {
+    id:'financial', icon:'🏦', name:'Financial', risk:'high',
+    desc:'Banks, credit unions, payment processors, cryptocurrency exchanges, and insurance companies. Nation-state theft and criminal BEC are primary threats.',
+    actors:[{name:'Lazarus Group',nation:'🇰🇵',ttp:'Crypto theft, watering hole, supply chain'},{name:'Scattered Spider',nation:'🌐',ttp:'Social engineering, SIM swap, MFA bypass'},{name:'APT38',nation:'🇰🇵',ttp:'SWIFT system targeting, financial fraud'}],
+    technologies:['SWIFT Banking Network','Core Banking Systems','Trading Platforms','HSM Hardware','Cryptocurrency Exchanges','Payment Gateways','Salesforce','Workday','Multi-Factor Auth Systems','Wire Transfer Systems'],
+    frameworks:['FFIEC CAT','PCI DSS','NIST CSF','SOX','GLBA'],
+    cves:[
+      {id:'CVE-2024-3400',vendor:'Palo Alto',product:'PAN-OS',cvss:10.0,epss:0.94,isKEV:true,isExploit:true,desc:'Exploited for initial access to financial institution perimeter devices.',actors:['Lazarus Group','Nation-state']},
+      {id:'CVE-2023-4966',vendor:'Citrix',product:'NetScaler Bleed',cvss:9.4,epss:0.94,isKEV:true,isExploit:true,desc:'Session token theft used to access financial applications and internal portals.',actors:['Scattered Spider','Multiple']},
+      {id:'CVE-2023-34362',vendor:'Progress',product:'MOVEit Transfer',cvss:9.8,epss:0.96,isKEV:true,isExploit:true,desc:'Mass exploitation affecting financial data processors and insurance companies.',actors:['Cl0p']},
+      {id:'CVE-2024-21893',vendor:'Ivanti',product:'Connect Secure',cvss:8.2,epss:0.96,isKEV:true,isExploit:true,desc:'SSRF vulnerability in VPN appliances at financial institutions.',actors:['Nation-state']},
+      {id:'CVE-2024-3094',vendor:'XZ Utils',product:'liblzma',cvss:10.0,epss:0.0,isKEV:false,isExploit:false,desc:'Supply chain backdoor nearly compromising OpenSSH. Financial sector Linux systems at risk.',actors:['Nation-state']},
+    ]
+  },
+  {
+    id:'government', icon:'🏛️', name:'Government', risk:'high',
+    desc:'Federal agencies, SLTT governments, and government contractors. Espionage, data theft, and disruption are primary objectives.',
+    actors:[{name:'APT29 (Cozy Bear)',nation:'🇷🇺',ttp:'Spearphishing, OAuth abuse, supply chain'},{name:'APT40 (Salt Typhoon)',nation:'🇨🇳',ttp:'Web exploitation, credential theft'},{name:'Kimsuky',nation:'🇰🇵',ttp:'Spearphishing, credential harvesting'}],
+    technologies:['Microsoft 365','Azure Active Directory','Cisco Network Devices','VMware Horizon','Pulse Secure VPN','SolarWinds Orion','ServiceNow','Salesforce Government Cloud','SharePoint','Exchange Online'],
+    frameworks:['FISMA','FedRAMP','CISA BOD','NIST SP 800-53','OMB M-22-09'],
+    cves:[
+      {id:'CVE-2024-49138',vendor:'Microsoft',product:'Windows CLFS',cvss:7.8,epss:0.82,isKEV:true,isExploit:true,desc:'Privilege escalation actively exploited in government network intrusions.',actors:['APT29','Multiple APTs']},
+      {id:'CVE-2023-27997',vendor:'Fortinet',product:'FortiOS SSL-VPN',cvss:9.8,epss:0.97,isKEV:true,isExploit:true,desc:'Government VPN appliances targeted for persistent access by Russian and Chinese APTs.',actors:['APT29','APT40']},
+      {id:'CVE-2021-26855',vendor:'Microsoft',product:'Exchange ProxyLogon',cvss:9.8,epss:0.98,isKEV:true,isExploit:true,desc:'Government Exchange servers targeted for email intelligence collection.',actors:['APT29','Hafnium']},
+      {id:'CVE-2020-14882',vendor:'Oracle',product:'WebLogic Server',cvss:9.8,epss:0.98,isKEV:true,isExploit:true,desc:'RCE in Oracle WebLogic used in government agency compromises.',actors:['Multiple APTs']},
+      {id:'CVE-2021-44228',vendor:'Apache',product:'Log4Shell',cvss:10.0,epss:0.99,isKEV:true,isExploit:true,desc:'Log4j RCE widely exploited against government internet-facing applications.',actors:['Nation-state','Criminal']},
+    ]
+  },
+  {
+    id:'defense', icon:'🛡️', name:'Defense Industrial', risk:'critical',
+    desc:'Defense contractors, aerospace manufacturers, and military suppliers. IP theft and supply chain compromise are primary threats.',
+    actors:[{name:'APT29',nation:'🇷🇺',ttp:'Spearphishing, supply chain, WinRAR'},{name:'APT40',nation:'🇨🇳',ttp:'Web exploitation, credential theft'},{name:'Lazarus',nation:'🇰🇵',ttp:'Job offer lures, LinkedIn targeting'}],
+    technologies:['ITAR-controlled Systems','CAD/CAM Software','Lockheed Martin Tools','PLM Systems','Classified Networks','CMMC-regulated Infrastructure','VPN Solutions','Email Systems','Collaboration Platforms','ERP Systems'],
+    frameworks:['CMMC 2.0','DFARS 252.204-7012','NIST SP 800-171','ITAR','EAR'],
+    cves:[
+      {id:'CVE-2023-27997',vendor:'Fortinet',product:'FortiOS SSL-VPN',cvss:9.8,epss:0.97,isKEV:true,isExploit:true,desc:'VPN exploitation for initial access to defense contractor networks.',actors:['APT29','APT40']},
+      {id:'CVE-2024-3400',vendor:'Palo Alto',product:'PAN-OS',cvss:10.0,epss:0.94,isKEV:true,isExploit:true,desc:'Firewall exploitation for persistent access to defense contractor perimeter.',actors:['Nation-state']},
+      {id:'CVE-2023-22518',vendor:'Atlassian',product:'Confluence',cvss:9.1,epss:0.97,isKEV:true,isExploit:true,desc:'Improper authorization leading to data destruction in defense contractor collaboration platforms.',actors:['Nation-state']},
+      {id:'CVE-2021-26855',vendor:'Microsoft',product:'Exchange',cvss:9.8,epss:0.98,isKEV:true,isExploit:true,desc:'Email server compromise for IP theft from defense contractors.',actors:['APT40','Hafnium']},
+    ]
+  },
+  {
+    id:'transport', icon:'🚢', name:'Transport', risk:'high',
+    desc:'Aviation, maritime, rail, and logistics. GPS spoofing, AIS manipulation, and ransomware disrupting supply chains are active threats.',
+    actors:[{name:'Volt Typhoon',nation:'🇨🇳',ttp:'Pre-positioning in port/logistics infrastructure'},{name:'Sandworm',nation:'🇷🇺',ttp:'Destructive attacks, GPS spoofing'}],
+    technologies:['AIS Vessel Tracking','ADS-B Aircraft Tracking','Port Management Systems','Railway Control Systems','GPS/GNSS','Customs Systems','Logistics ERP','Container Tracking','Flight Management Systems','ACARS'],
+    frameworks:['MTSA','TSA Cybersecurity Directives','ICAO Cybersecurity','IMO Maritime Cyber Risk'],
+    cves:[
+      {id:'CVE-2023-20198',vendor:'Cisco',product:'IOS XE',cvss:10.0,epss:0.97,isKEV:true,isExploit:true,desc:'Network device exploitation at port authorities and logistics hubs.',actors:['Volt Typhoon']},
+      {id:'CVE-2024-3400',vendor:'Palo Alto',product:'PAN-OS',cvss:10.0,epss:0.94,isKEV:true,isExploit:true,desc:'Firewall compromise at transportation hubs for persistent network access.',actors:['Nation-state']},
+      {id:'CVE-2023-34362',vendor:'Progress',product:'MOVEit',cvss:9.8,epss:0.96,isKEV:true,isExploit:true,desc:'File transfer exploitation affecting logistics and freight companies.',actors:['Cl0p']},
+      {id:'CVE-2021-44228',vendor:'Apache',product:'Log4Shell',cvss:10.0,epss:0.99,isKEV:true,isExploit:true,desc:'RCE in logistics and supply chain management platforms.',actors:['Multiple']},
+    ]
+  },
+  {
+    id:'manufacturing', icon:'🏭', name:'Manufacturing / OT', risk:'high',
+    desc:'Industrial manufacturing, chemical processing, and operational technology environments. Ransomware causing production shutdowns is the dominant threat.',
+    actors:[{name:'BlackSuit',nation:'🌐',ttp:'RDP exploitation, production disruption'},{name:'Cl0p',nation:'🌐',ttp:'File transfer zero-days, data theft'},{name:'LockBit',nation:'🌐',ttp:'Affiliate model, double extortion'}],
+    technologies:['Siemens TIA Portal','Rockwell Automation','Honeywell Process','ABB Systems','FANUC Robotics','Historian Servers','OPC UA/DA','Industrial Switches','Engineering Workstations','MES Systems'],
+    frameworks:['ISA/IEC 62443','NIST SP 800-82','NERC CIP (where applicable)','ICS-CERT'],
+    cves:[
+      {id:'CVE-2021-34527',vendor:'Microsoft',product:'Print Spooler',cvss:8.8,epss:0.96,isKEV:true,isExploit:true,desc:'PrintNightmare exploited on engineering workstations for lateral movement to OT networks.',actors:['Ransomware groups']},
+      {id:'CVE-2023-27997',vendor:'Fortinet',product:'FortiOS',cvss:9.8,epss:0.97,isKEV:true,isExploit:true,desc:'VPN exploitation for initial access to manufacturing corporate networks.',actors:['Multiple APTs']},
+      {id:'CVE-2024-49138',vendor:'Microsoft',product:'Windows CLFS',cvss:7.8,epss:0.82,isKEV:true,isExploit:true,desc:'Privilege escalation in ransomware campaigns targeting manufacturing.',actors:['BlackSuit','LockBit']},
+      {id:'CVE-2023-34362',vendor:'Progress',product:'MOVEit',cvss:9.8,epss:0.96,isKEV:true,isExploit:true,desc:'File transfer exploitation affecting manufacturing supply chain partners.',actors:['Cl0p']},
+    ]
+  },
+  {
+    id:'emergency', icon:'🚨', name:'Emergency Services', risk:'medium',
+    desc:'Law enforcement, fire, EMS, and 911 dispatch. Ransomware disrupting dispatch and CAD systems threatens public safety.',
+    actors:[{name:'BlackSuit',nation:'🌐',ttp:'Ransomware targeting CAD systems'},{name:'Ransomware groups',nation:'🌐',ttp:'Double extortion, dispatch disruption'}],
+    technologies:['CAD Systems','RMS Software','FirstNet','P25 Radio','Records Management','911 Infrastructure','NG911','Body Camera Systems','License Plate Readers','Dispatch Consoles'],
+    frameworks:['SAFECOM','FCC FirstNet','CISA Emergency Comms','NIST CSF'],
+    cves:[
+      {id:'CVE-2021-34527',vendor:'Microsoft',product:'Print Spooler',cvss:8.8,epss:0.96,isKEV:true,isExploit:true,desc:'PrintNightmare exploited in ransomware attacks forcing 911 centers to manual operations.',actors:['BlackSuit','Ransomware']},
+      {id:'CVE-2024-49138',vendor:'Microsoft',product:'Windows CLFS',cvss:7.8,epss:0.82,isKEV:true,isExploit:true,desc:'Privilege escalation used in ransomware campaigns targeting emergency services.',actors:['Ransomware groups']},
+      {id:'CVE-2023-27997',vendor:'Fortinet',product:'FortiOS',cvss:9.8,epss:0.97,isKEV:true,isExploit:true,desc:'VPN compromise at public safety answering points.',actors:['Multiple']},
+    ]
+  },
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+var currentSector = null;
+var kevSet = new Set();
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+function init() {
+  renderSectorBar();
+  fetchKEV();
+  // Auto-select Energy
+  setTimeout(function(){ selectSector('energy'); }, 500);
+}
+
+function renderSectorBar() {
+  var riskColors = { critical:'var(--red)', high:'var(--orange)', medium:'var(--yellow)', low:'var(--green)' };
+  document.getElementById('sectorBar').innerHTML = SECTORS.map(function(s) {
+    var col = riskColors[s.risk] || 'var(--muted2)';
+    return '<button class="sector-btn" data-id="'+s.id+'" onclick="selectSector(\''+s.id+'\')">'
+      + '<span class="risk-dot" style="background:'+col+'"></span>'
+      + s.icon + ' ' + s.name
+    + '</button>';
+  }).join('');
+}
+
+async function fetchKEV() {
+  try {
+    var r = await fetch('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json',
+      { signal: AbortSignal.timeout(8000) });
+    if (r.ok) {
+      var data = await r.json();
+      (data.vulnerabilities||[]).forEach(function(v){ kevSet.add(v.cveID); });
+    }
+  } catch(e) {}
+}
+
+// ── SELECT SECTOR ──────────────────────────────────────────────────────────────
+function selectSector(id) {
+  var sector = SECTORS.find(function(s){ return s.id === id; });
+  if (!sector) return;
+  currentSector = sector;
+
+  // Update button states
+  document.querySelectorAll('.sector-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.id === id);
+  });
+
+  renderSectorProfile(sector);
+  renderCVEFeed(sector);
+  updateStats(sector);
+}
+
+// ── RENDER SECTOR PROFILE ─────────────────────────────────────────────────────
+function renderSectorProfile(sector) {
+  var riskColors = { critical:'var(--red)', high:'var(--orange)', medium:'var(--yellow)', low:'var(--green)' };
+  var riskBgs    = { critical:'var(--red-s)', high:'var(--orange-s)', medium:'var(--yellow-s)', low:'var(--green-s)' };
+  var col = riskColors[sector.risk] || 'var(--muted2)';
+
+  document.getElementById('sectorRiskBadge').textContent = sector.risk.toUpperCase();
+  document.getElementById('sectorRiskBadge').style.background = riskBgs[sector.risk];
+  document.getElementById('sectorRiskBadge').style.color = col;
+  document.getElementById('sectorRiskBadge').style.borderColor = col+'88';
+
+  var html = '<div class="sector-profile">'
+    + '<div class="sp-name">'+sector.icon+' '+esc(sector.name)+'</div>'
+    + '<span class="sp-risk" style="background:'+riskBgs[sector.risk]+';color:'+col+';border:1px solid '+col+'44">'+sector.risk.toUpperCase()+' RISK</span>'
+    + '<div class="sp-desc">'+esc(sector.desc)+'</div>'
+
+    // Active actors
+    + '<div class="sp-section"><div class="sp-sec-title">🏴 Active Threat Actors</div>'
+    + sector.actors.map(function(a) {
+        return '<div class="sp-actor">'
+          + '<span class="sp-actor-nation">'+a.nation+'</span>'
+          + '<div style="flex:1"><div class="sp-actor-name">'+esc(a.name)+'</div>'
+            + '<div style="font-size:9px;color:var(--muted2);font-family:var(--mono);margin-top:1px">'+esc(a.ttp)+'</div></div>'
+        + '</div>';
+      }).join('')
+    + '</div>'
+
+    // Technologies
+    + '<div class="sp-section"><div class="sp-sec-title">🔧 Common Technologies</div>'
+    + sector.technologies.map(function(t){ return '<div class="sp-tech-item">'+esc(t)+'</div>'; }).join('')
+    + '</div>'
+
+    // Frameworks
+    + '<div class="sp-section"><div class="sp-sec-title">📋 Applicable Frameworks</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:4px">'
+    + sector.frameworks.map(function(f){
+        return '<span style="font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:3px;background:var(--s2);color:var(--muted2);border:1px solid var(--border2)">'+esc(f)+'</span>';
+      }).join('')
+    + '</div></div>'
+  + '</div>';
+
+  document.getElementById('sectorProfile').innerHTML = html;
+}
+
+// ── SSVC SCORING ENGINE ───────────────────────────────────────────────────────
+// SSVC (Stakeholder-Specific Vulnerability Categorization) v2.0
+// Produces: ACT / ATTEND / TRACK+ / TRACK
+// Based on: Exploitation status · Automatable · Mission Impact
+// Reference: CISA SSVC Guide https://www.cisa.gov/ssvc
+
+function calcSSVC(cve) {
+  // ── Exploitation status ───────────────────────────────────────────────────
+  // Active = confirmed exploitation in the wild (KEV or isExploit flag)
+  // PoC    = public proof-of-concept exists (EPSS > 0.5 and not KEV)
+  // None   = no known exploitation
+  var exploitation;
+  if (cve.isKEV || cve.isExploit) {
+    exploitation = 'active';
+  } else if (cve.epss > 0.5) {
+    exploitation = 'poc';
+  } else {
+    exploitation = 'none';
+  }
+
+  // ── Automatable ───────────────────────────────────────────────────────────
+  // Yes = exploit can be scripted/automated (CVSS AV:Network + no user interaction)
+  // No  = requires manual steps or user interaction
+  // Using CVSS score and type as proxy: 9.0+ remote = automatable
+  var automatable = (cve.cvss >= 9.0) ? 'yes' : 'no';
+
+  // ── Mission & Wellbeing Impact ────────────────────────────────────────────
+  // High   = KEV + critical CVSS + active exploitation
+  // Medium = high CVSS or KEV without active exploit
+  // Low    = medium/low CVSS, no KEV
+  var missionImpact;
+  if (cve.isKEV && cve.cvss >= 9.0) {
+    missionImpact = 'high';
+  } else if (cve.cvss >= 7.0 || cve.isKEV) {
+    missionImpact = 'medium';
+  } else {
+    missionImpact = 'low';
+  }
+
+  // ── SSVC Decision Tree ────────────────────────────────────────────────────
+  // Based on CISA SSVC decision tree for infrastructure defenders
+  var decision, cssClass, description, timeframe;
+
+  if (exploitation === 'active' && automatable === 'yes' && missionImpact === 'high') {
+    decision = 'ACT'; cssClass = 'ssvc-act';
+    description = 'Active exploitation, automatable, high mission impact. Patch or mitigate immediately.';
+    timeframe = 'NOW';
+  } else if (exploitation === 'active' && (automatable === 'yes' || missionImpact === 'high')) {
+    decision = 'ACT'; cssClass = 'ssvc-act';
+    description = 'Active exploitation confirmed. Immediate action required regardless of other factors.';
+    timeframe = 'NOW';
+  } else if (exploitation === 'active') {
+    decision = 'ATTEND'; cssClass = 'ssvc-attend';
+    description = 'Active exploitation detected. Patch within 7 days. Deploy detection rule immediately.';
+    timeframe = '7 DAYS';
+  } else if (exploitation === 'poc' && automatable === 'yes' && missionImpact === 'high') {
+    decision = 'ATTEND'; cssClass = 'ssvc-attend';
+    description = 'Public exploit, automatable attack, high impact. Elevated risk — patch within 7 days.';
+    timeframe = '7 DAYS';
+  } else if (exploitation === 'poc' && (automatable === 'yes' || missionImpact === 'high')) {
+    decision = 'TRACK+'; cssClass = 'ssvc-trackplus';
+    description = 'Public exploit or high impact. Patch this cycle. Monitor for exploitation indicators.';
+    timeframe = 'THIS CYCLE';
+  } else if (exploitation === 'poc') {
+    decision = 'TRACK+'; cssClass = 'ssvc-trackplus';
+    description = 'Proof-of-concept exists. Include in next patch cycle. Watch for exploitation.';
+    timeframe = 'THIS CYCLE';
+  } else if (missionImpact === 'high' || automatable === 'yes') {
+    decision = 'TRACK+'; cssClass = 'ssvc-trackplus';
+    description = 'High severity or automatable. Monitor and patch in current cycle.';
+    timeframe = 'THIS CYCLE';
+  } else {
+    decision = 'TRACK'; cssClass = 'ssvc-track';
+    description = 'No known exploitation. Monitor and patch on normal schedule.';
+    timeframe = 'NORMAL';
+  }
+
+  return {
+    decision, cssClass, description, timeframe,
+    exploitation, automatable, missionImpact
+  };
+}
+
+// ── RENDER CVE FEED ───────────────────────────────────────────────────────────
+function renderCVEFeed(sector) {
+  var cves = sector.cves || [];
+  // Sort: KEV + exploit first, then by CVSS
+  cves = cves.slice().sort(function(a,b){
+    if(a.isKEV && !b.isKEV) return -1;
+    if(!a.isKEV && b.isKEV) return 1;
+    if(a.isExploit && !b.isExploit) return -1;
+    if(!a.isExploit && b.isExploit) return 1;
+    return b.cvss - a.cvss;
+  });
+
+  document.getElementById('cveFeedBadge').textContent = cves.length + ' CVEs';
+
+  document.getElementById('cveFeed').innerHTML = cves.map(function(cve) {
+    var sevClass = cve.cvss >= 9 ? 'critical' : cve.cvss >= 7 ? 'high' : 'medium';
+    var cvssClass = cve.cvss >= 9 ? 'cvss-c' : cve.cvss >= 7 ? 'cvss-h' : 'cvss-m';
+    var ssvc = calcSSVC(cve);
+
+    return '<div class="cve-item '+sevClass+'">'
+      + '<div class="ci-hdr">'
+        + '<span class="ci-id">'+esc(cve.id)+'</span>'
+        + '<span class="ci-vendor" style="color:var(--muted2)">'+esc(cve.vendor)+' '+esc(cve.product)+'</span>'
+        + (cve.isKEV?'<span class="ci-badge kev-badge">🔴 KEV</span>':'')
+        + (cve.isExploit?'<span class="ci-badge exploit-badge">💥 EXPLOIT</span>':'')
+        + '<span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--muted)">CVSS '+cve.cvss.toFixed(1)+'</span>'
+      + '</div>'
+      + '<div class="ci-desc">'+esc(cve.desc)+'</div>'
+      + '<div class="ci-footer">'
+        + '<span class="ssvc-label">SSVC</span><span class="'+ssvc.cssClass+'" title="'+esc(ssvc.description)+'">'+ssvc.decision+' — '+ssvc.timeframe+'</span>'
+        + '<span class="ci-badge '+cvssClass+'">CVSS '+cve.cvss.toFixed(1)+'</span>'
+        + '<span class="ci-badge epss-badge">EPSS '+Math.round(cve.epss*100)+'%</span>'
+        + (cve.actors||[]).map(function(a){ return '<span class="ci-badge actor-badge">'+esc(a)+'</span>'; }).join('')
+      + '</div>'
+      + '<div class="ci-actions">'
+        + '<a class="ci-action" href="02_KEV_Scanner.html" target="_blank" style="background:var(--red-s);color:var(--red);border-color:var(--red-b)">KEV</a>'
+        + '<a class="ci-action" href="18_KEV_Detection_Signatures.html" target="_blank" style="background:var(--yellow-s);color:var(--yellow);border-color:var(--yellow-b)">Signatures</a>'
+        + '<a class="ci-action" href="29_IR_Playbook_Builder.html" target="_blank" style="background:var(--green-s);color:var(--green);border-color:var(--green-b)">IR Playbook</a>'
+        + '<button class="ci-action" onclick="copyCVE(\''+esc(cve.id)+'\')" style="background:var(--s2);color:var(--muted2);border-color:var(--border2);cursor:pointer">Copy ID</button>'
+      + '</div>'
+    + '</div>';
+  }).join('');
+}
+
+// ── UPDATE STATS ──────────────────────────────────────────────────────────────
+function updateStats(sector) {
+  var cves     = sector.cves || [];
+  var critCount= cves.filter(function(c){ return c.cvss >= 9; }).length;
+  var kevCount = cves.filter(function(c){ return c.isKEV; }).length;
+  var exploitCount = cves.filter(function(c){ return c.isExploit; }).length;
+  var avgEPSS  = cves.length ? (cves.reduce(function(s,c){ return s+c.epss; },0)/cves.length*100).toFixed(0)+'%' : '—';
+
+  // Calculate SSVC decisions for all sector CVEs
+  var actCount    = cves.filter(function(c){ return calcSSVC(c).decision === 'ACT'; }).length;
+  var attendCount = cves.filter(function(c){ return calcSSVC(c).decision === 'ATTEND'; }).length;
+
+  document.getElementById('statCVEs').textContent   = cves.length;
+  document.getElementById('statKEV').textContent    = kevCount;
+  document.getElementById('statActors').textContent = sector.actors.length;
+  document.getElementById('sumCrit').textContent    = critCount;
+  document.getElementById('sumKEV').textContent     = kevCount;
+  document.getElementById('sumExploit').textContent = exploitCount;
+  document.getElementById('sumActors').textContent  = sector.actors.length;
+  document.getElementById('sumEPSS').textContent    = avgEPSS;
+  document.getElementById('sumACT').textContent     = actCount;
+  document.getElementById('sumATTEND').textContent  = attendCount;
+}
+
+// ── REFRESH ───────────────────────────────────────────────────────────────────
+function refreshSector() {
+  if (currentSector) selectSector(currentSector.id);
+}
+
+// ── COPY CVE ──────────────────────────────────────────────────────────────────
+function copyCVE(cve) {
+  navigator.clipboard.writeText(cve).then(function(){
+    var btn = event.target;
+    btn.textContent = 'Copied!';
+    setTimeout(function(){ btn.textContent = 'Copy ID'; }, 1500);
+  });
+}
+
+// ── SEND TO PATCH RANKER ──────────────────────────────────────────────────────
+function sendToPatchRanker() {
+  if (!currentSector) return;
+  var cveIds = (currentSector.cves||[]).map(function(c){ return c.id; }).join('\n');
+  localStorage.setItem('ghost2210_patch_cves', cveIds);
+  window.open('06_KEV_Patch_Priority_Ranker.html', '_blank');
+}
+
+// ── EXPORT CSV ────────────────────────────────────────────────────────────────
+function exportSectorCSV() {
+  if (!currentSector) { alert('Select a sector first'); return; }
+  var rows = [['CVE ID','Vendor','Product','CVSS','EPSS','KEV','Active Exploit','Threat Actors','Description'].join(',')];
+  (currentSector.cves||[]).forEach(function(c) {
+    rows.push([
+      c.id, '"'+c.vendor+'"', '"'+c.product+'"',
+      c.cvss, c.epss,
+      c.isKEV?'YES':'NO',
+      c.isExploit?'YES':'NO',
+      '"'+(c.actors||[]).join(';')+'"',
+      '"'+(c.desc||'').replace(/"/g,"'")+'"',
+    ].join(','));
+  });
+  var blob = new Blob([rows.join('\n')],{type:'text/csv'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'sector-cve-'+(currentSector.id)+'-'+new Date().toISOString().split('T')[0]+'.csv';
+  a.click();
+}
+
+// ── AI ANALYSIS ────────────────────────────────────────────────────────────────
+async function generateAI() {
+  var key = document.getElementById('apiKey').value.trim();
+  if (!key) { alert('Add your Anthropic API key in the topbar'); return; }
+  if (!currentSector) { alert('Select a sector first'); return; }
+  var btn = document.getElementById('aiBtn');
+  btn.disabled = true; btn.textContent = '⟳ Generating…';
+  document.getElementById('aiOutput').textContent = 'Analyzing '+currentSector.name+' sector threat landscape…';
+
+  var cves = currentSector.cves || [];
+  var kevCVEs = cves.filter(function(c){ return c.isKEV; });
+  var exploitCVEs = cves.filter(function(c){ return c.isExploit; });
+
+  var prompt = 'You are a senior threat intelligence analyst specializing in critical infrastructure cybersecurity.\n\n'
+    + 'SECTOR: '+currentSector.name+'\n'
+    + 'RISK LEVEL: '+currentSector.risk.toUpperCase()+'\n'
+    + 'ACTIVE THREAT ACTORS: '+currentSector.actors.map(function(a){ return a.name+' ('+a.ttp+')'; }).join(', ')+'\n'
+    + 'TOTAL CVEs: '+cves.length+'\n'
+    + 'KEV ENTRIES: '+kevCVEs.length+'\n'
+    + 'ACTIVELY EXPLOITED: '+exploitCVEs.length+'\n\n'
+    + 'TOP CVEs BY RISK:\n'
+    + cves.slice(0,6).map(function(c){
+        return '- '+c.id+' ('+c.vendor+' '+c.product+') CVSS:'+c.cvss+' EPSS:'+Math.round(c.epss*100)+'%'+(c.isKEV?' [KEV]':'')+(c.isExploit?' [ACTIVE EXPLOIT]':'');
+      }).join('\n')
+    + '\n\nProvide a concise sector threat brief:\n'
+    + '1. SECTOR THREAT SUMMARY (2 sentences)\n'
+    + '2. PATCH IMMEDIATELY (top 3 CVEs, why critical for this sector)\n'
+    + '3. ACTIVE THREAT ACTOR ACTIVITY (what are they doing right now)\n'
+    + '4. SECTOR-SPECIFIC DEFENSIVE ACTIONS (3 immediate steps)\n'
+    + '5. GHOST DEFENSE TOOLS TO USE NOW (which tools from the toolkit apply)\n\n'
+    + 'Be specific to the '+currentSector.name+' sector. Cite CVE IDs. Keep it actionable.';
+
+  try {
+    var r = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{ 'content-type':'application/json','x-api-key':key,
+        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:1000,
+        messages:[{ role:'user', content:prompt }] })
+    });
+    if (!r.ok) throw new Error('API '+r.status+(r.status===401?' — Invalid key':''));
+    var data = await r.json();
+    document.getElementById('aiOutput').textContent = (data.content&&data.content[0]&&data.content[0].text)||'No response';
+  } catch(e) {
+    document.getElementById('aiOutput').textContent = 'Error: '+e.message;
+  }
+  btn.disabled = false; btn.textContent = '🤖 GENERATE SECTOR BRIEF';
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── API KEY TEST ──────────────────────────────────────────────────────────────
+async function testKey() {
+  var key = document.getElementById('apiKey').value.trim();
+  var st  = document.getElementById('keyStatus');
+  var btn = document.getElementById('testKeyBtn');
+  if (!key) {
+    st.textContent = '⚠ Enter key first';
+    st.style.color = 'var(--yellow)';
+    return;
+  }
+  st.textContent = '⟳ Testing…';
+  st.style.color = 'var(--muted2)';
+  btn.disabled = true;
+  try {
+    var r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: 'Hi' }]
+      })
+    });
+    if (r.ok) {
+      st.textContent = 'KEY OK ✓';
+      st.style.color = 'var(--green)';
+    } else if (r.status === 401) {
+      st.textContent = '✗ Invalid key';
+      st.style.color = 'var(--red)';
+    } else {
+      st.textContent = '✗ Error ' + r.status;
+      st.style.color = 'var(--red)';
+    }
+  } catch(e) {
+    st.textContent = '✗ Network error';
+    st.style.color = 'var(--red)';
+  }
+  btn.disabled = false;
+}
+
+// ── BOOT ─────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

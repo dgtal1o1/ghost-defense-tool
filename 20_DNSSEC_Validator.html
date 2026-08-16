@@ -1,0 +1,2068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>DNSSEC Validator — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070e;--s1:#0e0e1a;--s2:#141728;--s3:#1c2035;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
+  --text:#eeedf8;--muted:#6b6a84;--muted2:#9998b8;
+  --accent:#5b54ff;--accent-s:rgba(91,84,255,0.12);--accent-b:rgba(91,84,255,0.3);
+  --green:#2fd98a;--green-s:rgba(47,217,138,0.1);--green-b:rgba(47,217,138,0.28);
+  --red:#ff4d4d;--red-s:rgba(255,77,77,0.1);--red-b:rgba(255,77,77,0.3);
+  --orange:#ff8c42;--orange-s:rgba(255,140,66,0.1);--orange-b:rgba(255,140,66,0.28);
+  --yellow:#ffd166;--yellow-s:rgba(255,209,102,0.1);--yellow-b:rgba(255,209,102,0.25);
+  --blue:#4cc9f0;--blue-s:rgba(76,201,240,0.1);--blue-b:rgba(76,201,240,0.28);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html{background:var(--bg)}
+body{font-family:var(--sans);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:14px 24px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:30px;height:30px;background:var(--blue-s);border:1px solid var(--blue-b);
+  border-radius:8px;display:flex;align-items:center;justify-content:center}
+.brand-icon svg{width:16px;height:16px;stroke:var(--blue)}
+.brand-name{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.brand-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.gov-badge{font-family:var(--mono);font-size:10px;color:var(--blue);background:var(--blue-s);
+  border:1px solid var(--blue-b);padding:4px 10px;border-radius:4px;letter-spacing:.08em}
+
+/* ── MAIN ── */
+.main{flex:1;padding:32px 24px;max-width:900px;margin:0 auto;width:100%}
+
+/* ── SEARCH ── */
+.search-wrap{display:flex;gap:8px;margin-bottom:24px}
+.domain-input{flex:1;background:var(--s1);border:1px solid var(--border2);border-radius:10px;
+  color:var(--text);font-family:var(--mono);font-size:14px;padding:13px 18px;outline:none;
+  transition:border-color .15s}
+.domain-input::placeholder{color:var(--muted)}
+.domain-input:focus{border-color:var(--blue-b)}
+.scan-btn{background:var(--blue);border:none;border-radius:10px;color:#fff;
+  font-family:var(--sans);font-size:13px;font-weight:600;padding:13px 24px;
+  cursor:pointer;transition:all .15s;white-space:nowrap}
+.scan-btn:hover{background:#6ed6f8}
+.scan-btn:active{transform:scale(.97)}
+.scan-btn:disabled{opacity:.4;cursor:default;transform:none}
+
+/* ── QUICK PICKS ── */
+.quick-picks{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:28px;align-items:center}
+.qp-label{font-size:11px;color:var(--muted);font-family:var(--mono);margin-right:4px}
+.qp-chip{font-size:11px;font-family:var(--mono);background:var(--s2);border:1px solid var(--border2);
+  border-radius:6px;padding:4px 10px;cursor:pointer;color:var(--muted2);transition:all .15s}
+.qp-chip:hover{color:var(--blue);border-color:var(--blue-b)}
+
+/* ── VERDICT BANNER ── */
+.verdict-banner{border-radius:12px;padding:20px 24px;margin-bottom:20px;
+  display:flex;align-items:center;gap:16px;border:1px solid transparent}
+.verdict-icon{font-size:32px;flex-shrink:0}
+.verdict-label{font-size:20px;font-weight:700;letter-spacing:-.02em}
+.verdict-domain{font-family:var(--mono);font-size:13px;margin-top:3px;opacity:.8}
+.verdict-sub{font-size:12px;margin-top:6px;opacity:.7;font-family:var(--mono)}
+
+/* ── CHAIN DIAGRAM ── */
+.chain-wrap{background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  padding:20px;margin-bottom:20px;overflow-x:auto}
+.chain-title{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);
+  font-family:var(--mono);margin-bottom:16px}
+.chain{display:flex;align-items:center;gap:0;flex-wrap:nowrap;min-width:max-content}
+.chain-node{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:90px}
+.chain-circle{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:18px;border:2px solid;flex-shrink:0}
+.chain-label{font-size:10px;font-family:var(--mono);color:var(--muted2);text-align:center;max-width:90px}
+.chain-status{font-size:9px;font-family:var(--mono);font-weight:700;letter-spacing:.06em;text-align:center}
+.chain-arrow{display:flex;align-items:center;padding:0 4px;margin-top:-16px}
+.chain-arrow svg{width:28px;height:14px;flex-shrink:0}
+.chain-node.secure .chain-circle{background:var(--green-s);border-color:var(--green-b)}
+.chain-node.insecure .chain-circle{background:var(--red-s);border-color:var(--red-b)}
+.chain-node.warn .chain-circle{background:var(--orange-s);border-color:var(--orange-b)}
+.chain-node.unknown .chain-circle{background:var(--s3);border-color:var(--border2)}
+
+/* ── RECORD SECTIONS ── */
+.sections{display:flex;flex-direction:column;gap:12px}
+.sec{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;
+  cursor:pointer;user-select:none;transition:background .12s}
+.sec-hdr:hover{background:var(--s2)}
+.sec-left{display:flex;align-items:center;gap:10px}
+.sec-icon{font-size:16px;flex-shrink:0}
+.sec-name{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted2)}
+.sec-badges{display:flex;gap:6px;align-items:center}
+.badge{font-size:10px;font-family:var(--mono);font-weight:700;padding:3px 8px;border-radius:4px;
+  letter-spacing:.04em;white-space:nowrap}
+.b-secure{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.b-insecure{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.b-warn{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.b-info{background:var(--blue-s);color:var(--blue);border:1px solid var(--blue-b)}
+.b-unknown{background:var(--s3);color:var(--muted2);border:1px solid var(--border2)}
+.sec-arr{color:var(--muted);font-size:11px;transition:transform .2s}
+.sec-body{display:none;padding:16px 18px;border-top:1px solid var(--border)}
+.sec-body.open{display:block}
+
+/* ── RECORD TABLE ── */
+.rec-table{width:100%;border-collapse:collapse;font-size:12px}
+.rec-table th{padding:7px 10px;text-align:left;color:var(--muted);font-size:10px;
+  text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);font-weight:500}
+.rec-table td{padding:9px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);
+  vertical-align:top;line-height:1.6;word-break:break-all;color:var(--text)}
+.rec-table tr:last-child td{border-bottom:none}
+.rec-table tr:hover td{background:var(--s2)}
+.td-label{font-weight:600;white-space:nowrap;color:var(--muted2);font-size:11px}
+.val-green{color:var(--green)}
+.val-red{color:var(--red)}
+.val-orange{color:var(--orange)}
+.val-blue{color:var(--blue)}
+.val-muted{color:var(--muted)}
+.mono-wrap{word-break:break-all;font-size:11px;color:var(--muted2);max-width:500px}
+
+/* ── CHECK ITEMS ── */
+.check-list{display:flex;flex-direction:column;gap:8px}
+.check-item{display:flex;align-items:flex-start;gap:10px;background:var(--s2);
+  border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.check-item.secure{border-color:var(--green-b)}
+.check-item.insecure{border-color:var(--red-b)}
+.check-item.warn{border-color:var(--orange-b)}
+.check-item.info{border-color:var(--blue-b)}
+.c-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.secure .c-dot{background:var(--green)}
+.insecure .c-dot{background:var(--red)}
+.warn .c-dot{background:var(--orange)}
+.info .c-dot{background:var(--blue)}
+.c-label{font-size:12px;font-weight:600;margin-bottom:2px}
+.c-detail{font-size:11px;color:var(--muted2);font-family:var(--mono);line-height:1.6;word-break:break-all}
+
+/* ── ALGO PILLS ── */
+.algo-pill{display:inline-block;font-family:var(--mono);font-size:10px;padding:2px 8px;
+  border-radius:4px;margin:2px;font-weight:600}
+.algo-strong{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.algo-weak{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.algo-ok{background:var(--yellow-s);color:var(--yellow);border:1px solid var(--yellow-b)}
+
+/* ── LOADING / EMPTY ── */
+.loading-state,.empty-state{display:flex;flex-direction:column;align-items:center;
+  justify-content:center;min-height:300px;gap:14px;color:var(--muted);text-align:center}
+.loading-state h3,.empty-state h3{font-size:15px;font-weight:400;color:var(--muted2)}
+.empty-state svg{width:48px;height:48px;opacity:.12;stroke:var(--blue)}
+.spinner{width:28px;height:28px;border:3px solid rgba(255,255,255,.08);
+  border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+.progress-wrap{width:260px}
+.progress-bar{height:3px;background:var(--s3);border-radius:2px;overflow:hidden;margin-bottom:8px}
+.progress-fill{height:100%;background:var(--blue);border-radius:2px;transition:width .4s ease}
+.progress-label{font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+/* ── COMPLIANCE SCORE ── */
+.compliance-wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:8px}
+.compliance-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;text-align:center}
+.compliance-num{font-family:var(--mono);font-size:22px;font-weight:500;margin-bottom:4px}
+.compliance-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+
+/* ── RESPONSIVE ── */
+@media(max-width:600px){.main{padding:16px}.search-wrap{flex-direction:column}
+  .scan-btn{width:100%}.topbar{padding:12px 16px}.gov-badge{display:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeUp .3s ease both}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+
+/* ── CSV / BULK ── */
+.csv-btn{background:var(--s2);border:1px solid var(--border2);border-radius:10px;
+  color:var(--muted2);font-family:var(--sans);font-size:13px;font-weight:500;
+  padding:13px 18px;cursor:pointer;transition:all .15s;white-space:nowrap;
+  display:flex;align-items:center;gap:6px}
+.csv-btn:hover{border-color:var(--blue-b);color:var(--blue)}
+.csv-btn svg{width:15px;height:15px;flex-shrink:0}
+/* csvFileInput now inline inside label */
+
+/* bulk progress */
+.bulk-progress{background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  padding:20px 24px;margin-bottom:20px}
+.bulk-prog-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.bulk-prog-title{font-size:13px;font-weight:600;color:var(--text)}
+.bulk-prog-count{font-family:var(--mono);font-size:12px;color:var(--muted2)}
+.bulk-track{height:6px;background:var(--s3);border-radius:3px;overflow:hidden;margin-bottom:8px}
+.bulk-fill{height:100%;background:var(--blue);border-radius:3px;transition:width .3s ease}
+.bulk-current{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:10px}
+.bulk-live{display:flex;flex-wrap:wrap;gap:6px;max-height:60px;overflow:hidden}
+.live-chip{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:4px;
+  background:var(--s3);color:var(--muted2);border:1px solid var(--border)}
+.live-chip.scanning{background:var(--blue-s);color:var(--blue);border-color:var(--blue-b)}
+.live-chip.done-ok{background:var(--green-s);color:var(--green);border-color:var(--green-b)}
+.live-chip.done-partial{background:var(--orange-s);color:var(--orange);border-color:var(--orange-b)}
+.live-chip.done-bad{background:var(--red-s);color:var(--red);border-color:var(--red-b)}
+
+/* bulk summary */
+.bulk-summary{background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  padding:20px 24px;margin-bottom:20px}
+.bulk-summary-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.bulk-summary-title{font-size:14px;font-weight:600}
+/* .export-btn base — specific variants below */
+.export-btn svg{width:13px;height:13px}
+.bulk-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:16px}
+.bulk-stat{background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;text-align:center}
+.bulk-stat-num{font-family:var(--mono);font-size:20px;font-weight:500;margin-bottom:3px}
+.bulk-stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+
+/* bulk table */
+.bulk-table-wrap{overflow-x:auto}
+.bulk-table{width:100%;border-collapse:collapse;font-size:12px}
+.bulk-table th{padding:8px 10px;text-align:left;color:var(--muted);font-size:10px;
+  text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);
+  font-weight:500;white-space:nowrap;background:var(--s2)}
+.bulk-table td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle;
+  font-family:var(--mono);font-size:11px;word-break:break-all}
+.bulk-table tr:last-child td{border-bottom:none}
+.bulk-table tr:hover td{background:var(--s2);cursor:pointer}
+.bulk-table tr.row-selected td{background:var(--accent-s)}
+.bstat-full{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.bstat-partial{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.bstat-none{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.bstat-err{background:var(--s3);color:var(--muted2);border:1px solid var(--border2)}
+.bpill{font-size:10px;padding:2px 7px;border-radius:3px;font-weight:700;white-space:nowrap;display:inline-block}
+.tick{color:var(--green)}
+.cross{color:var(--red)}
+.dash{color:var(--muted)}
+
+/* ── CHARTS ── */
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:20px}
+.chart-card{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.chart-title{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);
+  font-family:var(--mono);margin-bottom:14px}
+.chart-wrap{display:flex;justify-content:center;align-items:center}
+.donut-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center}
+.donut-center{position:absolute;text-align:center;pointer-events:none}
+.donut-pct{font-family:var(--mono);font-size:22px;font-weight:600}
+.donut-label{font-size:10px;color:var(--muted);margin-top:1px}
+.chart-legend{display:flex;flex-direction:column;gap:7px;margin-top:14px}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:11px}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.legend-label{color:var(--muted2);flex:1}
+.legend-val{font-family:var(--mono);font-weight:600;color:var(--text)}
+.legend-pct{font-family:var(--mono);font-size:10px;color:var(--muted)}
+/* bar chart */
+.bar-chart{display:flex;flex-direction:column;gap:8px;width:100%}
+.bar-row{display:flex;align-items:center;gap:8px}
+.bar-label{font-size:11px;color:var(--muted2);width:90px;flex-shrink:0;text-align:right;font-family:var(--mono)}
+.bar-track{flex:1;height:20px;background:var(--s3);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .7s cubic-bezier(.4,0,.2,1)}
+.bar-val{font-family:var(--mono);font-size:11px;font-weight:600;width:36px;flex-shrink:0}
+/* export buttons row */
+.export-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.export-btn-csv{background:var(--green-s);border:1px solid var(--green-b);border-radius:8px;
+  color:var(--green);font-family:var(--sans);font-size:12px;font-weight:600;
+  padding:7px 14px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px}
+.export-btn-csv:hover{background:rgba(47,217,138,.2)}
+.export-btn-html{background:var(--accent-s);border:1px solid var(--accent-b);border-radius:8px;
+  color:#a09bff;font-family:var(--sans);font-size:12px;font-weight:600;
+  padding:7px 14px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px}
+.export-btn-html:hover{background:rgba(91,84,255,.2)}
+.export-btn-pdf{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;
+  color:#f87171;font-family:var(--sans);font-size:12px;font-weight:600;
+  padding:7px 14px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px}
+.export-btn-pdf:hover{background:rgba(239,68,68,.2)}
+.export-btn svg{width:13px;height:13px}
+@media print{
+  .topbar,.search-bar,.quick-picks,.bulk-progress,.live-chips,
+  .export-row,[id^="bfilter-"],.bulk-summary-hdr button{display:none!important}
+  body{background:#fff!important;color:#000!important}
+  .bulk-summary,.chart-card{border:1px solid #e5e7eb!important}
+  -webkit-print-color-adjust:exact;print-color-adjust:exact
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+    </div>
+    <div>
+      <div class="brand-name">DNSSEC Validator</div>
+      <div class="brand-sub">Ghost Defense · Tool 20</div>
+    </div>
+  </div>
+  <span class="gov-badge">.GOV · .MIL · .EDU · ANY DOMAIN</span>
+</div>
+
+<div class="main">
+
+  <!-- SEARCH -->
+  <div class="search-wrap">
+    <input class="domain-input" id="domainInput" type="text"
+      placeholder="cisa.gov  or  whitehouse.gov  or  any domain"
+      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+      onkeydown="if(event.key==='Enter')runScan()">
+    <label class="csv-btn" title="Upload CSV of domains" style="cursor:pointer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      CSV
+      <input type="file" id="csvFileInput" accept=".csv,.txt,text/csv,text/plain"
+        style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none"
+        onclick="this.value=null" onchange="handleCSV(event)">
+    </label>
+    <button class="scan-btn" id="scanBtn" onclick="runScan()">Validate</button>
+  </div>
+
+  <!-- QUICK PICKS -->
+  <div class="quick-picks">
+    <span class="qp-label">Quick scan:</span>
+    <span class="qp-chip" onclick="quickScan('cisa.gov')">cisa.gov</span>
+    <span class="qp-chip" onclick="quickScan('whitehouse.gov')">whitehouse.gov</span>
+    <span class="qp-chip" onclick="quickScan('nsa.gov')">nsa.gov</span>
+    <span class="qp-chip" onclick="quickScan('dhs.gov')">dhs.gov</span>
+    <span class="qp-chip" onclick="quickScan('fbi.gov')">fbi.gov</span>
+    <span class="qp-chip" onclick="quickScan('irs.gov')">irs.gov</span>
+    <span class="qp-chip" onclick="quickScan('army.mil')">army.mil</span>
+    <span class="qp-chip" onclick="quickScan('mit.edu')">mit.edu</span>
+    <span class="qp-chip" onclick="quickScan('cloudflare.com')">cloudflare.com</span>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results">
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      <h3>Enter a domain to validate</h3>
+      <p style="font-size:12px;max-width:320px;line-height:1.7">
+        Checks DNSSEC chain of trust from root → TLD → domain, DS records, DNSKEY algorithms, RRSIG signatures, and overall compliance posture.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CLOUDFLARE DNS-over-HTTPS (supports DNSSEC DO bit) ────────────────────────
+var DOH = 'https://cloudflare-dns.com/dns-query';
+var GOOGLE_DOH = 'https://dns.google/resolve';
+
+// DNSSEC algorithm registry (RFC 8624)
+var ALGO_INFO = {
+  1:  { name:'RSA/MD5',       status:'weak',   note:'Deprecated — MD5 broken' },
+  3:  { name:'DSA/SHA1',      status:'weak',   note:'Deprecated — DSA weak' },
+  5:  { name:'RSA/SHA1',      status:'warn',   note:'SHA-1 deprecated' },
+  6:  { name:'DSA-NSEC3/SHA1',status:'weak',   note:'Deprecated' },
+  7:  { name:'RSASHA1-NSEC3', status:'warn',   note:'SHA-1 deprecated' },
+  8:  { name:'RSA/SHA-256',   status:'strong', note:'Recommended' },
+  10: { name:'RSA/SHA-512',   status:'strong', note:'Recommended' },
+  12: { name:'GOST R 34.10',  status:'warn',   note:'Russia GOST — limited support' },
+  13: { name:'ECDSA/P-256',   status:'strong', note:'Recommended — compact & fast' },
+  14: { name:'ECDSA/P-384',   status:'strong', note:'Recommended' },
+  15: { name:'Ed25519',       status:'strong', note:'Recommended — modern' },
+  16: { name:'Ed448',         status:'strong', note:'Recommended' },
+};
+
+var DIGEST_INFO = {
+  1: { name:'SHA-1',   status:'weak' },
+  2: { name:'SHA-256', status:'strong' },
+  3: { name:'GOST R',  status:'warn' },
+  4: { name:'SHA-384', status:'strong' },
+};
+
+// ── DNS QUERY ─────────────────────────────────────────────────────────────────
+async function dnsQuery(name, type, useDO) {
+  var url = DOH + '?name=' + encodeURIComponent(name) + '&type=' + type + (useDO ? '&do=1' : '');
+  try {
+    var resp = await fetch(url, { headers: { 'Accept': 'application/dns-json' } });
+    if (!resp.ok) throw new Error('DNS query failed: ' + resp.status);
+    return await resp.json();
+  } catch(e) {
+    // Fallback to Google DoH
+    try {
+      var url2 = GOOGLE_DOH + '?name=' + encodeURIComponent(name) + '&type=' + type + (useDO ? '&do=1&cd=0' : '');
+      var resp2 = await fetch(url2, { headers: { 'Accept': 'application/dns-json' } });
+      return await resp2.json();
+    } catch(e2) {
+      return null;
+    }
+  }
+}
+
+function getRecords(data, type) {
+  if (!data || !data.Answer) return [];
+  return data.Answer.filter(function(r) { return r.type === type; });
+}
+
+function getAuthority(data, type) {
+  if (!data || !data.Authority) return [];
+  return data.Authority.filter(function(r) { return r.type === type; });
+}
+
+// ── PARSE HELPERS ─────────────────────────────────────────────────────────────
+function parseDNSKEY(rdata) {
+  // DNSKEY RDATA: flags protocol algorithm public-key
+  var parts = rdata.trim().split(/\s+/);
+  return {
+    flags:    parseInt(parts[0]),
+    protocol: parseInt(parts[1]),
+    algorithm:parseInt(parts[2]),
+    key:      parts.slice(3).join(''),
+    isZSK:    (parseInt(parts[0]) & 256) !== 0,
+    isKSK:    (parseInt(parts[0]) & 257) === 257,
+  };
+}
+
+function parseDS(rdata) {
+  var parts = rdata.trim().split(/\s+/);
+  return {
+    keyTag:     parseInt(parts[0]),
+    algorithm:  parseInt(parts[1]),
+    digestType: parseInt(parts[2]),
+    digest:     parts.slice(3).join(''),
+  };
+}
+
+function parseRRSIG(rdata) {
+  var parts = rdata.trim().split(/\s+/);
+  return {
+    typeCovered: parts[0],
+    algorithm:   parseInt(parts[1]),
+    labels:      parseInt(parts[2]),
+    origTTL:     parseInt(parts[3]),
+    expiration:  parts[4],
+    inception:   parts[5],
+    keyTag:      parseInt(parts[6]),
+    signerName:  parts[7],
+  };
+}
+
+function parseNSEC3(rdata) {
+  var parts = rdata.trim().split(/\s+/);
+  return {
+    algorithm:  parseInt(parts[0]),
+    flags:      parseInt(parts[1]),
+    iterations: parseInt(parts[2]),
+    salt:       parts[3],
+  };
+}
+
+function fmtDate(ymdTstr) {
+  // YYYYMMDDHHMMSS
+  if (!ymdTstr || ymdTstr.length < 8) return ymdTstr;
+  var y=ymdTstr.substr(0,4),mo=ymdTstr.substr(4,2),d=ymdTstr.substr(6,2);
+  var h=ymdTstr.substr(8,2)||'00',mi=ymdTstr.substr(10,2)||'00';
+  return y+'-'+mo+'-'+d+' '+h+':'+mi+' UTC';
+}
+
+function isExpired(ymdTstr) {
+  try {
+    var y=parseInt(ymdTstr.substr(0,4)),mo=parseInt(ymdTstr.substr(4,2))-1,d=parseInt(ymdTstr.substr(6,2));
+    var h=parseInt(ymdTstr.substr(8,2)||0),mi=parseInt(ymdTstr.substr(10,2)||0);
+    return new Date(y,mo,d,h,mi) < new Date();
+  } catch(e) { return false; }
+}
+
+function isExpiringSoon(ymdTstr, days) {
+  try {
+    var y=parseInt(ymdTstr.substr(0,4)),mo=parseInt(ymdTstr.substr(4,2))-1,d=parseInt(ymdTstr.substr(6,2));
+    var exp = new Date(y,mo,d);
+    var diff = (exp - new Date()) / 86400000;
+    return diff >= 0 && diff <= days;
+  } catch(e) { return false; }
+}
+
+// ── PROGRESS ──────────────────────────────────────────────────────────────────
+function setProgress(pct, msg) {
+  var f = document.getElementById('progFill');
+  var l = document.getElementById('progLabel');
+  if (f) f.style.width = pct + '%';
+  if (l) l.textContent = msg;
+}
+
+// ── MAIN SCAN ─────────────────────────────────────────────────────────────────
+function quickScan(domain) {
+  document.getElementById('domainInput').value = domain;
+  runScan();
+}
+
+async function runScan() {
+  var raw = document.getElementById('domainInput').value.trim().toLowerCase();
+  if (!raw) { alert('Enter a domain name.'); return; }
+  // Strip protocol/path
+  raw = raw.replace(/^https?:\/\//,'').replace(/\/.*/,'').replace(/^www\./,'');
+  var domain = raw;
+
+  var btn = document.getElementById('scanBtn');
+  btn.disabled = true; btn.textContent = 'Scanning…';
+
+  document.getElementById('results').innerHTML =
+    '<div class="loading-state">'
+    + '<div class="spinner"></div>'
+    + '<div class="progress-wrap">'
+      + '<div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>'
+      + '<div class="progress-label" id="progLabel">Querying DNS…</div>'
+    + '</div>'
+    + '</div>';
+
+  try {
+    // ── Build chain: root → TLD → domain ─────────────────────────────────
+    var parts = domain.split('.');
+    var tld = parts.slice(-1)[0];
+    var sld = parts.slice(-2).join('.');
+
+    setProgress(10, 'Checking root zone…');
+    var rootDS   = await dnsQuery(tld + '.', 'DS', true);
+    var rootNS   = await dnsQuery('.', 'NS', false);
+
+    setProgress(22, 'Checking TLD zone (' + tld + ')…');
+    var tldDS    = await dnsQuery(domain, 'DS', true);
+    var tldNS    = await dnsQuery(domain, 'NS', false);
+    var tldDNSKEY = await dnsQuery(tld + '.', 'DNSKEY', true);
+
+    setProgress(38, 'Fetching DNSKEY records…');
+    var dnskeyData = await dnsQuery(domain, 'DNSKEY', true);
+
+    setProgress(50, 'Fetching DS records…');
+    var dsData   = await dnsQuery(domain, 'DS', true);
+
+    setProgress(62, 'Checking RRSIG signatures…');
+    var rrsigA   = await dnsQuery(domain, 'A', true);
+    var rrsigNS  = await dnsQuery(domain, 'NS', true);
+    var rrsigMX  = await dnsQuery(domain, 'MX', true);
+    var rrsigTXT = await dnsQuery(domain, 'TXT', true);
+
+    setProgress(76, 'Checking NSEC/NSEC3…');
+    var nsecData  = await dnsQuery(domain, 'NSEC', true);
+    var nsec3Data = await dnsQuery(domain, 'NSEC3PARAM', true);
+    var nsec3Auth = getAuthority(nsecData, 50);  // type 50 = NSEC3
+
+    setProgress(88, 'Checking SOA and additional records…');
+    var soaData  = await dnsQuery(domain, 'SOA', false);
+    var aData    = await dnsQuery(domain, 'A', false);
+    var mxData   = await dnsQuery(domain, 'MX', false);
+    var txtData  = await dnsQuery(domain, 'TXT', false);
+
+    setProgress(96, 'Analyzing chain of trust…');
+
+    // ── EXTRACT RECORDS ────────────────────────────────────────────────────
+    var dnskeys  = getRecords(dnskeyData, 48).map(function(r){ return Object.assign(parseDNSKEY(r.data), {ttl:r.TTL,raw:r.data}); });
+    var dsRecs   = getRecords(dsData, 43).map(function(r){ return Object.assign(parseDS(r.data), {ttl:r.TTL,raw:r.data}); });
+    var rrsigAs  = getRecords(rrsigA, 46).map(function(r){ return Object.assign(parseRRSIG(r.data), {raw:r.data}); });
+    var rrsigNSs = getRecords(rrsigNS, 46).map(function(r){ return Object.assign(parseRRSIG(r.data), {raw:r.data}); });
+    var allRRSIGs= rrsigAs.concat(rrsigNSs).concat(getRecords(rrsigMX,46).map(function(r){return Object.assign(parseRRSIG(r.data),{raw:r.data});}))
+                                            .concat(getRecords(rrsigTXT,46).map(function(r){return Object.assign(parseRRSIG(r.data),{raw:r.data});}));
+    var nsec3Params = getRecords(nsec3Data, 51);
+    var aRecs    = getRecords(aData, 1);
+    var mxRecs   = getRecords(mxData, 15);
+    var txtRecs  = getRecords(txtData, 16);
+    var soaRecs  = getRecords(soaData, 6);
+    var nsRecs   = getRecords(tldNS, 2);
+
+    var hasDS      = dsRecs.length > 0;
+    var hasDNSKEY  = dnskeys.length > 0;
+    var hasRRSIG   = allRRSIGs.length > 0;
+    var hasNSEC3   = nsec3Params.length > 0 || nsec3Auth.length > 0;
+    var parentDS   = getRecords(tldDS, 43);
+    var hasParentDS= parentDS.length > 0;
+    var adFlag     = dnskeyData && dnskeyData.AD === true;
+
+    // ── AD BIT CHECK (most reliable DNSSEC validation signal) ─────────────
+    var dnssecValid = adFlag;
+
+    // ── CHAIN OF TRUST STATUS ─────────────────────────────────────────────
+    var rootOk   = true; // Root is always signed
+    var tldOk    = getRecords(tldDNSKEY, 48).length > 0 || getRecords(rootDS, 43).length > 0;
+    var domainOk = hasDS && hasDNSKEY && dnssecValid;
+
+    // ── ALGORITHM ANALYSIS ─────────────────────────────────────────────────
+    var algoSet = new Set(dnskeys.map(function(k){ return k.algorithm; }));
+    var dsAlgoSet = new Set(dsRecs.map(function(d){ return d.algorithm; }));
+    var digestSet = new Set(dsRecs.map(function(d){ return d.digestType; }));
+
+    var algoChecks = [];
+    algoSet.forEach(function(alg) {
+      var info = ALGO_INFO[alg] || { name:'Unknown('+alg+')', status:'warn', note:'Unrecognized algorithm' };
+      algoChecks.push({ alg:alg, info:info });
+    });
+
+    // ── RRSIG EXPIRY CHECK ─────────────────────────────────────────────────
+    var expiredSigs = [], expiringSoon = [], validSigs = [];
+    allRRSIGs.forEach(function(sig) {
+      if (isExpired(sig.expiration)) expiredSigs.push(sig);
+      else if (isExpiringSoon(sig.expiration, 14)) expiringSoon.push(sig);
+      else validSigs.push(sig);
+    });
+
+    // ── NSEC3 ITERATION CHECK ─────────────────────────────────────────────
+    var nsec3Issues = [];
+    nsec3Params.forEach(function(r) {
+      var p = parseNSEC3(r.data);
+      if (p.iterations > 100) nsec3Issues.push('High iteration count: ' + p.iterations + ' (recommended ≤ 0 per RFC 9276)');
+      if (p.salt && p.salt !== '-') nsec3Issues.push('Non-empty salt present (RFC 9276 recommends no salt)');
+    });
+
+    // ── KSK / ZSK SEPARATION ──────────────────────────────────────────────
+    var ksks = dnskeys.filter(function(k){ return k.isKSK; });
+    var zsks = dnskeys.filter(function(k){ return k.isZSK && !k.isKSK; });
+
+    // ── OVERALL SCORE ─────────────────────────────────────────────────────
+    var score = 0;
+    if (hasDS)        score += 20;
+    if (hasDNSKEY)    score += 15;
+    if (hasParentDS)  score += 20;
+    if (hasRRSIG)     score += 15;
+    if (dnssecValid)  score += 15;
+    if (hasNSEC3)     score +=  8;
+    if (ksks.length)  score +=  4;
+    if (zsks.length)  score +=  3;
+    var hasWeakAlgo = algoChecks.some(function(a){ return a.info.status === 'weak'; });
+    var hasWeakDigest = Array.from(digestSet).some(function(d){ return (DIGEST_INFO[d]||{status:'warn'}).status === 'weak'; });
+    if (hasWeakAlgo)   score -= 15;
+    if (hasWeakDigest) score -= 10;
+    if (expiredSigs.length) score -= 20;
+    if (nsec3Issues.length) score -=  5;
+    score = Math.max(0, Math.min(100, score));
+
+    setProgress(100, 'Done');
+
+    // ── RENDER ─────────────────────────────────────────────────────────────
+    renderResults({
+      domain, score, dnssecValid, adFlag,
+      hasDS, hasDNSKEY, hasRRSIG, hasParentDS, hasNSEC3,
+      dnskeys, ksks, zsks, dsRecs, allRRSIGs,
+      expiredSigs, expiringSoon, validSigs,
+      algoChecks, nsec3Params, nsec3Issues,
+      algoSet, digestSet,
+      aRecs, mxRecs, txtRecs, soaRecs, nsRecs,
+      rootOk, tldOk, domainOk, tld
+    });
+
+  } catch(err) {
+    document.getElementById('results').innerHTML =
+      '<div class="empty-state"><div style="font-size:24px">⚠</div>'
+      + '<h3 style="color:var(--red)">Scan Failed</h3>'
+      + '<p style="font-family:var(--mono);font-size:12px;color:var(--muted)">' + err.message + '</p></div>';
+  }
+
+  btn.disabled = false; btn.textContent = 'Validate';
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function algoPill(alg) {
+  var info = ALGO_INFO[alg] || { name:'Unknown('+alg+')', status:'warn' };
+  var cls = info.status === 'strong' ? 'algo-strong' : info.status === 'weak' ? 'algo-weak' : 'algo-ok';
+  return '<span class="algo-pill ' + cls + '" title="' + info.note + '">Alg ' + alg + ': ' + info.name + '</span>';
+}
+
+function digestPill(dt) {
+  var info = DIGEST_INFO[dt] || { name:'Unknown('+dt+')', status:'warn' };
+  var cls = info.status === 'strong' ? 'algo-strong' : info.status === 'weak' ? 'algo-weak' : 'algo-ok';
+  return '<span class="algo-pill ' + cls + '">DT ' + dt + ': ' + info.name + '</span>';
+}
+
+function secBadge(ok, trueLabel, falseLabel) {
+  return ok
+    ? '<span class="badge b-secure">' + (trueLabel||'SECURE') + '</span>'
+    : '<span class="badge b-insecure">' + (falseLabel||'MISSING') + '</span>';
+}
+
+function checkItem(status, label, detail) {
+  return '<div class="check-item ' + status + '">'
+    + '<span class="c-dot"></span>'
+    + '<div><div class="c-label">' + label + '</div>'
+    + '<div class="c-detail">' + detail + '</div></div></div>';
+}
+
+function section(id, icon, name, badges, content, open) {
+  return '<div class="sec fade-in">'
+    + '<div class="sec-hdr" onclick="tog(\'' + id + '\')">'
+      + '<div class="sec-left"><span class="sec-icon">' + icon + '</span>'
+      + '<span class="sec-name">' + name + '</span>'
+      + '<div class="sec-badges">' + badges + '</div></div>'
+      + '<span class="sec-arr" id="arr-' + id + '">' + (open ? '▲' : '▼') + '</span>'
+    + '</div>'
+    + '<div class="sec-body' + (open ? ' open' : '') + '" id="body-' + id + '">' + content + '</div>'
+    + '</div>';
+}
+
+function tog(id) {
+  var b = document.getElementById('body-' + id);
+  var a = document.getElementById('arr-' + id);
+  var open = b.classList.toggle('open');
+  a.textContent = open ? '▲' : '▼';
+}
+
+function renderResults(d) {
+  var html = '';
+
+  // ── VERDICT ─────────────────────────────────────────────────────────────
+  var vLabel, vIcon, vColor, vBg, vBorder, vSub;
+  if (d.dnssecValid && d.score >= 70) {
+    vLabel='DNSSEC FULLY VALIDATED'; vIcon='🔒'; vColor='var(--green)';
+    vBg='var(--green-s)'; vBorder='var(--green-b)';
+    vSub='Chain of trust verified root → TLD → domain · AD bit set by resolver';
+  } else if (d.hasDS || d.hasDNSKEY) {
+    vLabel='DNSSEC PARTIAL / MISCONFIGURED'; vIcon='⚠️'; vColor='var(--orange)';
+    vBg='var(--orange-s)'; vBorder='var(--orange-b)';
+    vSub='Some DNSSEC records present but chain is incomplete or unvalidated';
+  } else {
+    vLabel='DNSSEC NOT CONFIGURED'; vIcon='🔓'; vColor='var(--red)';
+    vBg='var(--red-s)'; vBorder='var(--red-b)';
+    vSub='No DNSSEC records found — domain vulnerable to cache poisoning & spoofing';
+  }
+
+  html += '<div class="verdict-banner fade-in" style="background:' + vBg + ';border-color:' + vBorder + '">'
+    + '<div class="verdict-icon">' + vIcon + '</div>'
+    + '<div><div class="verdict-label" style="color:' + vColor + '">' + vLabel + '</div>'
+    + '<div class="verdict-domain" style="color:' + vColor + '">' + esc(d.domain) + '</div>'
+    + '<div class="verdict-sub">' + vSub + '</div>'
+    + '</div></div>';
+
+  // ── COMPLIANCE SCORE ─────────────────────────────────────────────────────
+  var scoreColor = d.score >= 70 ? 'var(--green)' : d.score >= 40 ? 'var(--orange)' : 'var(--red)';
+  html += '<div class="chain-wrap fade-in">';
+  html += '<div class="chain-title">Compliance Score</div>';
+  html += '<div class="compliance-wrap">';
+  [
+    [d.score, 'Overall Score', scoreColor],
+    [d.hasDS ? '✓' : '✗', 'DS Record', d.hasDS ? 'var(--green)' : 'var(--red)'],
+    [d.hasDNSKEY ? '✓' : '✗', 'DNSKEY', d.hasDNSKEY ? 'var(--green)' : 'var(--red)'],
+    [d.hasRRSIG ? '✓' : '✗', 'RRSIG', d.hasRRSIG ? 'var(--green)' : 'var(--red)'],
+    [d.adFlag ? '✓' : '✗', 'AD Bit', d.adFlag ? 'var(--green)' : 'var(--red)'],
+    [d.hasNSEC3 ? '✓' : '✗', 'NSEC3', d.hasNSEC3 ? 'var(--green)' : 'var(--muted)'],
+  ].forEach(function(item) {
+    html += '<div class="compliance-card"><div class="compliance-num" style="color:' + item[2] + '">' + item[0] + '</div>'
+      + '<div class="compliance-label">' + item[1] + '</div></div>';
+  });
+  html += '</div>';
+
+  // ── CHAIN OF TRUST DIAGRAM ───────────────────────────────────────────────
+  html += '<div class="chain-title" style="margin-top:16px">Chain of Trust</div>';
+  html += '<div class="chain">';
+  function chainNode(icon, label, status, sublabel) {
+    return '<div class="chain-node ' + status + '">'
+      + '<div class="chain-circle">' + icon + '</div>'
+      + '<div class="chain-label">' + label + '</div>'
+      + '<div class="chain-status" style="color:' + (status==='secure'?'var(--green)':status==='insecure'?'var(--red)':'var(--orange)') + '">' + sublabel + '</div>'
+      + '</div>';
+  }
+  function arrow(ok) {
+    var color = ok ? 'var(--green)' : 'var(--red)';
+    return '<div class="chain-arrow"><svg viewBox="0 0 28 14" fill="none">'
+      + '<line x1="2" y1="7" x2="22" y2="7" stroke="' + color + '" stroke-width="2"/>'
+      + '<polyline points="16,2 22,7 16,12" stroke="' + color + '" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+      + '</svg></div>';
+  }
+
+  html += chainNode('🌍', 'Root (.)', 'secure', 'SIGNED');
+  html += arrow(d.rootOk);
+  html += chainNode('🏛️', '.' + esc(d.tld), d.tldOk ? 'secure' : 'warn', d.tldOk ? 'SIGNED' : 'UNKNOWN');
+  html += arrow(d.hasParentDS);
+  html += chainNode('🏷️', esc(d.domain), d.domainOk ? 'secure' : d.hasDS ? 'warn' : 'insecure', d.domainOk ? 'VALIDATED' : d.hasDS ? 'PARTIAL' : 'UNSIGNED');
+  html += arrow(d.dnssecValid);
+  html += chainNode('✅', 'Resolver', d.adFlag ? 'secure' : 'insecure', d.adFlag ? 'AD=1' : 'AD=0');
+  html += '</div></div>';
+
+  // ── SECTIONS ─────────────────────────────────────────────────────────────
+  var sections = '';
+
+  // ── 1. DNSKEY ─────────────────────────────────────────────────────────────
+  var dnskeyContent = '';
+  if (!d.dnskeys.length) {
+    dnskeyContent = checkItem('insecure', 'No DNSKEY Records Found', 'DNSSEC is not configured for this domain');
+  } else {
+    dnskeyContent = '<div class="check-list">';
+    d.dnskeys.forEach(function(k) {
+      var info = ALGO_INFO[k.algorithm] || { name:'Unknown', status:'warn', note:'?' };
+      var st = info.status === 'strong' ? 'secure' : info.status === 'weak' ? 'insecure' : 'warn';
+      var keyType = k.isKSK ? 'KSK (Key Signing Key — flags 257)' : k.isZSK ? 'ZSK (Zone Signing Key — flags 256)' : 'Unknown (flags ' + k.flags + ')';
+      dnskeyContent += checkItem(st, keyType,
+        'Algorithm: ' + algoPill(k.algorithm) + '<br>'
+        + 'Protocol: ' + k.protocol + ' · TTL: ' + k.ttl + 's<br>'
+        + '<span class="mono-wrap">' + esc(k.key.substring(0,64)) + '…</span>');
+    });
+    dnskeyContent += '</div>';
+  }
+  var dnskeyBadges = d.hasDNSKEY ? secBadge(true, d.dnskeys.length + ' KEY' + (d.dnskeys.length!==1?'S':'')) : secBadge(false, 'MISSING');
+  if (d.ksks.length) dnskeyBadges += ' <span class="badge b-info">KSK×' + d.ksks.length + '</span>';
+  if (d.zsks.length) dnskeyBadges += ' <span class="badge b-info">ZSK×' + d.zsks.length + '</span>';
+  sections += section('dnskey', '🔑', 'DNSKEY Records', dnskeyBadges, dnskeyContent, true);
+
+  // ── 2. DS (Delegation Signer) ─────────────────────────────────────────────
+  var dsContent = '<div class="check-list">';
+  if (!d.dsRecs.length) {
+    dsContent += checkItem('insecure', 'No DS Records Found', 'Parent zone has no Delegation Signer records — chain of trust broken');
+  } else {
+    d.dsRecs.forEach(function(ds) {
+      var dInfo = DIGEST_INFO[ds.digestType] || { name:'Unknown', status:'warn' };
+      var st = dInfo.status === 'strong' ? 'secure' : dInfo.status === 'weak' ? 'insecure' : 'warn';
+      dsContent += checkItem(st,
+        'DS Record — KeyTag ' + ds.keyTag,
+        'Algorithm: ' + algoPill(ds.algorithm) + ' &nbsp; Digest: ' + digestPill(ds.digestType) + '<br>'
+        + '<span class="mono-wrap">' + esc(ds.digest.substring(0,64)) + (ds.digest.length > 64 ? '…' : '') + '</span>');
+    });
+  }
+  if (d.hasParentDS) {
+    dsContent += checkItem('secure', 'Parent DS Delegation Found', 'Parent zone published DS records linking to this domain\'s DNSKEY');
+  } else {
+    dsContent += checkItem('warn', 'No Parent DS Confirmation', 'Could not confirm parent zone DS publication — check registrar DNSSEC settings');
+  }
+  dsContent += '</div>';
+  var dsBadges = secBadge(d.hasDS, d.dsRecs.length + ' DS RECORD' + (d.dsRecs.length!==1?'S':''), 'NO DS');
+  sections += section('ds', '🔗', 'DS Records (Delegation Signer)', dsBadges, dsContent, true);
+
+  // ── 3. RRSIG ─────────────────────────────────────────────────────────────
+  var rrsigContent = '<div class="check-list">';
+  if (!d.allRRSIGs.length) {
+    rrsigContent += checkItem('insecure', 'No RRSIG Records Found', 'Resource Record Signatures are missing — records are unsigned');
+  } else {
+    if (d.expiredSigs.length) {
+      d.expiredSigs.forEach(function(sig) {
+        rrsigContent += checkItem('insecure', '⚠ EXPIRED Signature — ' + sig.typeCovered,
+          'Algorithm: ' + algoPill(sig.algorithm) + '<br>'
+          + 'Expired: <span class="val-red">' + fmtDate(sig.expiration) + '</span><br>'
+          + 'Signer: ' + esc(sig.signerName));
+      });
+    }
+    if (d.expiringSoon.length) {
+      d.expiringSoon.forEach(function(sig) {
+        rrsigContent += checkItem('warn', '⏰ Expiring Soon — ' + sig.typeCovered,
+          'Algorithm: ' + algoPill(sig.algorithm) + '<br>'
+          + 'Expires: <span class="val-orange">' + fmtDate(sig.expiration) + '</span><br>'
+          + 'Signer: ' + esc(sig.signerName));
+      });
+    }
+    // Show valid sigs (dedup by type)
+    var seen = new Set();
+    d.validSigs.forEach(function(sig) {
+      if (seen.has(sig.typeCovered)) return;
+      seen.add(sig.typeCovered);
+      rrsigContent += checkItem('secure', 'Valid Signature — ' + sig.typeCovered,
+        'Algorithm: ' + algoPill(sig.algorithm) + '<br>'
+        + 'Expires: <span class="val-green">' + fmtDate(sig.expiration) + '</span> · KeyTag: ' + sig.keyTag + '<br>'
+        + 'Signer: ' + esc(sig.signerName));
+    });
+  }
+  rrsigContent += '</div>';
+  var rrsigBadges = d.hasRRSIG ? secBadge(d.expiredSigs.length === 0, d.allRRSIGs.length + ' SIG' + (d.allRRSIGs.length!==1?'S':''), 'EXPIRED') : secBadge(false, 'MISSING');
+  if (d.expiredSigs.length) rrsigBadges += ' <span class="badge b-insecure">' + d.expiredSigs.length + ' EXPIRED</span>';
+  if (d.expiringSoon.length) rrsigBadges += ' <span class="badge b-warn">' + d.expiringSoon.length + ' EXPIRING</span>';
+  sections += section('rrsig', '✍️', 'RRSIG Signatures', rrsigBadges, rrsigContent, true);
+
+  // ── 4. NSEC3 ─────────────────────────────────────────────────────────────
+  var nsecContent = '<div class="check-list">';
+  if (!d.hasNSEC3) {
+    nsecContent += checkItem('warn', 'No NSEC3 Detected',
+      'NSEC3 provides authenticated denial of existence. NSEC (v1) is susceptible to zone enumeration.');
+  } else {
+    nsecContent += checkItem('secure', 'NSEC3 Authenticated Denial Configured',
+      'Protects against zone enumeration — hashed owner names prevent enumeration attacks');
+    d.nsec3Params.forEach(function(r) {
+      var p = parseNSEC3(r.data);
+      var st = p.iterations > 100 ? 'warn' : 'secure';
+      nsecContent += checkItem(st, 'NSEC3PARAM Record',
+        'Hash Algorithm: ' + p.algorithm + ' (SHA-1) · Flags: ' + p.flags + '<br>'
+        + 'Iterations: <span class="' + (p.iterations > 100 ? 'val-orange' : 'val-green') + '">' + p.iterations + '</span>'
+        + (p.iterations > 100 ? ' ⚠ RFC 9276 recommends 0 iterations' : ' ✓ RFC 9276 compliant') + '<br>'
+        + 'Salt: ' + (p.salt === '-' ? '<span class="val-green">none (recommended)</span>' : '<span class="val-orange">' + esc(p.salt) + ' (RFC 9276 recommends no salt)</span>'));
+    });
+  }
+  d.nsec3Issues.forEach(function(issue) {
+    nsecContent += checkItem('warn', 'NSEC3 Configuration Issue', issue);
+  });
+  nsecContent += '</div>';
+  var nsecBadge2 = d.hasNSEC3
+    ? (d.nsec3Issues.length ? '<span class="badge b-warn">NSEC3 ISSUES</span>' : '<span class="badge b-secure">NSEC3 OK</span>')
+    : '<span class="badge b-warn">NO NSEC3</span>';
+  sections += section('nsec', '🛡️', 'NSEC3 (Denial of Existence)', nsecBadge2, nsecContent, false);
+
+  // ── 5. ALGORITHM COMPLIANCE ───────────────────────────────────────────────
+  var algoContent = '<div class="check-list">';
+  if (!d.algoChecks.length) {
+    algoContent += checkItem('info', 'No DNSKEY records to analyze', 'Configure DNSSEC to see algorithm analysis');
+  } else {
+    d.algoChecks.forEach(function(a) {
+      var st = a.info.status === 'strong' ? 'secure' : a.info.status === 'weak' ? 'insecure' : 'warn';
+      algoContent += checkItem(st, 'Algorithm ' + a.alg + ': ' + a.info.name,
+        a.info.note + '<br>'
+        + (a.info.status === 'strong' ? '✓ Compliant with RFC 8624 (MUST implement)' :
+           a.info.status === 'weak'   ? '✗ Deprecated — migrate to Algorithm 13 (ECDSA P-256) or 15 (Ed25519)' :
+                                        '⚠ Acceptable but consider upgrading'));
+    });
+    d.dsRecs.forEach(function(ds) {
+      var info = DIGEST_INFO[ds.digestType] || { name:'Unknown', status:'warn' };
+      var st = info.status === 'strong' ? 'secure' : info.status === 'weak' ? 'insecure' : 'warn';
+      algoContent += checkItem(st, 'DS Digest Type ' + ds.digestType + ': ' + info.name,
+        info.status === 'strong' ? '✓ Strong digest algorithm'
+        : info.status === 'weak' ? '✗ Weak digest — SHA-1 is deprecated, use SHA-256 (type 2) or SHA-384 (type 4)'
+        : '⚠ Review digest algorithm');
+    });
+  }
+  // BOD 18-01 / CISA compliance note
+  algoContent += checkItem('info', 'CISA BOD 18-01 Requirement',
+    'All .gov domains must implement DNSSEC per Binding Operational Directive 18-01 (Jan 2018). '
+    + 'Recommended algorithms: ' + algoPill(13) + algoPill(15) + algoPill(8));
+  algoContent += '</div>';
+  var hasWeak = d.algoChecks.some(function(a){ return a.info.status==='weak'; });
+  var algoBadges = hasWeak ? '<span class="badge b-insecure">WEAK ALGO</span>' : '<span class="badge b-secure">STRONG ALGO</span>';
+  sections += section('algo', '⚙️', 'Algorithm Compliance (RFC 8624)', algoBadges, algoContent, false);
+
+  // ── 6. DNS RECORDS OVERVIEW ───────────────────────────────────────────────
+  var recContent = '<table class="rec-table"><thead><tr><th>Type</th><th>Value</th><th>TTL</th></tr></thead><tbody>';
+  function addRecs(recs, type) {
+    recs.forEach(function(r) {
+      recContent += '<tr><td class="td-label">' + type + '</td><td>' + esc(r.data) + '</td><td class="val-muted">' + r.TTL + 's</td></tr>';
+    });
+  }
+  addRecs(d.aRecs, 'A');
+  addRecs(d.mxRecs, 'MX');
+  addRecs(d.soaRecs, 'SOA');
+  if (!d.aRecs.length && !d.mxRecs.length) recContent += '<tr><td colspan="3" style="color:var(--muted);padding:12px">No A/MX/SOA records found</td></tr>';
+  recContent += '</tbody></table>';
+  var recBadge = '<span class="badge b-info">' + (d.aRecs.length + d.mxRecs.length) + ' RECORDS</span>';
+  sections += section('recs', '📋', 'DNS Records Overview', recBadge, recContent, false);
+
+  html += '<div class="sections">' + sections + '</div>';
+
+  // ── Export toolbar (single-domain) ────────────────────────────────────────
+  html += '<div style="display:flex;gap:8px;padding:16px 24px;border-top:1px solid var(--border);flex-wrap:wrap">'
+    + '<span style="font-size:11px;color:var(--muted);font-family:var(--mono);display:flex;align-items:center">Export:</span>'
+    + '<button class="export-btn-html" onclick="exportSingleHTML()">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
+      + 'HTML Report</button>'
+    + '<button class="export-btn-pdf" onclick="exportSinglePDF()">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>'
+      + 'PDF Report</button>'
+    + '</div>';
+
+  document.getElementById('results').innerHTML = html;
+  // Store current result for export functions
+  window._lastSingleResult = d;
+}
+
+// ── CSV / BULK SCAN ENGINE ────────────────────────────────────────────────────
+var bulkResults = [];
+var bulkRunning = false;
+
+function handleCSV(evt) {
+  var file = evt.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    // Reset input AFTER read so the browser doesn't cancel the read
+    evt.target.value = '';
+    var text = e.target.result;
+    var domains = parseCSVDomains(text);
+    if (!domains.length) {
+      alert('No valid domains found in CSV.\n\nMake sure your file has one domain per line (e.g. cisa.gov) or a column of domain names. Headers and non-domain rows are skipped automatically.');
+      return;
+    }
+    if (domains.length > 100) {
+      if (!confirm(domains.length + ' domains found. Scanning more than 100 may take a few minutes. Continue?')) return;
+    }
+    startBulkScan(domains);
+  };
+  reader.onerror = function() {
+    alert('Could not read file. Try saving your spreadsheet as CSV (UTF-8) and uploading again.');
+    evt.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function parseCSVDomains(text) {
+  var domains = [];
+  var seen = new Set();
+  var lines = text.split(/\r?\n/);
+  // Cross-browser safe regex — no lookbehind
+  // Matches: optional subdomain labels + dot + 2+ char TLD
+  var domainRe = /^[a-z0-9][a-z0-9\-]{0,61}[a-z0-9]?(\.[a-z0-9][a-z0-9\-]{0,61}[a-z0-9]?)*\.[a-z]{2,}$/i;
+  lines.forEach(function(line) {
+    // Handle tab-separated too
+    var cells = line.split(/[,\t]/);
+    cells.forEach(function(cell) {
+      var val = cell.trim()
+        .replace(/^["']|["']$/g, '')  // strip surrounding quotes
+        .toLowerCase()
+        .replace(/^https?:\/\//, '') // strip protocol
+        .replace(/[/?#].*$/, '')       // strip path/query/fragment
+        .replace(/^www\./, '')        // strip www.
+        .replace(/[\s]+/g, '');       // strip any whitespace
+      if (val.length >= 4 && val.includes('.') && domainRe.test(val) && !seen.has(val)) {
+        seen.add(val);
+        domains.push(val);
+      }
+    });
+  });
+  return domains;
+}
+
+async function startBulkScan(domains) {
+  if (bulkRunning) return;
+  bulkRunning = true;
+  bulkResults = [];
+
+  // Show progress UI
+  document.getElementById('results').innerHTML =
+    '<div class="bulk-progress" id="bulkProgress">'
+    + '<div class="bulk-prog-header">'
+      + '<span class="bulk-prog-title">🔍 Bulk DNSSEC Scan</span>'
+      + '<span class="bulk-prog-count" id="bulkCount">0 / ' + domains.length + '</span>'
+    + '</div>'
+    + '<div class="bulk-track"><div class="bulk-fill" id="bulkFill" style="width:0%"></div></div>'
+    + '<div class="bulk-current" id="bulkCurrent">Starting…</div>'
+    + '<div class="bulk-live" id="bulkLive"></div>'
+    + '</div>';
+
+  // Pre-render all domain chips
+  var liveWrap = document.getElementById('bulkLive');
+  domains.forEach(function(d) {
+    var chip = document.createElement('span');
+    chip.className = 'live-chip';
+    chip.id = 'chip-' + d.replace(/\./g,'_');
+    chip.textContent = d;
+    liveWrap.appendChild(chip);
+  });
+
+  // Scan with concurrency limit of 3
+  var CONCURRENCY = 3;
+  var queue = domains.slice();
+  var active = 0;
+  var done = 0;
+
+  await new Promise(function(resolve) {
+    function next() {
+      while (active < CONCURRENCY && queue.length) {
+        var domain = queue.shift();
+        active++;
+        var chipId = 'chip-' + domain.replace(/\./g,'_');
+        var chip = document.getElementById(chipId);
+        if (chip) chip.className = 'live-chip scanning';
+        document.getElementById('bulkCurrent').textContent = 'Scanning: ' + domain;
+
+        scanOneDomain(domain).then(function(result) {
+          active--;
+          done++;
+          bulkResults.push(result);
+
+          var c = document.getElementById('chip-' + result.domain.replace(/\./g,'_'));
+          if (c) c.className = 'live-chip ' + (result.status === 'full' ? 'done-ok' : result.status === 'partial' ? 'done-partial' : result.status === 'error' ? 'done-bad' : 'done-bad');
+
+          document.getElementById('bulkCount').textContent = done + ' / ' + domains.length;
+          document.getElementById('bulkFill').style.width = Math.round(done / domains.length * 100) + '%';
+
+          if (done === domains.length) resolve();
+          else next();
+        });
+      }
+    }
+    next();
+  });
+
+  bulkRunning = false;
+  renderBulkResults();
+}
+
+async function scanOneDomain(domain) {
+  try {
+    var dnskeyData = await dnsQuery(domain, 'DNSKEY', true);
+    var dsData     = await dnsQuery(domain, 'DS',     true);
+    var rrsigData  = await dnsQuery(domain, 'A',      true);
+
+    var dnskeys = getRecords(dnskeyData, 48);
+    var dsRecs  = getRecords(dsData,     43);
+    var rrsigs  = getRecords(rrsigData,  46).map(function(r){ return parseRRSIG(r.data); });
+    var adFlag  = dnskeyData && dnskeyData.AD === true;
+    var hasDS   = dsRecs.length > 0;
+    var hasKey  = dnskeys.length > 0;
+    var hasRRSIG= rrsigs.length > 0;
+
+    // Algorithm
+    var algos = dnskeys.map(function(r){ return parseDNSKEY(r.data).algorithm; });
+    var hasWeakAlgo = algos.some(function(a){ var i=ALGO_INFO[a]; return i && i.status==='weak'; });
+    var hasStrongAlgo = algos.some(function(a){ var i=ALGO_INFO[a]; return i && i.status==='strong'; });
+
+    // Expiry
+    var expiredSigs = rrsigs.filter(function(s){ return isExpired(s.expiration); });
+
+    // NSEC3
+    var nsec3Data = await dnsQuery(domain, 'NSEC3PARAM', true);
+    var hasNSEC3 = getRecords(nsec3Data, 51).length > 0;
+
+    // Score
+    var score = 0;
+    if (hasDS)    score += 20;
+    if (hasKey)   score += 15;
+    if (hasRRSIG) score += 15;
+    if (adFlag)   score += 20;
+    if (hasNSEC3) score +=  8;
+    if (hasWeakAlgo)       score -= 15;
+    if (expiredSigs.length) score -= 20;
+    score = Math.max(0, Math.min(100, score));
+
+    var status = adFlag && hasDS && hasKey ? 'full' : (hasDS || hasKey) ? 'partial' : 'none';
+
+    return {
+      domain, status, score, adFlag, hasDS, hasKey, hasRRSIG, hasNSEC3,
+      algos, hasWeakAlgo, hasStrongAlgo,
+      expiredSigs: expiredSigs.length,
+      dsCount: dsRecs.length, keyCount: dnskeys.length,
+      error: null
+    };
+  } catch(e) {
+    return { domain, status:'error', score:0, adFlag:false, hasDS:false, hasKey:false,
+             hasRRSIG:false, hasNSEC3:false, algos:[], hasWeakAlgo:false, expiredSigs:0,
+             dsCount:0, keyCount:0, error: e.message };
+  }
+}
+
+
+// ── SVG CHART HELPERS ──────────────────────────────────────────────────────────
+function drawDonut(segments, size, strokeW) {
+  size = size || 160; strokeW = strokeW || 28;
+  var r = (size - strokeW) / 2;
+  var cx = size / 2, cy = size / 2;
+  var circumference = 2 * Math.PI * r;
+  var total = segments.reduce(function(s, seg) { return s + seg.value; }, 0);
+  if (!total) total = 1;
+  var offset = 0;
+  var paths = '';
+  segments.forEach(function(seg) {
+    var pct = seg.value / total;
+    var dash = pct * circumference;
+    var gap  = circumference - dash;
+    // rotate so first segment starts at top (-90deg = -circumference/4 offset)
+    var startOffset = circumference * 0.25 - offset;
+    paths += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none"'
+      + ' stroke="' + seg.color + '" stroke-width="' + strokeW + '"'
+      + ' stroke-dasharray="' + dash.toFixed(2) + ' ' + gap.toFixed(2) + '"'
+      + ' stroke-dashoffset="' + startOffset.toFixed(2) + '"'
+      + ' style="transition:stroke-dasharray .7s ease"/>';
+    offset += dash;
+  });
+  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">'
+    + '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="' + strokeW + '"/>'
+    + paths + '</svg>';
+}
+
+function drawHBar(items, maxVal) {
+  maxVal = maxVal || Math.max.apply(null, items.map(function(i){return i.value;})) || 1;
+  var bars = items.map(function(item) {
+    var pct = Math.round(item.value / maxVal * 100);
+    return '<div class="bar-row">'
+      + '<div class="bar-label">' + item.label + '</div>'
+      + '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + item.color + '"></div></div>'
+      + '<div class="bar-val" style="color:' + item.color + '">' + item.value + '</div>'
+      + '</div>';
+  }).join('');
+  return '<div class="bar-chart">' + bars + '</div>';
+}
+
+function drawStackedBar(label, segments, total) {
+  total = total || 1;
+  var bar = segments.map(function(s) {
+    var pct = Math.round(s.value / total * 100);
+    return '<div style="width:' + pct + '%;height:100%;background:' + s.color + ';transition:width .7s ease" title="' + s.label + ': ' + s.value + '"></div>';
+  }).join('');
+  return '<div style="height:28px;background:var(--s3);border-radius:6px;overflow:hidden;display:flex">' + bar + '</div>';
+}
+
+function renderCharts(stats) {
+  var total    = stats.total;
+  var fullOk   = stats.fullOk;
+  var partial  = stats.partial;
+  var noDNSSEC = stats.noDNSSEC;
+  var errors   = stats.errors;
+  var expired  = stats.expired;
+  var weakAlgo = stats.weakAlgo;
+  var avgScore = stats.avgScore;
+  var withAD   = bulkResults.filter(function(r){return r.adFlag;}).length;
+  var withNSEC3= bulkResults.filter(function(r){return r.hasNSEC3;}).length;
+  var withDS   = bulkResults.filter(function(r){return r.dsCount>0;}).length;
+
+  // Compliance rate
+  var compliantPct = total ? Math.round(fullOk/total*100) : 0;
+
+  // ── Chart 1: Compliance Donut ─────────────────────────────────────────────
+  var donutSegs = [
+    {value:fullOk,   color:'#2fd98a', label:'Fully Signed'},
+    {value:partial,  color:'#ff8c42', label:'Partial'},
+    {value:noDNSSEC, color:'#ff4d4d', label:'No DNSSEC'},
+    {value:errors,   color:'#6b6a84', label:'Error'},
+  ];
+  var donutSVG = drawDonut(donutSegs, 160, 30);
+  var donutColor = compliantPct >= 80 ? 'var(--green)' : compliantPct >= 50 ? 'var(--orange)' : 'var(--red)';
+
+  var chart1 = '<div class="chart-card">'
+    + '<div class="chart-title">DNSSEC Compliance Status</div>'
+    + '<div class="chart-wrap">'
+      + '<div class="donut-wrap">'
+        + donutSVG
+        + '<div class="donut-center">'
+          + '<div class="donut-pct" style="color:' + donutColor + '">' + compliantPct + '%</div>'
+          + '<div class="donut-label">Compliant</div>'
+        + '</div>'
+      + '</div>'
+    + '</div>'
+    + '<div class="chart-legend">'
+    + donutSegs.map(function(s){
+        var pct = total ? Math.round(s.value/total*100) : 0;
+        return '<div class="legend-item"><span class="legend-dot" style="background:'+s.color+'"></span>'
+          + '<span class="legend-label">'+s.label+'</span>'
+          + '<span class="legend-val">'+s.value+'</span>'
+          + '<span class="legend-pct">('+pct+'%)</span></div>';
+      }).join('')
+    + '</div></div>';
+
+  // ── Chart 2: Security Feature Coverage ────────────────────────────────────
+  var featureItems = [
+    {label:'DS Record',  value:withDS,    color:'#5b54ff'},
+    {label:'DNSKEY',     value:bulkResults.filter(function(r){return r.keyCount>0;}).length, color:'#4cc9f0'},
+    {label:'RRSIG',      value:bulkResults.filter(function(r){return r.hasRRSIG;}).length, color:'#2fd98a'},
+    {label:'AD Bit',     value:withAD,    color:'#ffd166'},
+    {label:'NSEC3',      value:withNSEC3, color:'#ff8c42'},
+  ];
+
+  var chart2 = '<div class="chart-card">'
+    + '<div class="chart-title">Security Feature Coverage (' + total + ' domains)</div>'
+    + '<div class="chart-wrap" style="width:100%">'
+      + drawHBar(featureItems, total)
+    + '</div></div>';
+
+  // ── Chart 3: Score Distribution ───────────────────────────────────────────
+  var scoreBuckets = [
+    {label:'80–100', value:0, color:'#2fd98a'},
+    {label:'60–79',  value:0, color:'#ffd166'},
+    {label:'40–59',  value:0, color:'#ff8c42'},
+    {label:'20–39',  value:0, color:'#ff6b6b'},
+    {label:'0–19',   value:0, color:'#ff4d4d'},
+  ];
+  bulkResults.forEach(function(r) {
+    if (r.score >= 80)      scoreBuckets[0].value++;
+    else if (r.score >= 60) scoreBuckets[1].value++;
+    else if (r.score >= 40) scoreBuckets[2].value++;
+    else if (r.score >= 20) scoreBuckets[3].value++;
+    else                    scoreBuckets[4].value++;
+  });
+
+  var chart3 = '<div class="chart-card">'
+    + '<div class="chart-title">Score Distribution</div>'
+    + '<div class="chart-wrap" style="width:100%">'
+      + drawHBar(scoreBuckets, total)
+    + '</div>'
+    + '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);'
+      + 'display:flex;justify-content:space-between;font-size:11px">'
+      + '<span style="color:var(--muted)">Average Score</span>'
+      + '<span style="font-family:var(--mono);font-weight:600;color:' + (avgScore>=70?'var(--green)':avgScore>=40?'var(--orange)':'var(--red)') + '">' + avgScore + ' / 100</span>'
+    + '</div></div>';
+
+  // ── Chart 4: Algorithm Health ──────────────────────────────────────────────
+  var algoMap = {};
+  bulkResults.forEach(function(r) {
+    (r.algos||[]).forEach(function(a) {
+      algoMap[a] = (algoMap[a]||0) + 1;
+    });
+  });
+  var algoItems = Object.keys(algoMap).map(function(a) {
+    var info = ALGO_INFO[a] || {name:'Unknown('+a+')', status:'warn'};
+    return {
+      label: 'Alg ' + a,
+      sublabel: info.name,
+      value: algoMap[a],
+      color: info.status==='strong'?'#2fd98a':info.status==='weak'?'#ff4d4d':'#ffd166',
+      status: info.status
+    };
+  }).sort(function(a,b){return b.value-a.value;});
+
+  var weakCount = bulkResults.filter(function(r){return r.hasWeakAlgo;}).length;
+  var chart4 = '<div class="chart-card">'
+    + '<div class="chart-title">Algorithm Health</div>'
+    + (algoItems.length ? '<div class="chart-wrap" style="width:100%">'
+      + '<div class="bar-chart">'
+      + algoItems.slice(0,8).map(function(a) {
+          var pct = total ? Math.round(a.value/total*100) : 0;
+          return '<div class="bar-row">'
+            + '<div class="bar-label" style="font-size:10px" title="' + a.sublabel + '">' + a.label + '</div>'
+            + '<div class="bar-track"><div class="bar-fill" style="width:' + (total?Math.round(a.value/total*100):0) + '%;background:' + a.color + '"></div></div>'
+            + '<div class="bar-val" style="color:' + a.color + '">' + a.value + '</div>'
+            + '</div>';
+        }).join('')
+      + '</div></div>'
+      : '<div style="color:var(--muted);font-size:12px;padding:12px 0">No DNSKEY records found in scanned domains</div>')
+    + '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);'
+      + 'display:flex;justify-content:space-between;font-size:11px">'
+      + '<span style="color:var(--muted)">Domains with weak algorithms</span>'
+      + '<span style="font-family:var(--mono);font-weight:600;color:' + (weakCount>0?'var(--red)':'var(--green)') + '">' + weakCount + '</span>'
+    + '</div></div>';
+
+  // ── Chart 5: Compliance Stacked Overview ──────────────────────────────────
+  var stackSegs = [
+    {value:fullOk,   color:'#2fd98a', label:'Fully Signed'},
+    {value:partial,  color:'#ff8c42', label:'Partial'},
+    {value:noDNSSEC, color:'#ff4d4d', label:'No DNSSEC'},
+    {value:errors,   color:'#6b6a84', label:'Error'},
+  ];
+  var chart5 = '<div class="chart-card" style="grid-column:1/-1">'
+    + '<div class="chart-title">Compliance Overview — ' + total + ' Domains</div>'
+    + drawStackedBar('', stackSegs, total)
+    + '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:12px">'
+    + stackSegs.map(function(s) {
+        var pct = total ? Math.round(s.value/total*100) : 0;
+        return '<div style="display:flex;align-items:center;gap:6px;font-size:11px">'
+          + '<span style="width:10px;height:10px;border-radius:50%;background:' + s.color + ';flex-shrink:0;display:inline-block"></span>'
+          + '<span style="color:var(--muted2)">' + s.label + '</span>'
+          + '<span style="font-family:var(--mono);font-weight:600;color:' + s.color + '">' + s.value + ' (' + pct + '%)</span>'
+          + '</div>';
+      }).join('')
+    + '</div></div>';
+
+  return '<div class="charts-grid">' + chart1 + chart2 + chart3 + chart4 + chart5 + '</div>';
+}
+
+function renderBulkResults() {
+  var total    = bulkResults.length;
+  var fullOk   = bulkResults.filter(function(r){ return r.status==='full'; }).length;
+  var partial  = bulkResults.filter(function(r){ return r.status==='partial'; }).length;
+  var noDNSSEC = bulkResults.filter(function(r){ return r.status==='none'; }).length;
+  var errors   = bulkResults.filter(function(r){ return r.status==='error'; }).length;
+  var expired  = bulkResults.filter(function(r){ return r.expiredSigs > 0; }).length;
+  var weakAlgo = bulkResults.filter(function(r){ return r.hasWeakAlgo; }).length;
+  var avgScore = total ? Math.round(bulkResults.reduce(function(s,r){ return s+r.score; },0)/total) : 0;
+  var stats = { total:total, fullOk:fullOk, partial:partial, noDNSSEC:noDNSSEC,
+                errors:errors, expired:expired, weakAlgo:weakAlgo, avgScore:avgScore };
+
+  var html = '';
+
+  // Summary header with export buttons
+  html += '<div class="bulk-summary fade-in">';
+  html += '<div class="bulk-summary-hdr">'
+    + '<span class="bulk-summary-title">📊 DNSSEC Compliance Dashboard — ' + total + ' domains</span>'
+    + '<div class="export-row">'
+      + '<button class="export-btn-csv" onclick="exportCSV()">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'
+        + 'CSV'
+      + '</button>'
+      + '<button class="export-btn-html" onclick="exportHTML()">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
+        + 'HTML Report'
+      + '</button>'
+      + '<button class="export-btn-pdf" onclick="exportPDF()">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>'
+        + 'PDF Report'
+      + '</button>'
+    + '</div>'
+    + '</div>';
+
+  // Charts
+  html += renderCharts(stats);
+
+  // Stat cards
+  html += '<div class="bulk-stats">';
+  [
+    [fullOk,   'Fully Signed',  fullOk===total?'var(--green)':'var(--text)'],
+    [partial,  'Partial',       partial>0?'var(--orange)':'var(--muted)'],
+    [noDNSSEC, 'No DNSSEC',     noDNSSEC>0?'var(--red)':'var(--muted)'],
+    [expired,  'Expired Sigs',  expired>0?'var(--red)':'var(--muted)'],
+    [weakAlgo, 'Weak Algo',     weakAlgo>0?'var(--orange)':'var(--muted)'],
+    [avgScore, 'Avg Score',     avgScore>=70?'var(--green)':avgScore>=40?'var(--orange)':'var(--red)'],
+  ].forEach(function(s) {
+    html += '<div class="bulk-stat"><div class="bulk-stat-num" style="color:' + s[2] + '">' + s[0] + '</div>'
+      + '<div class="bulk-stat-label">' + s[1] + '</div></div>';
+  });
+  html += '</div>';
+
+  // Filter chips
+  html += '<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap" id="bulkFilters">'
+    + filterChip('all','All ('+total+')',true)
+    + filterChip('full','✓ Secured ('+fullOk+')')
+    + filterChip('partial','⚠ Partial ('+partial+')')
+    + filterChip('none','✗ Unsigned ('+noDNSSEC+')')
+    + filterChip('error','Error ('+errors+')')
+    + '</div>';
+
+  // Table
+  html += '<div class="bulk-table-wrap"><table class="bulk-table" id="bulkTable">'
+    + '<thead><tr>'
+    + '<th onclick="sortBulk(&apos;domain&apos;)" style="cursor:pointer">Domain ⇅</th>'
+    + '<th onclick="sortBulk(&apos;status&apos;)" style="cursor:pointer">Status ⇅</th>'
+    + '<th onclick="sortBulk(&apos;score&apos;)" style="cursor:pointer">Score ⇅</th>'
+    + '<th>DS</th><th>DNSKEY</th><th>RRSIG</th><th>AD</th><th>NSEC3</th>'
+    + '<th onclick="sortBulk(&apos;algos&apos;)" style="cursor:pointer">Algorithms ⇅</th>'
+    + '<th>Exp Sigs</th>'
+    + '</tr></thead><tbody id="bulkTbody">'
+    + '</tbody></table></div>';
+
+  html += '</div>';
+
+  document.getElementById('results').innerHTML = html;
+  renderBulkTable('all');
+}
+
+var bulkFilter = 'all';
+var bulkSortCol = 'score';
+var bulkSortDir = -1; // desc first
+
+function filterChip(id, label, active) {
+  return '<span class="qp-chip" id="bfilter-' + id + '" onclick="setBulkFilter(\'' + id + '\')">' + label + '</span>';
+}
+
+function setBulkFilter(f) {
+  bulkFilter = f;
+  document.querySelectorAll('[id^="bfilter-"]').forEach(function(el) {
+    el.style.color = ''; el.style.borderColor = '';
+  });
+  var active = document.getElementById('bfilter-' + f);
+  if (active) { active.style.color = 'var(--blue)'; active.style.borderColor = 'var(--blue-b)'; }
+  renderBulkTable(f);
+}
+
+function sortBulk(col) {
+  if (bulkSortCol === col) bulkSortDir *= -1;
+  else { bulkSortCol = col; bulkSortDir = -1; }
+  renderBulkTable(bulkFilter);
+}
+
+function renderBulkTable(filter) {
+  var list = bulkResults.filter(function(r) {
+    if (filter === 'all') return true;
+    return r.status === filter;
+  });
+
+  list.sort(function(a, b) {
+    var av = a[bulkSortCol], bv = b[bulkSortCol];
+    if (typeof av === 'boolean') av = av ? 1 : 0;
+    if (typeof bv === 'boolean') bv = bv ? 1 : 0;
+    if (typeof av === 'string') av = av.toLowerCase();
+    if (typeof bv === 'string') bv = bv.toLowerCase();
+    if (av < bv) return bulkSortDir;
+    if (av > bv) return -bulkSortDir;
+    return 0;
+  });
+
+  var tbody = document.getElementById('bulkTbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = list.map(function(r) {
+    var statusCls = r.status === 'full' ? 'bstat-full' : r.status === 'partial' ? 'bstat-partial' : r.status === 'none' ? 'bstat-none' : 'bstat-err';
+    var statusLabel = r.status === 'full' ? '✓ SECURE' : r.status === 'partial' ? '⚠ PARTIAL' : r.status === 'none' ? '✗ UNSIGNED' : 'ERROR';
+    var scoreColor = r.score >= 70 ? 'var(--green)' : r.score >= 40 ? 'var(--orange)' : 'var(--red)';
+    var algoDisplay = r.algos.length
+      ? r.algos.map(function(a){ var i=ALGO_INFO[a]||{name:'?',status:'warn'}; return '<span class="algo-pill ' + (i.status==='strong'?'algo-strong':i.status==='weak'?'algo-weak':'algo-ok') + '">'+a+'</span>'; }).join('')
+      : '<span class="dash">—</span>';
+    var t = function(v){ return v ? '<span class="tick">✓</span>' : '<span class="cross">✗</span>'; };
+
+    return '<tr onclick="drillDomain(\'' + r.domain + '\')" title="Click to full-scan ' + r.domain + '">'
+      + '<td style="color:var(--blue);font-weight:500">' + r.domain + '</td>'
+      + '<td><span class="bpill ' + statusCls + '">' + statusLabel + '</span></td>'
+      + '<td style="color:' + scoreColor + ';font-weight:600">' + r.score + '</td>'
+      + '<td>' + t(r.hasDS)    + '</td>'
+      + '<td>' + t(r.hasKey)   + '</td>'
+      + '<td>' + t(r.hasRRSIG) + '</td>'
+      + '<td>' + t(r.adFlag)   + '</td>'
+      + '<td>' + t(r.hasNSEC3) + '</td>'
+      + '<td>' + algoDisplay + '</td>'
+      + '<td>' + (r.expiredSigs > 0 ? '<span style="color:var(--red)">'+r.expiredSigs+'</span>' : '<span class="tick">0</span>') + '</td>'
+      + '</tr>';
+  }).join('');
+
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="padding:20px;text-align:center;color:var(--muted)">No results match filter</td></tr>';
+  }
+}
+
+function drillDomain(domain) {
+  document.getElementById('domainInput').value = domain;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  runScan();
+}
+
+function exportCSV() {
+  var headers = ['domain','status','score','has_ds','has_dnskey','has_rrsig','ad_bit','nsec3','algorithms','expired_sigs','weak_algo'];
+  var rows = [headers.join(',')];
+  bulkResults.forEach(function(r) {
+    rows.push([
+      r.domain, r.status, r.score,
+      r.hasDS?1:0, r.hasKey?1:0, r.hasRRSIG?1:0, r.adFlag?1:0, r.hasNSEC3?1:0,
+      '"' + r.algos.join(';') + '"',
+      r.expiredSigs, r.hasWeakAlgo?1:0
+    ].join(','));
+  });
+  var blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'dnssec-bulk-' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+}
+
+
+// ── EXPORT HTML REPORT ──────────────────────────────────────────────────────────
+function exportHTML() {
+  var now      = new Date();
+  var dateStr  = now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  var timeStr  = now.toUTCString();
+  var total    = bulkResults.length;
+  var fullOk   = bulkResults.filter(function(r){return r.status==='full';}).length;
+  var partial  = bulkResults.filter(function(r){return r.status==='partial';}).length;
+  var noDNSSEC = bulkResults.filter(function(r){return r.status==='none';}).length;
+  var expired  = bulkResults.filter(function(r){return r.expiredSigs>0;}).length;
+  var weakAlgo = bulkResults.filter(function(r){return r.hasWeakAlgo;}).length;
+  var avgScore = total ? Math.round(bulkResults.reduce(function(s,r){return s+r.score;},0)/total) : 0;
+  var compPct  = total ? Math.round(fullOk/total*100) : 0;
+  function safe(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  var sorted = bulkResults.slice().sort(function(a,b){return b.score-a.score;});
+
+  var rows = sorted.map(function(r,i){
+    var statusColor = r.status==='full'?'#16a34a':r.status==='partial'?'#ea580c':'#dc2626';
+    var statusLabel = r.status==='full'?'✓ SECURE':r.status==='partial'?'⚠ PARTIAL':r.status==='none'?'✗ UNSIGNED':'ERROR';
+    var scoreColor  = r.score>=70?'#16a34a':r.score>=40?'#ea580c':'#dc2626';
+    var algos = (r.algos||[]).map(function(a){
+      var info = ALGO_INFO[a]||{name:'?',status:'warn'};
+      var col  = info.status==='strong'?'#16a34a':info.status==='weak'?'#dc2626':'#ca8a04';
+      return '<span style="background:'+col+'22;color:'+col+';border:1px solid '+col+'55;'
+        +'font-size:9px;padding:1px 5px;border-radius:3px;margin-right:2px">'+a+': '+info.name+'</span>';
+    }).join('');
+    var tick = function(v){return v?'<span style="color:#16a34a;font-weight:700">✓</span>':'<span style="color:#dc2626">✗</span>';};
+    return '<tr style="background:'+(i%2===0?'#f9fafb':'#fff')+'">'
+      +'<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-weight:600;color:#1d4ed8">'+safe(r.domain)+'</td>'
+      +'<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb"><span style="background:'+statusColor+'22;color:'+statusColor+';border:1px solid '+statusColor+'55;font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px">'+statusLabel+'</span></td>'
+      +'<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:700;color:'+scoreColor+'">'+r.score+'</td>'
+      +'<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;text-align:center">'+tick(r.adFlag)+'</td>'
+      +'<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;text-align:center">'+tick(r.dsCount>0)+'</td>'
+      +'<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;text-align:center">'+tick(r.keyCount>0)+'</td>'
+      +'<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;text-align:center">'+tick(r.hasRRSIG)+'</td>'
+      +'<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;text-align:center">'+tick(r.hasNSEC3)+'</td>'
+      +'<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb">'+(algos||'<span style="color:#6b7280;font-size:11px">—</span>')+'</td>'
+      +'<td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:11px;color:'+(r.expiredSigs>0?'#dc2626':'#16a34a')+'">'+r.expiredSigs+'</td>'
+      +'</tr>';
+  }).join('');
+
+  var compColor = compPct>=80?'#16a34a':compPct>=50?'#ea580c':'#dc2626';
+
+  var html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+    +'<title>Ghost Defense DNSSEC Report '+dateStr+'</title>'
+    +'<style>body{font-family:Calibri,Arial,sans-serif;margin:0;background:#f3f4f6;color:#111}'
+    +'@media print{body{background:#fff}.no-print{display:none}}</style></head><body>'
+    +'<div style="background:#0f172a;padding:24px 40px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div><div style="font-size:24px;font-weight:bold;color:#00ff41;letter-spacing:3px">GHOST DEFENSE</div>'
+        +'<div style="color:#9ca3af;font-size:13px;letter-spacing:2px;margin-top:3px">DNSSEC COMPLIANCE REPORT</div></div>'
+      +'<div style="text-align:right;color:#9ca3af;font-size:11px">'+safe(timeStr)+'<br>DEFEND ALWAYS 🛡️</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:20px 40px">'
+    +[
+      [total,    'Domains',       '#1d4ed8'],
+      [fullOk,   'Fully Signed',  '#16a34a'],
+      [partial,  'Partial',       partial>0?'#ea580c':'#6b7280'],
+      [noDNSSEC, 'Unsigned',      noDNSSEC>0?'#dc2626':'#6b7280'],
+      [compPct+'%','Compliance',  compColor],
+      [avgScore, 'Avg Score',     avgScore>=70?'#16a34a':avgScore>=40?'#ea580c':'#dc2626'],
+    ].map(function(s){
+      return '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:14px;text-align:center">'
+        +'<div style="font-size:26px;font-weight:bold;color:'+s[2]+'">'+s[0]+'</div>'
+        +'<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-top:4px">'+s[1]+'</div></div>';
+    }).join('')
+    +'</div>'
+    +'<div style="background:#fff;margin:0 40px 16px;border-radius:8px;padding:16px 20px;border:1px solid #e5e7eb">'
+      +'<strong>Analyst Notes:</strong> DNSSEC compliance scan completed '+safe(dateStr)+'. '
+      +'Out of '+total+' domains, '+fullOk+' ('+compPct+'%) are fully DNSSEC-signed with validated chains of trust. '
+      +noDNSSEC+' domains have no DNSSEC configuration — these are vulnerable to DNS spoofing and cache poisoning. '
+      +expired+' domains have expired RRSIG signatures requiring immediate renewal. '
+      +weakAlgo+' domains use deprecated algorithms (SHA-1/RSA) and should migrate to ECDSA P-256 (Algorithm 13) or Ed25519 (Algorithm 15). '
+      +'<br><strong>Data source:</strong> Cloudflare DNS-over-HTTPS (DNSSEC validation enabled). Compliant with CISA BOD 18-01.'
+    +'</div>'
+    +'<div style="background:#fff;margin:0 40px 20px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb">'
+      +'<div style="background:#1e293b;padding:11px 20px"><span style="color:#fff;font-weight:bold;font-size:13px">Detailed Results — All Domains</span></div>'
+      +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'
+        +'<thead><tr style="background:#f1f5f9">'
+          +'<th style="padding:8px 10px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Domain</th>'
+          +'<th style="padding:8px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Status</th>'
+          +'<th style="padding:8px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Score</th>'
+          +'<th style="padding:8px 10px;text-align:center;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">AD</th>'
+          +'<th style="padding:8px 10px;text-align:center;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">DS</th>'
+          +'<th style="padding:8px 10px;text-align:center;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">DNSKEY</th>'
+          +'<th style="padding:8px 10px;text-align:center;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">RRSIG</th>'
+          +'<th style="padding:8px 10px;text-align:center;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">NSEC3</th>'
+          +'<th style="padding:8px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Algorithms</th>'
+          +'<th style="padding:8px 10px;text-align:center;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Exp Sigs</th>'
+        +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'</div>'
+    +'<div style="background:#0f172a;padding:14px 40px;display:flex;justify-content:space-between;color:#9ca3af;font-size:11px" class="no-print">'
+      +'<span>Sources: Cloudflare DoH · Google DoH · CISA BOD 18-01</span>'
+      +'<span>Ghost Defense · Defensive Use Only · DEFEND ALWAYS</span>'
+    +'</div></body></html>';
+
+  var blob = new Blob([html], {type:'text/html'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'dnssec-report-' + now.toISOString().split('T')[0] + '.html';
+  a.click();
+}
+
+// ── EXPORT PDF ──────────────────────────────────────────────────────────────────
+function exportPDF() {
+  var now      = new Date();
+  var dateStr  = now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  var timeStr  = now.toUTCString();
+  var total    = bulkResults.length;
+  var fullOk   = bulkResults.filter(function(r){return r.status==='full';}).length;
+  var partial  = bulkResults.filter(function(r){return r.status==='partial';}).length;
+  var noDNSSEC = bulkResults.filter(function(r){return r.status==='none';}).length;
+  var expired  = bulkResults.filter(function(r){return r.expiredSigs>0;}).length;
+  var weakAlgo = bulkResults.filter(function(r){return r.hasWeakAlgo;}).length;
+  var avgScore = total ? Math.round(bulkResults.reduce(function(s,r){return s+r.score;},0)/total) : 0;
+  var compPct  = total ? Math.round(fullOk/total*100) : 0;
+  var compColor= compPct>=80?'#16a34a':compPct>=50?'#ea580c':'#dc2626';
+  function safe(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  // ── SVG donut for PDF (pure SVG, no CSS animation needed) ──────────────────
+  function pdfDonut(pct, color, size) {
+    size = size || 100;
+    var r = 36; var cx = size/2; var cy = size/2;
+    var circ = 2*Math.PI*r;
+    var dash = pct/100*circ; var gap = circ-dash;
+    var offset = circ*0.25;
+    return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'">'
+      +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#e5e7eb" stroke-width="14"/>'
+      +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="14"'
+      +' stroke-dasharray="'+dash.toFixed(1)+' '+gap.toFixed(1)+'" stroke-dashoffset="'+offset.toFixed(1)+'" stroke-linecap="round"/>'
+      +'<text x="'+cx+'" y="'+(cy+5)+'" text-anchor="middle" font-family="Arial" font-size="16" font-weight="bold" fill="'+color+'">'+pct+'%</text>'
+      +'</svg>';
+  }
+
+  // ── SVG hbar for PDF ────────────────────────────────────────────────────────
+  function pdfHBar(label, value, maxVal, color, width) {
+    width = width || 300;
+    var barW = maxVal ? Math.round(value/maxVal*(width-80)) : 0;
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      +'<span style="font-size:10px;color:#6b7280;width:70px;text-align:right;flex-shrink:0">'+safe(label)+'</span>'
+      +'<div style="flex:1;height:16px;background:#f1f5f9;border-radius:3px;overflow:hidden">'
+        +'<div style="width:'+barW+'px;max-width:100%;height:100%;background:'+color+';border-radius:3px"></div>'
+      +'</div>'
+      +'<span style="font-family:monospace;font-size:11px;font-weight:600;color:'+color+';width:28px">'+value+'</span>'
+      +'</div>';
+  }
+
+  var sorted = bulkResults.slice().sort(function(a,b){return b.score-a.score;});
+
+  // Score distribution
+  var scoreBuckets = [{l:'80-100',v:0,c:'#16a34a'},{l:'60-79',v:0,c:'#84cc16'},{l:'40-59',v:0,c:'#ea580c'},{l:'20-39',v:0,c:'#ef4444'},{l:'0-19',v:0,c:'#dc2626'}];
+  bulkResults.forEach(function(r){
+    if(r.score>=80) scoreBuckets[0].v++;
+    else if(r.score>=60) scoreBuckets[1].v++;
+    else if(r.score>=40) scoreBuckets[2].v++;
+    else if(r.score>=20) scoreBuckets[3].v++;
+    else scoreBuckets[4].v++;
+  });
+
+  var tableRows = sorted.map(function(r,i){
+    var sc = r.status==='full'?'#16a34a':r.status==='partial'?'#ea580c':'#dc2626';
+    var sl = r.status==='full'?'SECURE':r.status==='partial'?'PARTIAL':r.status==='none'?'UNSIGNED':'ERROR';
+    var scoreC = r.score>=70?'#16a34a':r.score>=40?'#ea580c':'#dc2626';
+    var t = function(v){return v?'<span style="color:#16a34a">✓</span>':'<span style="color:#dc2626">✗</span>';};
+    return '<tr style="background:'+(i%2===0?'#f9fafb':'#fff')+'">'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:10px;color:#1d4ed8">'+safe(r.domain)+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb"><span style="background:'+sc+'22;color:'+sc+';font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px">'+sl+'</span></td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-weight:700;color:'+scoreC+';font-size:11px">'+r.score+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:center">'+t(r.adFlag)+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:center">'+t(r.dsCount>0)+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:center">'+t(r.keyCount>0)+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:center">'+t(r.hasRRSIG)+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:center">'+t(r.hasNSEC3)+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-size:9px;color:'+(r.expiredSigs>0?'#dc2626':'#16a34a')+'">'+r.expiredSigs+' exp</td>'
+      +'</tr>';
+  }).join('');
+
+  var pdfDoc = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    +'<title>DNSSEC PDF Report</title>'
+    +'<style>'
+    +'body{font-family:Arial,sans-serif;margin:0;background:#fff;color:#111;font-size:12px}'
+    +'@page{size:A4;margin:15mm}'
+    +'@media print{.pb{page-break-before:always}}'
+    +'.cover{min-height:100vh;background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;'
+      +'display:flex;flex-direction:column;align-items:center;justify-content:center;'
+      +'padding:60px 40px;text-align:center;page-break-after:always}'
+    +'.pdf-table{width:100%;border-collapse:collapse;font-size:10px}'
+    +'.pdf-table th{background:#1e293b;color:#fff;padding:7px 8px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.5px}'
+    +'.pdf-table td{padding:5px 8px;border-bottom:1px solid #f1f5f9;vertical-align:middle}'
+    +'.sec-hdr{background:#1e293b;color:#fff;padding:9px 16px;border-radius:5px;font-size:12px;font-weight:700;margin:16px 0 10px}'
+    +'.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}'
+    +'.stat-card{border-radius:7px;padding:14px;text-align:center}'
+    +'.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}'
+    +'.chart-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px}'
+    +'.chart-box-title{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#6b7280;margin-bottom:10px}'
+    +'</style></head><body>'
+
+    // Cover
+    +'<div class="cover">'
+      +'<div style="font-size:11px;letter-spacing:3px;color:#94a3b8;border:1px solid #475569;padding:4px 14px;border-radius:4px;margin-bottom:36px">TLP:CLEAR · BOD 18-01</div>'
+      +'<div style="font-size:13px;letter-spacing:4px;color:#00ff41;font-weight:700;margin-bottom:20px">GHOST DEFENSE</div>'
+      +'<div style="font-size:40px;font-weight:700;line-height:1.15;margin-bottom:10px">DNSSEC Compliance<br>Report</div>'
+      +'<div style="font-size:15px;color:#94a3b8;margin-bottom:36px">.gov · .mil · .edu Domain Analysis</div>'
+      +'<div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:18px 28px;width:100%;max-width:360px;margin-bottom:36px">'
+        +[['Date',safe(dateStr)],['Domains Scanned',total],['Compliant',fullOk+' ('+compPct+'%)'],['Non-Compliant',noDNSSEC],['Avg Score',avgScore+' / 100'],['Data Source','Cloudflare DoH']].map(function(row){
+          return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:11px;color:#cbd5e1"><span>'+row[0]+'</span><span style="color:#fff;font-weight:500">'+row[1]+'</span></div>';
+        }).join('')
+      +'</div>'
+      +'<div style="font-size:11px;color:#64748b;letter-spacing:1px">For authorized defensive security use only</div>'
+    +'</div>'
+
+    // Executive Summary page
+    +'<div class="pb">'
+    +'<div class="sec-hdr">Executive Summary</div>'
+    +'<div class="stat-grid">'
+    +[
+      [total,    'Domains Scanned','#1d4ed8','#eff6ff','#bfdbfe'],
+      [fullOk,   'Fully Compliant', '#16a34a','#f0fdf4','#86efac'],
+      [noDNSSEC, 'Non-Compliant',   '#dc2626','#fef2f2','#fca5a5'],
+      [partial,  'Partially Signed','#ea580c','#fff7ed','#fdba74'],
+      [expired,  'Expired Sigs',    '#dc2626','#fef2f2','#fca5a5'],
+      [weakAlgo, 'Weak Algorithms', '#ca8a04','#fefce8','#fde047'],
+    ].map(function(s){
+      return '<div class="stat-card" style="background:'+s[3]+';border:1px solid '+s[4]+'">'
+        +'<div style="font-size:26px;font-weight:700;color:'+s[2]+'">'+s[0]+'</div>'
+        +'<div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin-top:3px">'+s[1]+'</div>'
+        +'</div>';
+    }).join('')
+    +'</div>'
+
+    +'<div class="chart-row">'
+      // Compliance donut
+      +'<div class="chart-box">'
+        +'<div class="chart-box-title">Compliance Status</div>'
+        +'<div style="display:flex;align-items:center;gap:16px">'
+          +pdfDonut(compPct, compColor, 100)
+          +'<div style="font-size:11px;line-height:2">'
+            +'<div><span style="color:#16a34a;font-weight:700">■</span> Signed: '+fullOk+' ('+Math.round(fullOk/total*100)+'%)</div>'
+            +'<div><span style="color:#ea580c;font-weight:700">■</span> Partial: '+partial+' ('+Math.round(partial/total*100)+'%)</div>'
+            +'<div><span style="color:#dc2626;font-weight:700">■</span> Unsigned: '+noDNSSEC+' ('+Math.round(noDNSSEC/total*100)+'%)</div>'
+          +'</div>'
+        +'</div>'
+      +'</div>'
+      // Score distribution
+      +'<div class="chart-box">'
+        +'<div class="chart-box-title">Score Distribution</div>'
+        +scoreBuckets.map(function(b){return pdfHBar(b.l,b.v,total,b.c,200);}).join('')
+        +'<div style="margin-top:8px;font-size:10px;color:#6b7280">Avg: <strong style="color:'+(avgScore>=70?'#16a34a':avgScore>=40?'#ea580c':'#dc2626')+'">'+avgScore+'/100</strong></div>'
+      +'</div>'
+    +'</div>'
+
+    +'<div style="background:#fafafa;border:1px solid #e2e8f0;border-left:4px solid #1e293b;border-radius:0 6px 6px 0;padding:12px 14px;font-size:11px;line-height:1.7;color:#374151">'
+      +'<strong>Analyst Notes:</strong> Scan completed '+safe(dateStr)+'. '
+      +fullOk+' of '+total+' domains ('+compPct+'%) are fully DNSSEC-compliant with validated chain of trust. '
+      +noDNSSEC+' domains lack DNSSEC entirely — vulnerable to DNS cache poisoning and spoofing attacks. '
+      +expired+' domains have expired RRSIG signatures requiring immediate renewal. '
+      +weakAlgo+' domains use deprecated cryptographic algorithms. Per CISA BOD 18-01, all .gov domains must implement DNSSEC. '
+      +'Recommended algorithms: ECDSA P-256 (Algorithm 13) or Ed25519 (Algorithm 15).'
+    +'</div>'
+    +'</div>'
+
+    // Detailed findings page
+    +'<div class="pb">'
+    +'<div class="sec-hdr">Detailed Findings — All Domains</div>'
+    +'<table class="pdf-table"><thead><tr>'
+      +'<th>Domain</th><th>Status</th><th>Score</th><th>AD</th><th>DS</th><th>DNSKEY</th><th>RRSIG</th><th>NSEC3</th><th>Exp Sigs</th>'
+    +'</tr></thead><tbody>'+tableRows+'</tbody></table>'
+    +'</div>'
+    +'</body></html>';
+
+  var win = window.open('', '_blank', 'width=1000,height=750');
+  if (!win) { alert('Popup blocked — please allow popups and try again.'); return; }
+  win.document.write(pdfDoc);
+  win.document.close();
+  win.focus();
+  setTimeout(function(){ win.print(); }, 900);
+}
+
+
+// ── EXPORT SINGLE DOMAIN HTML ─────────────────────────────────────────────────
+function exportSingleHTML() {
+  var d = window._lastSingleResult;
+  if (!d) { alert('No scan result to export.'); return; }
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  var timeStr = now.toUTCString();
+  function safe(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  var statusLabel = d.dnssecValid && d.score>=70 ? 'FULLY VALIDATED' : (d.hasDS||d.hasDNSKEY) ? 'PARTIAL / MISCONFIGURED' : 'NOT CONFIGURED';
+  var statusColor = d.dnssecValid && d.score>=70 ? '#16a34a' : (d.hasDS||d.hasDNSKEY) ? '#ea580c' : '#dc2626';
+  var scoreColor  = d.score>=70 ? '#16a34a' : d.score>=40 ? '#ea580c' : '#dc2626';
+
+  function tick(v){ return v ? '<span style="color:#16a34a;font-weight:700">✓ Yes</span>' : '<span style="color:#dc2626">✗ No</span>'; }
+
+  // DNSKEY rows
+  var dnskeyRows = d.dnskeys.map(function(k) {
+    var info = ALGO_INFO[k.algorithm]||{name:'Unknown',status:'warn',note:'?'};
+    var ac = info.status==='strong'?'#16a34a':info.status==='weak'?'#dc2626':'#ca8a04';
+    var kt = k.isKSK ? 'KSK (257)' : k.isZSK ? 'ZSK (256)' : 'Flags '+k.flags;
+    return '<tr><td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:11px">'+kt+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb"><span style="background:'+ac+'22;color:'+ac+';border:1px solid '+ac+'55;font-size:10px;padding:2px 7px;border-radius:3px">Alg '+k.algorithm+': '+safe(info.name)+'</span></td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-size:10px;color:#6b7280">'+safe(info.note)+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:10px;color:#6b7280;max-width:220px;word-break:break-all">'+safe(k.key.substring(0,48))+'…</td></tr>';
+  }).join('') || '<tr><td colspan="4" style="padding:10px;color:#dc2626">No DNSKEY records found</td></tr>';
+
+  // DS rows
+  var dsRows = d.dsRecs.map(function(ds) {
+    var di = DIGEST_INFO[ds.digestType]||{name:'Unknown',status:'warn'};
+    var dc = di.status==='strong'?'#16a34a':di.status==='weak'?'#dc2626':'#ca8a04';
+    return '<tr><td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace">'+ds.keyTag+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb"><span style="background:'+dc+'22;color:'+dc+';border:1px solid '+dc+'55;font-size:10px;padding:2px 7px;border-radius:3px">'+safe(di.name)+'</span></td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:10px;color:#6b7280;word-break:break-all;max-width:260px">'+safe(ds.digest.substring(0,64))+(ds.digest.length>64?'…':'')+'</td></tr>';
+  }).join('') || '<tr><td colspan="3" style="padding:10px;color:#dc2626">No DS records found</td></tr>';
+
+  // RRSIG rows
+  var rrsigRows = d.allRRSIGs.slice(0,8).map(function(sig) {
+    var expired = isExpired(sig.expiration);
+    var soon = isExpiringSoon(sig.expiration, 14);
+    var sc = expired?'#dc2626':soon?'#ea580c':'#16a34a';
+    return '<tr><td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:11px">'+safe(sig.typeCovered)+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-size:11px">Alg '+sig.algorithm+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:10px;color:'+sc+'">'+safe(fmtDate(sig.expiration))+(expired?' ⚠ EXPIRED':soon?' ⏰ EXPIRING SOON':'')+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:10px;color:#6b7280">'+safe(sig.signerName)+'</td></tr>';
+  }).join('') || '<tr><td colspan="4" style="padding:10px;color:#dc2626">No RRSIG records found</td></tr>';
+
+  function secRow(label, val, note) {
+    return '<tr><td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:12px">'+label+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb">'+val+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280">'+safe(note||'')+'</td></tr>';
+  }
+
+  var html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+    +'<title>DNSSEC Report — '+safe(d.domain)+'</title>'
+    +'<style>body{font-family:Calibri,Arial,sans-serif;margin:0;background:#f3f4f6;color:#111}'
+    +'@media print{body{background:#fff}.no-print{display:none}}</style></head><body>'
+    +'<div style="background:#0f172a;padding:20px 40px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div><div style="font-size:20px;font-weight:bold;color:#00ff41;letter-spacing:3px">GHOST DEFENSE</div>'
+      +'<div style="color:#9ca3af;font-size:12px;letter-spacing:2px;margin-top:2px">DNSSEC VALIDATION REPORT</div></div>'
+      +'<div style="text-align:right;color:#9ca3af;font-size:11px">'+safe(timeStr)+'</div>'
+    +'</div>'
+
+    // Verdict banner
+    +'<div style="background:'+statusColor+'11;border:1px solid '+statusColor+'44;margin:20px 40px 0;border-radius:10px;padding:18px 24px;display:flex;align-items:center;gap:16px">'
+      +'<div style="font-size:32px">'+(d.dnssecValid&&d.score>=70?'🔒':(d.hasDS||d.hasDNSKEY)?'⚠️':'🔓')+'</div>'
+      +'<div><div style="font-size:18px;font-weight:700;color:'+statusColor+'">'+statusLabel+'</div>'
+        +'<div style="font-family:monospace;font-size:14px;margin-top:3px">'+safe(d.domain)+'</div>'
+      +'</div>'
+    +'</div>'
+
+    // Score cards
+    +'<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding:16px 40px">'
+    +[
+      [d.score+'/100','Overall Score',scoreColor],
+      [d.hasDS?'✓':'✗','DS Record',d.hasDS?'#16a34a':'#dc2626'],
+      [d.hasDNSKEY?'✓':'✗','DNSKEY',d.hasDNSKEY?'#16a34a':'#dc2626'],
+      [d.hasRRSIG?'✓':'✗','RRSIG',d.hasRRSIG?'#16a34a':'#dc2626'],
+      [d.adFlag?'✓':'✗','AD Bit',d.adFlag?'#16a34a':'#dc2626'],
+      [d.hasNSEC3?'✓':'✗','NSEC3',d.hasNSEC3?'#16a34a':'#6b7280'],
+    ].map(function(s){
+      return '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:12px;text-align:center">'
+        +'<div style="font-size:20px;font-weight:700;color:'+s[2]+'">'+s[0]+'</div>'
+        +'<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-top:3px">'+s[1]+'</div></div>';
+    }).join('')
+    +'</div>'
+
+    // Chain of trust summary
+    +'<div style="background:#fff;margin:0 40px 16px;border-radius:8px;padding:14px 20px;border:1px solid #e5e7eb">'
+      +'<div style="font-weight:700;font-size:12px;margin-bottom:10px;color:#1e293b">Chain of Trust Assessment</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      +'<tbody>'
+      +secRow('Root Zone', '<span style="color:#16a34a;font-weight:700">✓ Signed</span>', 'Root zone is always DNSSEC-signed')
+      +secRow('TLD (.'+safe(d.tld)+')', '<span style="color:'+(d.tldOk?'#16a34a':'#ea580c')+';font-weight:700">'+(d.tldOk?'✓ Signed':'⚠ Unknown')+'</span>', 'TLD zone signing status')
+      +secRow('Domain DS Delegation', tick(d.hasParentDS), 'Parent zone DS record linking to domain DNSKEY')
+      +secRow('DNSKEY Records', tick(d.hasDNSKEY), d.dnskeys.length+' key(s) found — KSK: '+d.ksks.length+', ZSK: '+d.zsks.length)
+      +secRow('RRSIG Signatures', tick(d.hasRRSIG), d.expiredSigs.length+' expired, '+d.expiringSoon.length+' expiring within 14 days')
+      +secRow('Resolver Validation (AD Bit)', tick(d.adFlag), d.adFlag?'Recursive resolver confirmed DNSSEC valid':'AD bit not set — validation not confirmed')
+      +'</tbody></table>'
+    +'</div>'
+
+    // DNSKEY table
+    +'<div style="background:#fff;margin:0 40px 16px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb">'
+      +'<div style="background:#1e293b;padding:10px 18px"><span style="color:#fff;font-weight:bold;font-size:12px">🔑 DNSKEY Records</span></div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9">'
+        +'<th style="padding:7px 10px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Type</th>'
+        +'<th style="padding:7px 10px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Algorithm</th>'
+        +'<th style="padding:7px 10px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Note</th>'
+        +'<th style="padding:7px 10px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Public Key (truncated)</th>'
+      +'</tr></thead><tbody>'+dnskeyRows+'</tbody></table>'
+    +'</div>'
+
+    // DS table
+    +'<div style="background:#fff;margin:0 40px 16px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb">'
+      +'<div style="background:#1e293b;padding:10px 18px"><span style="color:#fff;font-weight:bold;font-size:12px">🔗 DS Records (Delegation Signer)</span></div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9">'
+        +'<th style="padding:7px 10px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Key Tag</th>'
+        +'<th style="padding:7px 10px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Digest Type</th>'
+        +'<th style="padding:7px 10px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Digest (truncated)</th>'
+      +'</tr></thead><tbody>'+dsRows+'</tbody></table>'
+    +'</div>'
+
+    // RRSIG table
+    +'<div style="background:#fff;margin:0 40px 16px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb">'
+      +'<div style="background:#1e293b;padding:10px 18px"><span style="color:#fff;font-weight:bold;font-size:12px">✍️ RRSIG Signatures</span></div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9">'
+        +'<th style="padding:7px 10px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Type Covered</th>'
+        +'<th style="padding:7px 10px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Algorithm</th>'
+        +'<th style="padding:7px 10px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Expiration</th>'
+        +'<th style="padding:7px 10px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Signer</th>'
+      +'</tr></thead><tbody>'+rrsigRows+'</tbody></table>'
+    +'</div>'
+
+    +'<div style="background:#0f172a;padding:12px 40px;display:flex;justify-content:space-between;color:#9ca3af;font-size:11px" class="no-print">'
+      +'<span>Ghost Defense · CISA BOD 18-01 · Cloudflare DoH</span>'
+      +'<span>DEFEND ALWAYS 🛡️</span>'
+    +'</div></body></html>';
+
+  var blob = new Blob([html], {type:'text/html'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'dnssec-' + safe(d.domain).replace(/\./g,'-') + '-' + now.toISOString().split('T')[0] + '.html';
+  a.click();
+}
+
+// ── EXPORT SINGLE DOMAIN PDF ───────────────────────────────────────────────────
+function exportSinglePDF() {
+  var d = window._lastSingleResult;
+  if (!d) { alert('No scan result to export.'); return; }
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  var timeStr = now.toUTCString();
+  function safe(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  var statusLabel = d.dnssecValid&&d.score>=70?'FULLY VALIDATED':(d.hasDS||d.hasDNSKEY)?'PARTIAL':'NOT CONFIGURED';
+  var statusColor = d.dnssecValid&&d.score>=70?'#16a34a':(d.hasDS||d.hasDNSKEY)?'#ea580c':'#dc2626';
+  var scoreColor  = d.score>=70?'#16a34a':d.score>=40?'#ea580c':'#dc2626';
+  function tick(v){return v?'<span style="color:#16a34a;font-weight:700">✓</span>':'<span style="color:#dc2626">✗</span>';}
+
+  function pdfDonut(pct, color) {
+    var r=36;var circ=2*Math.PI*r;var dash=pct/100*circ;var gap=circ-dash;var offset=circ*0.25;
+    return '<svg width="100" height="100" viewBox="0 0 100 100">'
+      +'<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="#e5e7eb" stroke-width="14"/>'
+      +'<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="14"'
+        +' stroke-dasharray="'+dash.toFixed(1)+' '+gap.toFixed(1)+'" stroke-dashoffset="'+offset.toFixed(1)+'" stroke-linecap="round"/>'
+      +'<text x="50" y="55" text-anchor="middle" font-family="Arial" font-size="16" font-weight="bold" fill="'+color+'">'+pct+'</text>'
+      +'</svg>';
+  }
+
+  var dnskeyList = d.dnskeys.map(function(k){
+    var info=ALGO_INFO[k.algorithm]||{name:'Unknown',status:'warn'};
+    var ac=info.status==='strong'?'#16a34a':info.status==='weak'?'#dc2626':'#ca8a04';
+    return '<tr><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:10px">'+(k.isKSK?'KSK':'ZSK')+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #f1f5f9"><span style="color:'+ac+';font-size:10px;font-weight:600">Alg '+k.algorithm+': '+safe(info.name)+'</span></td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-size:9px;color:#6b7280">'+safe(info.note)+'</td></tr>';
+  }).join('')||'<tr><td colspan="3" style="padding:8px;color:#dc2626">None found</td></tr>';
+
+  var rrsigList = d.allRRSIGs.slice(0,6).map(function(sig){
+    var exp=isExpired(sig.expiration);var soon=isExpiringSoon(sig.expiration,14);
+    var sc=exp?'#dc2626':soon?'#ea580c':'#16a34a';
+    return '<tr><td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:10px">'+safe(sig.typeCovered)+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-size:10px;color:'+sc+'">'+safe(fmtDate(sig.expiration))+(exp?' EXPIRED':soon?' EXPIRING':'')+'</td>'
+      +'<td style="padding:5px 8px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:9px;color:#6b7280">'+safe(sig.signerName)+'</td></tr>';
+  }).join('')||'<tr><td colspan="3" style="padding:8px;color:#dc2626">None found</td></tr>';
+
+  var pdfDoc = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    +'<style>body{font-family:Arial,sans-serif;margin:0;background:#fff;color:#111}'
+    +'@page{size:A4;margin:14mm}'
+    +'@media print{.pb{page-break-before:always}}'
+    +'.cover{min-height:100vh;background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;'
+      +'display:flex;flex-direction:column;align-items:center;justify-content:center;'
+      +'padding:60px 40px;text-align:center;page-break-after:always}'
+    +'.sec{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:14px}'
+    +'.sec-hdr{background:#1e293b;color:#fff;padding:8px 14px;border-radius:5px;font-size:12px;font-weight:700;margin-bottom:12px}'
+    +'.pdf-table{width:100%;border-collapse:collapse;font-size:10px}'
+    +'.pdf-table th{background:#334155;color:#fff;padding:6px 8px;text-align:left;font-size:9px;text-transform:uppercase}'
+    +'.pdf-table td{padding:5px 8px;border-bottom:1px solid #f1f5f9;vertical-align:middle}'
+    +'</style></head><body>'
+
+    // Cover
+    +'<div class="cover">'
+      +'<div style="font-size:11px;letter-spacing:3px;color:#94a3b8;border:1px solid #475569;padding:4px 14px;border-radius:4px;margin-bottom:32px">TLP:CLEAR · CISA BOD 18-01</div>'
+      +'<div style="font-size:12px;letter-spacing:4px;color:#00ff41;font-weight:700;margin-bottom:16px">GHOST DEFENSE</div>'
+      +'<div style="font-size:36px;font-weight:700;line-height:1.2;margin-bottom:8px">DNSSEC Validation<br>Report</div>'
+      +'<div style="font-family:monospace;font-size:18px;color:#94a3b8;margin-bottom:32px">'+safe(d.domain)+'</div>'
+      +'<div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:18px 28px;width:100%;max-width:340px;margin-bottom:32px">'
+        +[['Date',safe(dateStr)],['Domain',safe(d.domain)],['Status',statusLabel],['Score',d.score+' / 100'],['AD Validated',d.adFlag?'Yes':'No'],['DNSKEY Count',d.dnskeys.length]].map(function(row){
+          return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:11px;color:#cbd5e1">'
+            +'<span>'+row[0]+'</span><span style="color:#fff;font-weight:500">'+row[1]+'</span></div>';
+        }).join('')
+      +'</div>'
+      +'<div style="font-size:10px;color:#64748b">For authorized defensive security use only · DEFEND ALWAYS</div>'
+    +'</div>'
+
+    // Results page
+    +'<div class="pb">'
+    +'<div class="sec-hdr">Validation Summary — '+safe(d.domain)+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
+      // Score + verdict
+      +'<div class="sec">'
+        +'<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin-bottom:10px">Verdict</div>'
+        +'<div style="display:flex;align-items:center;gap:14px">'
+          +pdfDonut(d.score, scoreColor)
+          +'<div>'
+            +'<div style="font-size:18px;font-weight:700;color:'+statusColor+'">'+statusLabel+'</div>'
+            +'<div style="font-size:11px;color:#6b7280;margin-top:4px">Score: '+d.score+' / 100</div>'
+          +'</div>'
+        +'</div>'
+      +'</div>'
+      // Record presence
+      +'<div class="sec">'
+        +'<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin-bottom:10px">Record Presence</div>'
+        +'<table style="width:100%;font-size:11px">'
+        +[['DS Record',d.hasDS],['DNSKEY',d.hasDNSKEY],['RRSIG',d.hasRRSIG],['AD Bit',d.adFlag],['NSEC3',d.hasNSEC3],['Parent DS',d.hasParentDS]].map(function(r){
+          return '<tr><td style="padding:4px 0;color:#6b7280">'+r[0]+'</td><td>'+tick(r[1])+'</td></tr>';
+        }).join('')
+        +'</table>'
+      +'</div>'
+    +'</div>'
+
+    // Chain of trust
+    +'<div class="sec">'
+      +'<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin-bottom:8px">Chain of Trust</div>'
+      +'<div style="display:flex;align-items:center;gap:8px;font-size:11px;flex-wrap:wrap">'
+        +'<span style="background:#e0f2fe;color:#0369a1;padding:4px 12px;border-radius:20px;font-weight:600">Root ✓</span>'
+        +'<span style="color:#9ca3af">→</span>'
+        +'<span style="background:'+(d.tldOk?'#dcfce7':'#fef9c3')+';color:'+(d.tldOk?'#16a34a':'#ca8a04')+';padding:4px 12px;border-radius:20px;font-weight:600">.'+safe(d.tld)+' '+(d.tldOk?'✓':'?')+'</span>'
+        +'<span style="color:#9ca3af">→</span>'
+        +'<span style="background:'+(d.domainOk?'#dcfce7':d.hasDS?'#fef9c3':'#fef2f2')+';color:'+(d.domainOk?'#16a34a':d.hasDS?'#ca8a04':'#dc2626')+';padding:4px 12px;border-radius:20px;font-weight:600">'+safe(d.domain)+' '+(d.domainOk?'✓':d.hasDS?'⚠':'✗')+'</span>'
+        +'<span style="color:#9ca3af">→</span>'
+        +'<span style="background:'+(d.adFlag?'#dcfce7':'#fef2f2')+';color:'+(d.adFlag?'#16a34a':'#dc2626')+';padding:4px 12px;border-radius:20px;font-weight:600">Resolver '+(d.adFlag?'AD=1 ✓':'AD=0 ✗')+'</span>'
+      +'</div>'
+    +'</div>'
+
+    // DNSKEY table
+    +'<div class="sec-hdr">DNSKEY Records ('+d.dnskeys.length+')</div>'
+    +'<table class="pdf-table"><thead><tr><th>Type</th><th>Algorithm</th><th>Security Note</th></tr></thead>'
+    +'<tbody>'+dnskeyList+'</tbody></table>'
+
+    // RRSIG table
+    +'<div class="sec-hdr" style="margin-top:14px">RRSIG Signatures ('+d.allRRSIGs.length+')</div>'
+    +'<table class="pdf-table"><thead><tr><th>Type</th><th>Expiration</th><th>Signer</th></tr></thead>'
+    +'<tbody>'+rrsigList+'</tbody></table>'
+
+    +(d.expiredSigs&&d.expiredSigs.length ? '<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:10px 14px;margin-top:12px;font-size:11px;color:#dc2626">⚠ <strong>'+d.expiredSigs.length+' expired signature(s)</strong> — renew RRSIG records immediately to maintain DNSSEC chain of trust.</div>' : '')
+    +(d.expiringSoon&&d.expiringSoon.length ? '<div style="background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:10px 14px;margin-top:8px;font-size:11px;color:#ea580c">⏰ <strong>'+d.expiringSoon.length+' signature(s) expiring within 14 days</strong> — schedule renewal now.</div>' : '')
+
+    +'<div style="margin-top:16px;background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #1e293b;border-radius:0 6px 6px 0;padding:12px 14px;font-size:11px;line-height:1.7;color:#374151">'
+      +'<strong>Recommendation:</strong> '
+      +(d.dnssecValid&&d.score>=70
+        ? 'DNSSEC is fully configured and validated. Ensure RRSIG signatures are renewed before expiry and monitor algorithm compliance against RFC 8624. Per CISA BOD 18-01, maintain DNSSEC on all .gov domains.'
+        : d.hasDS||d.hasDNSKEY
+          ? 'DNSSEC is partially configured. Complete the chain of trust: ensure DS records are published at the registrar and all zones have valid RRSIG signatures. Verify the AD bit is set by your recursive resolver.'
+          : 'DNSSEC is not configured. This domain is vulnerable to DNS cache poisoning and spoofing. Configure DNSSEC immediately. Per CISA BOD 18-01, all .gov domains must implement DNSSEC. Recommended algorithm: ECDSA P-256 (Algorithm 13).')
+    +'</div>'
+    +'</div>'
+    +'</body></html>';
+
+  var win = window.open('', '_blank', 'width=1000,height=750');
+  if (!win) { alert('Popup blocked — please allow popups and try again.'); return; }
+  win.document.write(pdfDoc);
+  win.document.close();
+  win.focus();
+  setTimeout(function(){ win.print(); }, 900);
+}
+
+</script>
+</body>
+</html>

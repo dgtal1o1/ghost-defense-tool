@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phishing Simulation Builder — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070e;--s1:#0e0e1a;--s2:#141728;--s3:#1c2035;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);
+  --text:#eeedf8;--muted:#6b6a84;--muted2:#9998b8;
+  --green:#2fd98a;--green-s:rgba(47,217,138,0.1);--green-b:rgba(47,217,138,0.28);
+  --red:#ff4d4d;--red-s:rgba(255,77,77,0.1);--red-b:rgba(255,77,77,0.3);
+  --orange:#ff8c42;--orange-s:rgba(255,140,66,0.1);--orange-b:rgba(255,140,66,0.28);
+  --yellow:#ffd166;--yellow-s:rgba(255,209,102,0.1);--yellow-b:rgba(255,209,102,0.25);
+  --blue:#4cc9f0;--blue-s:rgba(76,201,240,0.1);--blue-b:rgba(76,201,240,0.28);
+  --purple:#b48eff;--purple-s:rgba(180,142,255,0.1);--purple-b:rgba(180,142,255,0.28);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html{background:var(--bg)}
+body{font-family:var(--sans);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:13px 24px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:30px;height:30px;background:var(--orange-s);border:1px solid var(--orange-b);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.brand-name{font-size:15px;font-weight:600}
+.brand-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.api-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.api-input{background:var(--s2);border:1px solid var(--border2);border-radius:7px;
+  color:var(--text);font-family:var(--mono);font-size:12px;padding:7px 12px;
+  outline:none;width:220px;transition:border-color .15s}
+.api-input:focus{border-color:var(--orange-b)}
+.api-input::placeholder{color:var(--muted)}
+.api-btn{background:var(--orange-s);border:1px solid var(--orange-b);border-radius:7px;
+  color:var(--orange);font-family:var(--mono);font-size:11px;padding:7px 14px;cursor:pointer;transition:all .15s}
+.api-btn:hover{background:rgba(255,140,66,.2)}
+.api-status{font-family:var(--mono);font-size:11px}
+
+/* SAFETY BANNER */
+.safety-banner{background:rgba(47,217,138,0.06);border-bottom:1px solid var(--green-b);
+  padding:8px 24px;font-family:var(--mono);font-size:11px;color:var(--green);
+  display:flex;align-items:center;gap:10px}
+
+/* LAYOUT */
+.main{display:grid;grid-template-columns:320px 1fr;flex:1;height:calc(100vh - 100px);overflow:hidden}
+
+/* LEFT PANEL */
+.left-panel{border-right:1px solid var(--border);overflow-y:auto;background:var(--bg);display:flex;flex-direction:column}
+.sec-label{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);
+  font-family:var(--mono);padding:10px 14px;background:var(--s1);border-bottom:1px solid var(--border)}
+
+/* TEMPLATE CARDS */
+.template-item{padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
+.template-item:hover{background:var(--s2)}
+.template-item.selected{background:var(--orange-s);border-left:3px solid var(--orange)}
+.ti-icon{font-size:18px;flex-shrink:0}
+.ti-name{font-size:12px;font-weight:600}
+.ti-desc{font-size:10px;color:var(--muted2);font-family:var(--mono);margin-top:2px}
+.diff-badge{font-size:9px;font-family:var(--mono);font-weight:700;padding:1px 6px;border-radius:3px;margin-top:4px;display:inline-block}
+.diff-basic{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.diff-intermediate{background:var(--yellow-s);color:var(--yellow);border:1px solid var(--yellow-b)}
+.diff-advanced{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.diff-expert{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+
+/* CONFIG SECTION */
+.config-section{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.config-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted2);font-family:var(--mono);margin-bottom:2px}
+.config-input{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:7px;
+  color:var(--text);font-family:var(--sans);font-size:12px;padding:8px 11px;outline:none;transition:border-color .15s}
+.config-input:focus{border-color:var(--orange-b)}
+.config-input::placeholder{color:var(--muted)}
+.config-select{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:7px;
+  color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 11px;outline:none;cursor:pointer}
+.config-select option{background:var(--s2)}
+
+/* GENERATE BTN */
+.gen-btn{margin:12px 14px;background:var(--orange);border:none;border-radius:8px;
+  color:#fff;font-family:var(--sans);font-size:13px;font-weight:700;padding:12px;
+  cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.gen-btn:hover{background:#ffaa55;transform:translateY(-1px)}
+.gen-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* LIBRARY */
+.lib-item{padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;
+  display:flex;align-items:center;gap:8px;transition:background .12s}
+.lib-item:hover{background:var(--s2)}
+.lib-name{font-size:11px;font-weight:600;color:var(--orange);flex:1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lib-date{font-size:10px;color:var(--muted);font-family:var(--mono)}
+.lib-del{font-size:10px;color:var(--red);padding:2px 6px;border-radius:3px;
+  background:var(--red-s);border:1px solid var(--red-b);opacity:0;transition:opacity .15s;cursor:pointer}
+.lib-item:hover .lib-del{opacity:1}
+
+/* RIGHT PANEL */
+.right-panel{overflow-y:auto;background:var(--bg);display:flex;flex-direction:column}
+
+/* EMPTY / GENERATING */
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;padding:40px;text-align:center;color:var(--muted)}
+.empty-icon{font-size:48px}
+.empty-title{font-size:16px;font-weight:600;color:var(--text)}
+.empty-sub{font-size:13px;color:var(--muted2);max-width:420px;line-height:1.7}
+.gen-spinner{width:48px;height:48px;border:3px solid rgba(255,140,66,.15);
+  border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* SIMULATION OUTPUT */
+.sim-wrap{padding:20px 24px;display:flex;flex-direction:column;gap:14px}
+
+/* EMAIL PREVIEW */
+.email-preview{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.email-chrome{background:var(--s2);border-bottom:1px solid var(--border);padding:10px 14px}
+.email-chrome-bar{background:var(--s3);border:1px solid var(--border2);border-radius:5px;
+  padding:5px 12px;font-family:var(--mono);font-size:11px;color:var(--muted2);
+  display:flex;align-items:center;gap:8px}
+.email-headers{padding:14px 16px;border-bottom:1px solid var(--border)}
+.email-hdr-row{display:flex;gap:10px;margin-bottom:5px;font-size:12px;font-family:var(--mono)}
+.email-hdr-key{color:var(--muted2);width:60px;flex-shrink:0}
+.email-hdr-val{color:var(--text)}
+.email-subject{font-size:14px;font-weight:700;color:var(--text);padding:10px 16px;
+  border-bottom:1px solid var(--border)}
+.email-body{padding:16px;font-size:13px;line-height:1.8;color:var(--text);
+  white-space:pre-wrap;font-family:var(--sans)}
+.phish-link{color:var(--blue);text-decoration:underline;cursor:pointer}
+
+/* RED FLAGS SECTION */
+.flags-section{background:var(--s1);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.flags-hdr{padding:10px 14px;background:var(--s2);border-bottom:1px solid var(--border);
+  font-size:11px;font-family:var(--mono);font-weight:700;
+  text-transform:uppercase;letter-spacing:.1em;display:flex;justify-content:space-between;align-items:center}
+.flag-item{display:flex;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);
+  align-items:flex-start}
+.flag-item:last-child{border-bottom:none}
+.flag-num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-family:var(--mono);font-size:10px;font-weight:700;
+  flex-shrink:0;margin-top:1px}
+.flag-text{font-size:12px;color:var(--muted2);line-height:1.6;font-family:var(--mono);flex:1}
+.flag-critical{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.flag-high{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.flag-medium{background:var(--yellow-s);color:var(--yellow);border:1px solid var(--yellow-b)}
+
+/* TRAINING CARD */
+.training-card{background:var(--s1);border:1px solid var(--green-b);border-radius:8px;padding:14px 16px}
+.training-title{font-size:12px;font-weight:700;color:var(--green);font-family:var(--mono);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+.training-item{display:flex;gap:9px;margin-bottom:8px;font-size:12px;color:var(--muted2);line-height:1.6}
+.training-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;margin-top:5px}
+
+/* AWARENESS QUIZ */
+.quiz-section{background:var(--s1);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.quiz-q{padding:12px 14px;border-bottom:1px solid var(--border)}
+.quiz-q-text{font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px}
+.quiz-options{display:flex;flex-direction:column;gap:5px}
+.quiz-opt{font-size:11px;font-family:var(--mono);padding:6px 10px;border-radius:5px;
+  background:var(--s2);border:1px solid var(--border2);color:var(--muted2);cursor:pointer;transition:all .12s}
+.quiz-opt:hover{border-color:var(--orange-b);color:var(--orange)}
+.quiz-opt.correct{background:var(--green-s);border-color:var(--green-b);color:var(--green)}
+.quiz-opt.wrong{background:var(--red-s);border-color:var(--red-b);color:var(--red)}
+
+/* METADATA SECTION */
+.meta-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.meta-box{background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center}
+.meta-num{font-family:var(--mono);font-size:18px;font-weight:600;margin-bottom:3px}
+.meta-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+
+/* TABS */
+.output-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--s1);position:sticky;top:0;z-index:10}
+.otab{flex:1;padding:10px 6px;font-size:11px;font-family:var(--mono);color:var(--muted);
+  cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;
+  margin-bottom:-1px;transition:all .15s;text-align:center;text-transform:uppercase;letter-spacing:.06em}
+.otab.active{color:var(--orange);border-bottom-color:var(--orange)}
+.otab:hover:not(.active){color:var(--text)}
+
+/* EXPORT */
+.export-row{display:flex;gap:8px;padding:14px 24px;border-top:1px solid var(--border);
+  background:var(--s1);flex-wrap:wrap;margin-top:auto;flex-shrink:0}
+.exp-btn{display:flex;align-items:center;gap:5px;font-size:12px;font-family:var(--sans);
+  font-weight:600;padding:8px 16px;border-radius:7px;cursor:pointer;transition:all .15s;border:1px solid}
+.exp-orange{background:var(--orange-s);color:var(--orange);border-color:var(--orange-b)}
+.exp-green{background:var(--green-s);color:var(--green);border-color:var(--green-b)}
+.exp-blue{background:var(--blue-s);color:var(--blue);border-color:var(--blue-b)}
+
+/* COPY BTN */
+.copy-btn{font-size:10px;background:var(--s3);border:1px solid var(--border2);border-radius:4px;
+  color:var(--muted2);padding:3px 8px;cursor:pointer;transition:all .12s;font-family:var(--mono)}
+.copy-btn:hover{color:var(--text)}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .3s ease both}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+@media(max-width:860px){.main{grid-template-columns:1fr;height:auto}
+  .left-panel{border-right:none;border-bottom:1px solid var(--border);max-height:60vh}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">🎣</div>
+    <div>
+      <div class="brand-name">Phishing Simulation Builder</div>
+      <div class="brand-sub">Ghost Defense · Tool 30 · Security Awareness Training</div>
+    </div>
+  </div>
+  <div class="api-row">
+    <input class="api-input" id="apiKey" type="password" placeholder="sk-ant-... Anthropic API key">
+    <button class="api-btn" onclick="testKey()">TEST KEY</button>
+    <span class="api-status" id="keyStatus" style="color:var(--muted)">—</span>
+  </div>
+</div>
+
+<div class="safety-banner">
+  <span>🛡️</span>
+  <span>For authorized security awareness training only · All simulations include red flag analysis and training content · Never use against unauthorized targets</span>
+</div>
+
+<div class="main">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <!-- Templates -->
+    <div class="sec-label">Phishing Templates</div>
+    <div id="templateList"></div>
+
+    <!-- Configuration -->
+    <div class="sec-label">Campaign Configuration</div>
+    <div class="config-section">
+      <div>
+        <div class="config-label">Target Organization</div>
+        <input class="config-input" id="orgName" type="text" placeholder="e.g. Acme Corporation">
+      </div>
+      <div>
+        <div class="config-label">Target Role / Department</div>
+        <input class="config-input" id="targetRole" type="text" placeholder="e.g. Finance team, All staff">
+      </div>
+      <div>
+        <div class="config-label">Sender Persona</div>
+        <input class="config-input" id="senderPersona" type="text" placeholder="e.g. IT Help Desk, CEO, HR">
+      </div>
+      <div>
+        <div class="config-label">Difficulty Level</div>
+        <select class="config-select" id="difficulty">
+          <option value="basic">Basic — Obvious red flags (new users)</option>
+          <option value="intermediate" selected>Intermediate — Subtle cues (general staff)</option>
+          <option value="advanced">Advanced — Highly convincing (technical staff)</option>
+          <option value="expert">Expert — Nation-state level (security teams)</option>
+        </select>
+      </div>
+      <div>
+        <div class="config-label">Pretext / Scenario</div>
+        <select class="config-select" id="pretext">
+          <option value="password_reset">Password Reset Required</option>
+          <option value="mfa_verify">MFA Verification</option>
+          <option value="payroll_update">Payroll / Direct Deposit Update</option>
+          <option value="ceo_wire">CEO Wire Transfer Request (BEC)</option>
+          <option value="it_alert">IT Security Alert</option>
+          <option value="package_delivery">Package / Delivery Notification</option>
+          <option value="invoice">Vendor Invoice / Payment</option>
+          <option value="sharepoint">SharePoint Document Share</option>
+          <option value="benefits">HR Benefits Enrollment</option>
+          <option value="custom">Custom (describe below)</option>
+        </select>
+      </div>
+      <div>
+        <div class="config-label">Custom Scenario / Notes</div>
+        <input class="config-input" id="customScenario" type="text" placeholder="Optional: describe a specific scenario">
+      </div>
+      <div>
+        <div class="config-label">Training Focus</div>
+        <select class="config-select" id="trainingFocus">
+          <option value="general">General phishing awareness</option>
+          <option value="bec">Business email compromise (BEC)</option>
+          <option value="credential">Credential harvesting</option>
+          <option value="malware">Malware / attachment attacks</option>
+          <option value="smishing">SMS phishing (smishing)</option>
+          <option value="vishing">Voice phishing (vishing)</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="gen-btn" id="genBtn" onclick="generateSimulation()">
+      🎣 GENERATE SIMULATION
+    </button>
+
+    <!-- Library -->
+    <div class="sec-label" style="margin-top:auto">Saved Simulations</div>
+    <div id="libraryList">
+      <div style="padding:12px 14px;font-size:11px;color:var(--muted);font-family:var(--mono)">No saved simulations</div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel" id="rightPanel">
+    <div class="empty-state">
+      <div class="empty-icon">🎣</div>
+      <div class="empty-title">Phishing Simulation Builder</div>
+      <div class="empty-sub">
+        Configure a campaign and click Generate. AI creates a realistic phishing simulation complete with red flag analysis, training content, and an awareness quiz — ready to use in your security awareness program.
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px">
+        <span style="font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:4px;background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)">Realistic Lures</span>
+        <span style="font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:4px;background:var(--red-s);color:var(--red);border:1px solid var(--red-b)">Red Flag Analysis</span>
+        <span style="font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:4px;background:var(--green-s);color:var(--green);border:1px solid var(--green-b)">Training Content</span>
+        <span style="font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:4px;background:var(--blue-s);color:var(--blue);border:1px solid var(--blue-b)">Awareness Quiz</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── PRESET TEMPLATES ──────────────────────────────────────────────────────────
+var TEMPLATES = [
+  { id:'credential_harvest', icon:'🔑', name:'Credential Harvesting',      difficulty:'intermediate',
+    desc:'Fake login page targeting email/SSO credentials. Most common phishing vector.',
+    pretext:'password_reset', trainingFocus:'credential' },
+  { id:'bec_ceo',            icon:'👔', name:'CEO Fraud / BEC Wire',        difficulty:'advanced',
+    desc:'Business email compromise — impersonates executive requesting urgent wire transfer.',
+    pretext:'ceo_wire', trainingFocus:'bec' },
+  { id:'it_security_alert',  icon:'🔒', name:'Fake IT Security Alert',      difficulty:'basic',
+    desc:'Urgency-driven lure claiming account breach, immediate action required.',
+    pretext:'it_alert', trainingFocus:'general' },
+  { id:'sharepoint_lure',    icon:'📁', name:'SharePoint Document Share',   difficulty:'intermediate',
+    desc:'O365 / SharePoint impersonation. Highly effective against enterprise targets.',
+    pretext:'sharepoint', trainingFocus:'credential' },
+  { id:'payroll_divert',     icon:'💰', name:'Payroll Diversion',           difficulty:'advanced',
+    desc:'HR/payroll impersonation requesting direct deposit account change.',
+    pretext:'payroll_update', trainingFocus:'bec' },
+  { id:'malware_invoice',    icon:'📎', name:'Malicious Invoice Attachment', difficulty:'intermediate',
+    desc:'Finance-targeted lure with malicious attachment masquerading as vendor invoice.',
+    pretext:'invoice', trainingFocus:'malware' },
+  { id:'mfa_bypass',         icon:'📱', name:'MFA Fatigue / Bypass',        difficulty:'expert',
+    desc:'Adversary-in-the-middle attack targeting MFA. Nation-state technique.',
+    pretext:'mfa_verify', trainingFocus:'credential' },
+  { id:'package_smish',      icon:'📦', name:'Package Delivery Smishing',   difficulty:'basic',
+    desc:'SMS-based phishing using package delivery pretext. Targets mobile users.',
+    pretext:'package_delivery', trainingFocus:'smishing' },
+  { id:'benefits_hr',        icon:'📋', name:'HR Benefits Enrollment',      difficulty:'intermediate',
+    desc:'Seasonal HR lure around open enrollment. Targets PII and credential theft.',
+    pretext:'benefits', trainingFocus:'general' },
+  { id:'vendor_fraud',       icon:'🏢', name:'Vendor Impersonation',        difficulty:'advanced',
+    desc:'Trusted vendor impersonation requesting invoice payment to new account.',
+    pretext:'invoice', trainingFocus:'bec' },
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+var currentSim       = null;
+var selectedTemplate = null;
+var activeTab        = 'email';
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+function init() {
+  renderTemplates();
+  renderLibrary();
+}
+
+function renderTemplates() {
+  document.getElementById('templateList').innerHTML = TEMPLATES.map(function(t) {
+    var diffCls = 'diff-' + t.difficulty;
+    return '<div class="template-item" id="tmpl-'+t.id+'" onclick="selectTemplate(\''+t.id+'\')">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'+
+        '<span class="ti-icon">'+t.icon+'</span>'+
+        '<span class="ti-name">'+t.name+'</span>'+
+      '</div>'+
+      '<div class="ti-desc">'+t.desc+'</div>'+
+      '<span class="diff-badge '+diffCls+'">'+t.difficulty.toUpperCase()+'</span>'+
+    '</div>';
+  }).join('');
+}
+
+function selectTemplate(id) {
+  selectedTemplate = TEMPLATES.find(function(t){ return t.id === id; });
+  document.querySelectorAll('.template-item').forEach(function(el){ el.classList.remove('selected'); });
+  var el = document.getElementById('tmpl-'+id);
+  if (el) el.classList.add('selected');
+  document.getElementById('difficulty').value = selectedTemplate.difficulty;
+  document.getElementById('pretext').value    = selectedTemplate.pretext;
+  document.getElementById('trainingFocus').value = selectedTemplate.trainingFocus;
+}
+
+// ── API TEST ──────────────────────────────────────────────────────────────────
+async function testKey() {
+  var key = document.getElementById('apiKey').value.trim();
+  var st  = document.getElementById('keyStatus');
+  if (!key) { st.textContent='⚠ Enter key'; st.style.color='var(--yellow)'; return; }
+  st.textContent='⟳ Testing…'; st.style.color='var(--muted2)';
+  try {
+    var r = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'content-type':'application/json','x-api-key':key,
+        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:10,messages:[{role:'user',content:'Hi'}]})
+    });
+    if (r.ok){st.textContent='KEY OK ✓';st.style.color='var(--green)';}
+    else {st.textContent='✗ Error '+r.status;st.style.color='var(--red)';}
+  } catch(e){st.textContent='✗ Network';st.style.color='var(--red)';}
+}
+
+// ── GENERATE ──────────────────────────────────────────────────────────────────
+async function generateSimulation() {
+  var key        = document.getElementById('apiKey').value.trim();
+  var orgName    = document.getElementById('orgName').value.trim() || 'Acme Corporation';
+  var targetRole = document.getElementById('targetRole').value.trim() || 'all employees';
+  var sender     = document.getElementById('senderPersona').value.trim() || 'IT Help Desk';
+  var difficulty = document.getElementById('difficulty').value;
+  var pretext    = document.getElementById('pretext').value;
+  var custom     = document.getElementById('customScenario').value.trim();
+  var training   = document.getElementById('trainingFocus').value;
+
+  if (!key) { alert('Paste your Anthropic API key first.'); return; }
+
+  var btn = document.getElementById('genBtn');
+  btn.disabled = true; btn.textContent = '⟳ Generating…';
+  showGenerating();
+
+  var pretextLabels = {
+    password_reset:'Password Reset Required', mfa_verify:'MFA Verification',
+    payroll_update:'Payroll / Direct Deposit Update', ceo_wire:'CEO Wire Transfer (BEC)',
+    it_alert:'IT Security Alert', package_delivery:'Package Delivery',
+    invoice:'Vendor Invoice / Payment', sharepoint:'SharePoint Document Share',
+    benefits:'HR Benefits Enrollment', custom:'Custom Scenario'
+  };
+  var pretextLabel = pretextLabels[pretext] || pretext;
+
+  var difficultyGuide = {
+    basic:'Include obvious red flags: poor grammar, generic greeting, suspicious domain, urgent threats. Easy for new users to spot.',
+    intermediate:'Include subtle but detectable red flags: slightly wrong domain, generic but plausible greeting, mild urgency.',
+    advanced:'Highly convincing: correct grammar, personalized details, legitimate-looking domain (typosquat), real-looking branding. Hard to detect.',
+    expert:'Nation-state quality: perfect grammar, spear-phishing personalization, adversary-in-the-middle technique references, zero obvious red flags in email body.'
+  };
+
+  var prompt = 'You are a security awareness trainer creating a phishing simulation for authorized employee training.\n\n'
+    + 'SIMULATION PARAMETERS:\n'
+    + '- Organization: ' + orgName + '\n'
+    + '- Target audience: ' + targetRole + '\n'
+    + '- Sender persona: ' + sender + '\n'
+    + '- Phishing pretext: ' + pretextLabel + '\n'
+    + '- Difficulty: ' + difficulty + ' — ' + difficultyGuide[difficulty] + '\n'
+    + '- Training focus: ' + training + '\n'
+    + (custom ? '- Additional notes: ' + custom + '\n' : '')
+    + '\nReturn a JSON object with this structure (keep all strings concise):\n'
+    + '{\n'
+    + '  "campaignTitle": "Short campaign name",\n'
+    + '  "difficulty": "' + difficulty + '",\n'
+    + '  "pretext": "' + pretextLabel + '",\n'
+    + '  "riskLevel": "low|medium|high|critical",\n'
+    + '  "email": {\n'
+    + '    "from": "Display Name <fake@spoofed-domain.com>",\n'
+    + '    "replyTo": "different@attacker-domain.com",\n'
+    + '    "to": "Employee Name <employee@' + orgName.toLowerCase().replace(/\s+/g,'') + '.com>",\n'
+    + '    "subject": "Email subject line",\n'
+    + '    "body": "Full email body text (use \\n for line breaks, include a fake link as [CLICK HERE](https://fake-url.com))"\n'
+    + '  },\n'
+    + '  "redFlags": [\n'
+    + '    { "severity": "critical|high|medium", "flag": "What the red flag is", "explanation": "Why this is suspicious", "location": "Where in the email (subject/from/body/link)" }\n'
+    + '  ],\n'
+    + '  "technicalIndicators": [\n'
+    + '    { "indicator": "Technical name", "value": "example value", "description": "What this means" }\n'
+    + '  ],\n'
+    + '  "trainingPoints": ["Key learning point 1", "Key learning point 2"],\n'
+    + '  "whatToDoIfReceived": ["Step 1", "Step 2"],\n'
+    + '  "quizQuestions": [\n'
+    + '    { "question": "Question text", "options": ["A) option", "B) option", "C) option", "D) option"], "correct": 0, "explanation": "Why this is correct" }\n'
+    + '  ],\n'
+    + '  "campaignNotes": "Brief note for the trainer on how to use this simulation",\n'
+    + '  "mitreTechniques": ["T1566.001 - Spearphishing Attachment", ...]\n'
+    + '}\n\n'
+    + 'Rules: Return ONLY raw JSON. Start with { end with }. Max 4 red flags, 3 quiz questions, 5 training points.';
+
+  try {
+    var r = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'content-type':'application/json','x-api-key':key,
+        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:8000,
+        messages:[{ role:'user', content:prompt }] })
+    });
+    if (!r.ok) throw new Error('API ' + r.status + (r.status===401?' — Invalid key':''));
+    var data = await r.json();
+    var raw  = (data.content && data.content[0] && data.content[0].text) || '';
+    raw = raw.trim();
+    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+    if (s >= 0) raw = raw.substring(s, e + 1);
+    var sim = JSON.parse(raw);
+    currentSim = sim;
+    saveToLibrary(sim);
+    renderSimulation(sim);
+  } catch(err) {
+    showError(err.message);
+  }
+  btn.disabled = false; btn.textContent = '🎣 GENERATE SIMULATION';
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function showGenerating() {
+  document.getElementById('rightPanel').innerHTML =
+    '<div class="empty-state"><div class="gen-spinner"></div>'
+    + '<div style="font-size:14px;font-weight:600;color:var(--orange)">Building Phishing Simulation</div>'
+    + '<div style="font-family:var(--mono);font-size:12px;color:var(--muted2)">AI crafting realistic lure · Identifying red flags · Writing training content…</div>'
+    + '</div>';
+}
+
+function showError(msg) {
+  document.getElementById('rightPanel').innerHTML =
+    '<div class="empty-state" style="gap:10px;max-width:500px;margin:0 auto;text-align:left">'
+    + '<div style="font-size:28px;text-align:center">⚠</div>'
+    + '<div style="font-size:14px;font-weight:600;color:var(--red);text-align:center">Generation Failed</div>'
+    + '<div style="background:var(--s2);border:1px solid var(--red-b);border-radius:7px;padding:12px;'
+      + 'font-family:var(--mono);font-size:11px;color:var(--red);line-height:1.7;white-space:pre-wrap;word-break:break-all">'
+      + esc(msg) + '</div>'
+    + '<div style="font-size:11px;color:var(--muted2);font-family:var(--mono)">Check your API key and try again</div>'
+    + '</div>';
+}
+
+function renderSimulation(sim) {
+  var riskColor = { critical:'var(--red)', high:'var(--orange)', medium:'var(--yellow)', low:'var(--green)' }[sim.riskLevel] || 'var(--muted2)';
+  var diffColor = { basic:'var(--green)', intermediate:'var(--yellow)', advanced:'var(--orange)', expert:'var(--red)' }[sim.difficulty] || 'var(--muted2)';
+
+  // Render email body — convert [CLICK HERE](url) to styled link
+  var emailBody = esc(sim.email && sim.email.body || '');
+  emailBody = emailBody.replace(/\[([^\]]+)\]\(([^)]+)\)/g,
+    '<span class="phish-link" title="TRAINING: This is the phishing link">$1 ⚠</span>');
+
+  var html = '';
+
+  // ── Tabs ─────────────────────────────────────────────────────────────────
+  html += '<div class="output-tabs">'
+    + ['email','flags','training','quiz'].map(function(t) {
+        var labels = {email:'📧 Email Preview', flags:'🚩 Red Flags', training:'📚 Training', quiz:'❓ Quiz'};
+        return '<button class="otab'+(t===activeTab?' active':'')+'" id="otab-'+t+'" onclick="switchTab(\''+t+'\')">'+labels[t]+'</button>';
+      }).join('')
+    + '</div>';
+
+  // ── Content area ──────────────────────────────────────────────────────────
+  html += '<div id="tabContent" style="flex:1;overflow-y:auto">';
+
+  // Campaign header (always shown)
+  html += '<div class="sim-wrap">';
+  html += '<div style="background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px" class="fade-in">'
+    + '<div><div style="font-size:14px;font-weight:700;color:var(--text)">'+esc(sim.campaignTitle||'Phishing Simulation')+'</div>'
+      + '<div style="font-size:11px;color:var(--muted2);font-family:var(--mono);margin-top:3px">'+esc(sim.pretext||'')+'</div></div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      + '<span style="font-size:10px;font-family:var(--mono);font-weight:700;padding:3px 9px;border-radius:4px;color:'+diffColor+';background:'+diffColor+'18;border:1px solid '+diffColor+'44">'+( sim.difficulty||'').toUpperCase()+'</span>'
+      + '<span style="font-size:10px;font-family:var(--mono);font-weight:700;padding:3px 9px;border-radius:4px;color:'+riskColor+';background:'+riskColor+'18;border:1px solid '+riskColor+'44">RISK: '+(sim.riskLevel||'').toUpperCase()+'</span>'
+      + (sim.mitreTechniques||[]).slice(0,2).map(function(m){ return '<span style="font-size:10px;font-family:var(--mono);padding:3px 9px;border-radius:4px;background:var(--blue-s);color:var(--blue);border:1px solid var(--blue-b)">'+esc(m.split(' ')[0])+'</span>'; }).join('')
+    + '</div>'
+    + '</div>';
+
+  // ── EMAIL TAB ──────────────────────────────────────────────────────────────
+  if (activeTab === 'email') {
+    html += '<div class="email-preview fade-in">'
+      + '<div class="email-chrome"><div class="email-chrome-bar"><span>🔒</span><span style="color:var(--red)">⚠ TRAINING SIMULATION — NOT A REAL EMAIL</span></div></div>'
+      + '<div class="email-headers">'
+        + '<div class="email-hdr-row"><span class="email-hdr-key">From:</span><span class="email-hdr-val">'+esc((sim.email||{}).from||'')+'</span></div>'
+        + '<div class="email-hdr-row"><span class="email-hdr-key">Reply-To:</span><span class="email-hdr-val" style="color:var(--orange)">'+esc((sim.email||{}).replyTo||'')+'</span></div>'
+        + '<div class="email-hdr-row"><span class="email-hdr-key">To:</span><span class="email-hdr-val">'+esc((sim.email||{}).to||'')+'</span></div>'
+      + '</div>'
+      + '<div class="email-subject">'+esc((sim.email||{}).subject||'')+'</div>'
+      + '<div class="email-body">'+emailBody+'</div>'
+      + '</div>'
+      + '<div style="background:var(--red-s);border:1px solid var(--red-b);border-radius:7px;padding:10px 14px;font-family:var(--mono);font-size:11px;color:var(--red);margin-top:0">'
+        + '⚠ TRAINING SIMULATION ONLY · The link marked ⚠ is a safe placeholder · Never send this to unauthorized targets · This simulation is for internal security awareness training only'
+      + '</div>';
+
+    // Trainer notes
+    if (sim.campaignNotes) {
+      html += '<div style="background:var(--s2);border:1px solid var(--border2);border-radius:7px;padding:12px 14px;font-size:12px;color:var(--muted2);font-family:var(--mono);line-height:1.7">'
+        + '<span style="color:var(--orange);font-weight:700">TRAINER NOTE: </span>'+esc(sim.campaignNotes)+'</div>';
+    }
+  }
+
+  // ── FLAGS TAB ─────────────────────────────────────────────────────────────
+  if (activeTab === 'flags') {
+    html += '<div class="flags-section fade-in">'
+      + '<div class="flags-hdr"><span>🚩 Red Flags — '+(sim.redFlags||[]).length+' Identified</span>'
+        + '<button class="copy-btn" onclick="copyAllFlags()">Copy All</button></div>';
+    (sim.redFlags||[]).forEach(function(f, i) {
+      var sevClass = { critical:'flag-critical', high:'flag-high', medium:'flag-medium' }[f.severity] || 'flag-medium';
+      html += '<div class="flag-item">'
+        + '<div class="flag-num '+sevClass+'">'+( i+1)+'</div>'
+        + '<div class="flag-text">'
+          + '<div style="font-weight:700;color:var(--text);margin-bottom:3px">'+esc(f.flag||'')+'</div>'
+          + '<div style="margin-bottom:3px">'+esc(f.explanation||'')+'</div>'
+          + '<div style="font-size:10px;color:var(--muted)">Location: '+esc(f.location||'')+'</div>'
+        + '</div></div>';
+    });
+    html += '</div>';
+
+    // Technical indicators
+    if (sim.technicalIndicators && sim.technicalIndicators.length) {
+      html += '<div class="flags-section fade-in">'
+        + '<div class="flags-hdr">🔍 Technical Indicators</div>'
+        + sim.technicalIndicators.map(function(ti, i) {
+            return '<div class="flag-item">'
+              + '<div class="flag-num" style="background:var(--blue-s);color:var(--blue);border:1px solid var(--blue-b)">'+(i+1)+'</div>'
+              + '<div class="flag-text">'
+                + '<div style="font-weight:700;color:var(--text);margin-bottom:3px">'+esc(ti.indicator||'')+'</div>'
+                + '<div style="color:var(--orange);font-family:var(--mono);font-size:10px;margin-bottom:3px">'+esc(ti.value||'')+'</div>'
+                + '<div>'+esc(ti.description||'')+'</div>'
+              + '</div></div>';
+          }).join('')
+        + '</div>';
+    }
+  }
+
+  // ── TRAINING TAB ──────────────────────────────────────────────────────────
+  if (activeTab === 'training') {
+    html += '<div class="training-card fade-in">'
+      + '<div class="training-title">📚 Key Training Points</div>'
+      + (sim.trainingPoints||[]).map(function(tp) {
+          return '<div class="training-item"><span class="training-dot"></span><span>'+esc(tp)+'</span></div>';
+        }).join('')
+      + '</div>';
+
+    html += '<div class="training-card fade-in" style="border-color:var(--blue-b)">'
+      + '<div class="training-title" style="color:var(--blue)">✅ What To Do If You Receive This Email</div>'
+      + (sim.whatToDoIfReceived||[]).map(function(step, i) {
+          return '<div class="training-item">'
+            + '<span style="width:20px;height:20px;border-radius:50%;background:var(--blue-s);color:var(--blue);border:1px solid var(--blue-b);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;font-family:var(--mono)">'+(i+1)+'</span>'
+            + '<span>'+esc(step)+'</span></div>';
+        }).join('')
+      + '</div>';
+
+    if (sim.mitreTechniques && sim.mitreTechniques.length) {
+      html += '<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;" class="fade-in">'
+        + '<div style="font-size:11px;font-weight:700;color:var(--cyan);font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">🎯 MITRE ATT&CK Techniques</div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
+        + (sim.mitreTechniques||[]).map(function(m){ return '<span style="font-size:10px;font-family:var(--mono);background:var(--blue-s);color:var(--blue);border:1px solid var(--blue-b);padding:3px 9px;border-radius:4px">'+esc(m)+'</span>'; }).join('')
+        + '</div></div>';
+    }
+  }
+
+  // ── QUIZ TAB ──────────────────────────────────────────────────────────────
+  if (activeTab === 'quiz') {
+    (sim.quizQuestions||[]).forEach(function(q, qi) {
+      html += '<div class="quiz-q fade-in">'
+        + '<div class="quiz-q-text">Q'+(qi+1)+'. '+esc(q.question||'')+'</div>'
+        + '<div class="quiz-options">'
+        + (q.options||[]).map(function(opt, oi) {
+            return '<div class="quiz-opt" id="qopt-'+qi+'-'+oi+'" onclick="answerQuiz('+qi+','+oi+','+q.correct+',\''+esc((q.explanation||'').replace(/'/g,'\\\''))+'\')">'+esc(opt)+'</div>';
+          }).join('')
+        + '</div>'
+        + '<div id="qfeedback-'+qi+'" style="display:none;margin-top:8px;font-size:11px;font-family:var(--mono);color:var(--green);padding:7px 10px;background:var(--green-s);border:1px solid var(--green-b);border-radius:5px"></div>'
+        + '</div>';
+    });
+  }
+
+  html += '</div></div>';
+
+  document.getElementById('rightPanel').innerHTML = html
+    + '<div class="export-row">'
+    + '<button class="exp-btn exp-orange" onclick="exportPrintSim()">🖨 Print / PDF</button>'
+    + '<button class="exp-btn exp-green" onclick="exportEmailText()">📧 Export Email Text</button>'
+    + '<button class="exp-btn exp-blue" onclick="exportFullReport()">📋 Full Report</button>'
+    + '</div>';
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  if (currentSim) renderSimulation(currentSim);
+}
+
+function answerQuiz(qi, oi, correct, explanation) {
+  // Mark correct/wrong
+  var prefix = 'qopt-' + qi + '-';
+  for (var i = 0; i < 4; i++) {
+    var el = document.getElementById(prefix + i);
+    if (!el) continue;
+    el.style.pointerEvents = 'none';
+    if (i === correct) el.classList.add('correct');
+    else if (i === oi && oi !== correct) el.classList.add('wrong');
+  }
+  var fb = document.getElementById('qfeedback-' + qi);
+  if (fb) {
+    fb.style.display = 'block';
+    fb.style.color = oi === correct ? 'var(--green)' : 'var(--red)';
+    fb.style.background = oi === correct ? 'var(--green-s)' : 'var(--red-s)';
+    fb.style.borderColor = oi === correct ? 'var(--green-b)' : 'var(--red-b)';
+    fb.textContent = (oi === correct ? '✓ Correct! ' : '✗ Incorrect. ') + explanation;
+  }
+}
+
+function copyAllFlags() {
+  if (!currentSim || !currentSim.redFlags) return;
+  var text = currentSim.redFlags.map(function(f, i) {
+    return (i+1) + '. ['+f.severity.toUpperCase()+'] ' + f.flag + '\n   ' + f.explanation + '\n   Location: ' + f.location;
+  }).join('\n\n');
+  navigator.clipboard.writeText(text).then(function() {
+    var btn = event.target; btn.textContent = 'Copied!';
+    setTimeout(function(){ btn.textContent = 'Copy All'; }, 2000);
+  });
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+function exportEmailText() {
+  if (!currentSim || !currentSim.email) return;
+  var e = currentSim.email;
+  var text = '=== PHISHING SIMULATION EMAIL — TRAINING ONLY ===\n\n'
+    + 'From: ' + (e.from||'') + '\n'
+    + 'Reply-To: ' + (e.replyTo||'') + '\n'
+    + 'To: ' + (e.to||'') + '\n'
+    + 'Subject: ' + (e.subject||'') + '\n\n'
+    + '---\n\n'
+    + (e.body||'').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') + '\n\n'
+    + '---\n'
+    + 'Campaign: ' + (currentSim.campaignTitle||'') + '\n'
+    + 'Difficulty: ' + (currentSim.difficulty||'') + '\n'
+    + 'For authorized security awareness training use only\n'
+    + 'Ghost Defense — DEFEND ALWAYS';
+  var blob = new Blob([text], {type:'text/plain'});
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'phishing-sim-email-' + new Date().toISOString().split('T')[0] + '.txt'; a.click();
+}
+
+function exportPrintSim() {
+  if (!currentSim) return;
+  var sim = currentSim;
+  var e   = sim.email || {};
+  var riskColor = { critical:'#dc2626', high:'#ea580c', medium:'#ca8a04', low:'#16a34a' }[sim.riskLevel] || '#6b7280';
+  var diffColor = { basic:'#16a34a', intermediate:'#ca8a04', advanced:'#ea580c', expert:'#dc2626' }[sim.difficulty] || '#6b7280';
+
+  var flagsHtml = (sim.redFlags||[]).map(function(f, i) {
+    var sc = {critical:'#dc2626',high:'#ea580c',medium:'#ca8a04'}[f.severity]||'#ca8a04';
+    return '<div style="display:flex;gap:10px;margin-bottom:8px;padding:8px 10px;border:1px solid '+sc+'44;border-left:3px solid '+sc+';border-radius:4px;background:'+sc+'0a">'
+      + '<span style="font-size:10px;font-weight:700;color:'+sc+';white-space:nowrap">['+f.severity.toUpperCase()+']</span>'
+      + '<div><div style="font-weight:600;font-size:11px">'+esc(f.flag||'')+'</div>'
+        + '<div style="font-size:11px;color:#374151">'+esc(f.explanation||'')+'</div>'
+        + '<div style="font-size:10px;color:#6b7280">Location: '+esc(f.location||'')+'</div></div></div>';
+  }).join('');
+
+  var trainingHtml = (sim.trainingPoints||[]).map(function(tp){
+    return '<div style="display:flex;gap:8px;margin-bottom:6px;font-size:11px"><span style="color:#16a34a;flex-shrink:0">•</span><span>'+esc(tp)+'</span></div>';
+  }).join('');
+
+  var emailBody = esc(e.body||'').replace(/\[([^\]]+)\]\([^)]+\)/g,
+    '<span style="color:#dc2626;text-decoration:underline;font-weight:700">$1 [PHISHING LINK]</span>');
+
+  var win = window.open('','_blank','width=900,height=700');
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Phishing Sim — '+esc(sim.campaignTitle||'')+'</title>'
+    +'<style>body{font-family:Calibri,Arial,sans-serif;margin:0;background:#fff;color:#111;font-size:12px}@page{size:A4;margin:14mm}@media print{body{background:#fff}}</style>'
+    +'</head><body>'
+    // Header
+    +'<div style="background:#0f172a;padding:16px 28px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div><div style="font-size:16px;font-weight:700;color:#f97316;letter-spacing:2px;font-family:monospace">GHOST DEFENSE</div>'
+        +'<div style="color:#9ca3af;font-size:10px;letter-spacing:2px;font-family:monospace;margin-top:2px">PHISHING SIMULATION — AUTHORIZED TRAINING ONLY</div></div>'
+      +'<div style="text-align:right"><span style="background:'+riskColor+'22;color:'+riskColor+';border:1px solid '+riskColor+'55;padding:2px 8px;border-radius:3px;font-weight:700;font-size:10px">RISK: '+(sim.riskLevel||'').toUpperCase()+'</span>'
+        +'<br><span style="background:'+diffColor+'22;color:'+diffColor+';border:1px solid '+diffColor+'55;padding:2px 8px;border-radius:3px;font-weight:700;font-size:10px;margin-top:4px;display:inline-block">'+(sim.difficulty||'').toUpperCase()+'</span></div>'
+    +'</div>'
+    +'<div style="padding:16px 28px">'
+      +'<h1 style="font-size:18px;margin-bottom:4px">'+esc(sim.campaignTitle||'')+'</h1>'
+      +'<div style="font-size:11px;color:#6b7280;margin-bottom:16px">'+esc(sim.pretext||'')+'  ·  Generated '+new Date().toLocaleDateString()+'</div>'
+      // Email preview
+      +'<div style="background:#fff;border:2px solid #1e293b;border-radius:6px;margin-bottom:14px;overflow:hidden">'
+        +'<div style="background:#1e293b;padding:8px 14px;color:#fff;font-size:11px;font-weight:700">📧 SIMULATED EMAIL</div>'
+        +'<div style="padding:10px 14px;background:#fef2f2;border-bottom:1px solid #fecaca;font-size:10px;font-weight:700;color:#dc2626">⚠ TRAINING SIMULATION — FOR AWARENESS TRAINING ONLY</div>'
+        +'<div style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-size:11px;font-family:monospace">'
+          +'<div><strong>From:</strong> '+esc(e.from||'')+'</div>'
+          +'<div><strong style="color:#dc2626">Reply-To:</strong> <span style="color:#dc2626">'+esc(e.replyTo||'')+'</span></div>'
+          +'<div><strong>To:</strong> '+esc(e.to||'')+'</div>'
+        +'</div>'
+        +'<div style="padding:10px 14px;font-weight:700;border-bottom:1px solid #e5e7eb">Subject: '+esc(e.subject||'')+'</div>'
+        +'<div style="padding:14px;font-size:12px;line-height:1.8;white-space:pre-wrap">'+emailBody+'</div>'
+      +'</div>'
+      // Red flags
+      +'<div style="margin-bottom:14px"><div style="background:#1e293b;color:#fff;padding:8px 14px;border-radius:6px 6px 0 0;font-size:11px;font-weight:700">🚩 RED FLAGS ('+( sim.redFlags||[]).length+')</div>'
+        +'<div style="border:1px solid #e5e7eb;border-top:none;border-radius:0 0 6px 6px;padding:10px">'+flagsHtml+'</div></div>'
+      // Training
+      +'<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:12px 14px;margin-bottom:14px">'
+        +'<div style="font-weight:700;font-size:11px;color:#15803d;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">📚 Key Training Points</div>'
+        +trainingHtml+'</div>'
+      // What to do
+      +(sim.whatToDoIfReceived&&sim.whatToDoIfReceived.length?'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:12px 14px;margin-bottom:14px">'
+        +'<div style="font-weight:700;font-size:11px;color:#1d4ed8;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">✅ What To Do If You Receive This</div>'
+        +(sim.whatToDoIfReceived||[]).map(function(s,i){return '<div style="display:flex;gap:8px;margin-bottom:5px;font-size:11px"><span style="background:#1d4ed8;color:#fff;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0">'+(i+1)+'</span><span>'+esc(s)+'</span></div>';}).join('')
+        +'</div>':'')
+    +'</div>'
+    +'<div style="background:#0f172a;padding:10px 28px;display:flex;justify-content:space-between;color:#9ca3af;font-size:10px">'
+      +'<span>Ghost Defense · Authorized Security Awareness Training · Never use against unauthorized targets</span>'
+      +'<span>DEFEND ALWAYS 🛡️</span>'
+    +'</div></body></html>');
+  win.document.close(); win.focus();
+  setTimeout(function(){ win.print(); }, 800);
+}
+
+function exportFullReport() {
+  exportPrintSim();
+}
+
+// ── LIBRARY ────────────────────────────────────────────────────────────────────
+var LIB_KEY = 'ghost2210_phish_sims';
+
+function saveToLibrary(sim) {
+  try {
+    var lib = getLibrary();
+    lib.unshift({ id:Date.now(), title:sim.campaignTitle||'Simulation', difficulty:sim.difficulty, date:new Date().toLocaleDateString(), sim });
+    if (lib.length > 20) lib = lib.slice(0,20);
+    localStorage.setItem(LIB_KEY, JSON.stringify(lib));
+    renderLibrary();
+  } catch(e) {}
+}
+
+function getLibrary() {
+  try { return JSON.parse(localStorage.getItem(LIB_KEY)||'[]'); } catch(e){ return []; }
+}
+
+function renderLibrary() {
+  var lib = getLibrary();
+  var el  = document.getElementById('libraryList');
+  if (!lib.length) {
+    el.innerHTML = '<div style="padding:12px 14px;font-size:11px;color:var(--muted);font-family:var(--mono)">No saved simulations</div>';
+    return;
+  }
+  el.innerHTML = lib.map(function(entry) {
+    var diffColor = { basic:'var(--green)', intermediate:'var(--yellow)', advanced:'var(--orange)', expert:'var(--red)' }[entry.difficulty] || 'var(--muted2)';
+    return '<div class="lib-item" onclick="loadEntry('+entry.id+')">'
+      + '<span style="font-size:14px;color:'+diffColor+'">🎣</span>'
+      + '<div style="flex:1;min-width:0"><div class="lib-name">'+esc(entry.title)+'</div><div class="lib-date">'+esc(entry.date)+'</div></div>'
+      + '<button class="lib-del" onclick="event.stopPropagation();delEntry('+entry.id+')">✕</button>'
+    + '</div>';
+  }).join('');
+}
+
+function loadEntry(id) {
+  var lib = getLibrary();
+  var e = lib.find(function(x){ return x.id === id; });
+  if (e && e.sim) { currentSim = e.sim; renderSimulation(e.sim); }
+}
+
+function delEntry(id) {
+  try {
+    var lib = getLibrary().filter(function(e){ return e.id !== id; });
+    localStorage.setItem(LIB_KEY, JSON.stringify(lib));
+    renderLibrary();
+  } catch(e) {}
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

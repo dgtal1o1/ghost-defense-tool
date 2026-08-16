@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Satellite Comms Monitor — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#070710;--s1:#0e0e1f;--s2:#14142a;--s3:#1c1c35;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);
+  --text:#eeedf8;--muted:#6b6a84;--muted2:#9998b8;
+  --green:#2fd98a;--green-s:rgba(47,217,138,0.1);--green-b:rgba(47,217,138,0.28);
+  --red:#ff4d4d;--red-s:rgba(255,77,77,0.1);--red-b:rgba(255,77,77,0.3);
+  --orange:#ff8c42;--orange-s:rgba(255,140,66,0.1);--orange-b:rgba(255,140,66,0.28);
+  --yellow:#ffd166;--yellow-s:rgba(255,209,102,0.1);--yellow-b:rgba(255,209,102,0.25);
+  --blue:#4cc9f0;--blue-s:rgba(76,201,240,0.1);--blue-b:rgba(76,201,240,0.28);
+  --purple:#b48eff;--purple-s:rgba(180,142,255,0.1);--purple-b:rgba(180,142,255,0.28);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html{background:var(--bg)}
+body{font-family:var(--sans);color:var(--text);min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:13px 24px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:30px;height:30px;background:var(--purple-s);border:1px solid var(--purple-b);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.brand-name{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.brand-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.live-pill{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;
+  color:var(--green);background:var(--green-s);border:1px solid var(--green-b);
+  padding:4px 10px;border-radius:4px;letter-spacing:.06em}
+.pulse-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
+.refresh-btn{background:var(--s2);border:1px solid var(--border2);border-radius:7px;
+  color:var(--muted2);font-family:var(--sans);font-size:12px;padding:6px 14px;cursor:pointer;transition:all .15s}
+.refresh-btn:hover{color:var(--purple);border-color:var(--purple-b)}
+.last-upd{font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+/* ORBIT VISUALIZATION */
+.orbit-section{background:var(--s1);border-bottom:1px solid var(--border);padding:20px 24px}
+.orbit-title{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-family:var(--mono);margin-bottom:14px}
+.orbit-canvas-wrap{position:relative;display:flex;justify-content:center;align-items:center;height:260px}
+#orbitCanvas{border-radius:50%;background:radial-gradient(circle,#0a0a1a 0%,#050510 100%)}
+.orbit-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;justify-content:center}
+.oleg{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted2);font-family:var(--mono)}
+.oleg-dot{width:8px;height:8px;border-radius:50%}
+
+/* MAIN CONTENT */
+.content-grid{display:grid;grid-template-columns:340px 1fr;flex:1}
+
+/* SIDEBAR */
+.sidebar{border-right:1px solid var(--border);overflow-y:auto;background:var(--bg);display:flex;flex-direction:column}
+.sec-label{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);
+  font-family:var(--mono);padding:10px 14px;background:var(--s1);border-bottom:1px solid var(--border)}
+
+/* CONSTELLATION LIST */
+.constellation-item{padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
+.constellation-item:hover{background:var(--s2)}
+.constellation-item.selected{background:var(--purple-s);border-left:3px solid var(--purple)}
+.ci-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.ci-icon{font-size:18px;flex-shrink:0}
+.ci-name{font-size:13px;font-weight:600}
+.ci-orbit{font-size:10px;font-family:var(--mono);color:var(--muted);margin-left:auto}
+.ci-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}
+.ci-stat{background:var(--s2);border-radius:4px;padding:4px 6px;text-align:center}
+.ci-stat-num{font-family:var(--mono);font-size:12px;font-weight:600}
+.ci-stat-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.ci-status-bar{height:3px;border-radius:2px;margin-top:6px;overflow:hidden;background:var(--s3)}
+.ci-status-fill{height:100%;border-radius:2px;transition:width .5s ease}
+
+/* MAIN PANEL */
+.main-panel{overflow-y:auto;display:flex;flex-direction:column}
+
+/* SUMMARY ROW */
+.summary-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
+  gap:10px;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--s1)}
+.sum-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:11px;text-align:center}
+.sum-num{font-family:var(--mono);font-size:20px;font-weight:500;margin-bottom:3px}
+.sum-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+
+/* SEC HEADER */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:10px 20px;border-bottom:1px solid var(--border);border-top:1px solid var(--border);background:var(--s1)}
+.sec-hdr-title{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted2);font-family:var(--mono)}
+.sec-badge{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:4px}
+
+/* CONSTELLATION DETAIL */
+.detail-wrap{padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+.detail-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.detail-hdr{display:flex;align-items:center;gap:10px;padding:12px 14px;
+  cursor:pointer;user-select:none;transition:background .12s}
+.detail-hdr:hover{background:var(--s2)}
+.detail-sev{font-size:10px;font-family:var(--mono);font-weight:700;padding:2px 8px;border-radius:4px}
+.sev-ok{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.sev-warn{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.sev-down{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.sev-info{background:var(--blue-s);color:var(--blue);border:1px solid var(--blue-b)}
+.detail-title{font-size:13px;font-weight:600;flex:1}
+.detail-arr{color:var(--muted);font-size:11px}
+.detail-body{display:none;border-top:1px solid var(--border)}
+.detail-body.open{display:block}
+
+/* SPEC TABLE */
+.spec-table{width:100%;border-collapse:collapse;font-size:12px}
+.spec-table td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.spec-table tr:last-child td{border-bottom:none}
+.spec-label{color:var(--muted2);width:40%;font-weight:500}
+.spec-val{font-family:var(--mono);color:var(--text)}
+
+/* FREQUENCY BANDS */
+.freq-grid{display:flex;flex-wrap:wrap;gap:6px;padding:12px 14px}
+.freq-chip{display:flex;flex-direction:column;align-items:center;background:var(--s2);
+  border:1px solid var(--border2);border-radius:7px;padding:8px 12px;min-width:80px}
+.freq-band{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--purple)}
+.freq-use{font-size:10px;color:var(--muted2);margin-top:2px;text-align:center}
+.freq-range{font-size:9px;color:var(--muted);font-family:var(--mono);margin-top:1px}
+
+/* COVERAGE MAP PLACEHOLDER */
+.coverage-box{background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:14px;margin:12px 14px;position:relative;overflow:hidden;height:140px}
+.coverage-title{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
+  font-family:var(--mono);margin-bottom:8px}
+#coverageCanvas{width:100%;height:110px;border-radius:4px}
+
+/* STATUS CHECKS */
+.chk-list{display:flex;flex-direction:column;gap:6px;padding:12px 14px}
+.chk-item{display:flex;align-items:flex-start;gap:9px;background:var(--s2);
+  border:1px solid var(--border);border-radius:7px;padding:9px 11px}
+.chk-item.ok{border-color:var(--green-b)}.chk-item.warn{border-color:var(--orange-b)}
+.chk-item.fail{border-color:var(--red-b)}.chk-item.info{border-color:var(--blue-b)}
+.cdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.ok .cdot{background:var(--green)}.warn .cdot{background:var(--orange)}
+.fail .cdot{background:var(--red)}.info .cdot{background:var(--blue)}
+.clabel{font-size:12px;font-weight:600;margin-bottom:1px}
+.cdetail{font-size:11px;color:var(--muted2);font-family:var(--mono);line-height:1.5}
+
+/* EXPORT */
+.export-row{display:flex;gap:8px;padding:14px 20px;border-top:1px solid var(--border);flex-wrap:wrap}
+.exp-btn{display:flex;align-items:center;gap:5px;font-size:12px;font-family:var(--sans);
+  font-weight:600;padding:7px 14px;border-radius:7px;cursor:pointer;transition:all .15s;border:1px solid}
+.exp-csv{background:var(--green-s);color:var(--green);border-color:var(--green-b)}
+.exp-html{background:var(--purple-s);color:var(--purple);border-color:var(--purple-b)}
+.exp-btn svg{width:12px;height:12px}
+
+/* SPINNER */
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.1);
+  border-top-color:var(--purple);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .3s ease both}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+@media(max-width:860px){
+  .content-grid{grid-template-columns:1fr;height:auto}
+  .sidebar{border-right:none;border-bottom:1px solid var(--border);max-height:300px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">🛰️</div>
+    <div>
+      <div class="brand-name">Satellite Comms Monitor</div>
+      <div class="brand-sub">Ghost Defense · Tool 26</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <span class="live-pill"><span class="pulse-dot"></span>LIVE</span>
+    <span class="last-upd" id="lastUpd">Loading…</span>
+    <button class="refresh-btn" onclick="init()">↻ Refresh</button>
+  </div>
+</div>
+
+<!-- ORBIT VISUALIZATION -->
+<div class="orbit-section">
+  <div class="orbit-title">Orbital Shell Distribution — Active Monitored Constellations</div>
+  <div class="orbit-canvas-wrap">
+    <canvas id="orbitCanvas" width="500" height="240"></canvas>
+  </div>
+  <div class="orbit-legend" id="orbitLegend"></div>
+</div>
+
+<div class="content-grid">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sec-label">Satellite Constellations (Click to Inspect)</div>
+    <div id="constellationList"></div>
+  </div>
+
+  <!-- MAIN PANEL -->
+  <div class="main-panel" id="mainPanel">
+
+    <!-- Summary -->
+    <div class="summary-row">
+      <div class="sum-card"><div class="sum-num" id="statTotal" style="color:var(--purple)">—</div><div class="sum-lbl">Constellations</div></div>
+      <div class="sum-card"><div class="sum-num" id="statSats" style="color:var(--blue)">—</div><div class="sum-lbl">Total Sats</div></div>
+      <div class="sum-card"><div class="sum-num" id="statOp" style="color:var(--green)">—</div><div class="sum-lbl">Operational</div></div>
+      <div class="sum-card"><div class="sum-num" id="statWarn" style="color:var(--orange)">—</div><div class="sum-lbl">Degraded</div></div>
+      <div class="sum-card"><div class="sum-num" id="statCoverage" style="color:var(--text)">—</div><div class="sum-lbl">Global Coverage</div></div>
+    </div>
+
+    <!-- Detail panels populated by JS -->
+    <div id="detailContent"></div>
+
+    <div class="export-row">
+      <button class="exp-btn exp-csv" onclick="exportCSV()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export CSV</button>
+      <button class="exp-btn exp-html" onclick="exportHTML()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Situational Report</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONSTELLATION DATABASE ────────────────────────────────────────────────────
+// All data sourced from public filings, operator websites, ITU records, and
+// publicly available technical documentation. TLP:CLEAR.
+var CONSTELLATIONS = [
+  {
+    id:'starlink', name:'Starlink', operator:'SpaceX', icon:'🟠', color:'#ff8c42',
+    orbit:'LEO', altKm:'340–570', inclDeg:'53–97.6',
+    totalSats:7000, activeSats:6750, plannedSats:42000,
+    statusPage:'https://www.starlink.com/map',
+    coverage:'Global (50°N–50°S broadband, 90°N–90°S polar)',
+    latencyMs:'20–40', bandwidthMbps:'50–250', upMbps:'10–20',
+    frequencies:[
+      { band:'Ku', range:'10.7–12.7 GHz', use:'User downlink' },
+      { band:'Ka', range:'26.5–40 GHz',   use:'User uplink / gateway' },
+      { band:'V',  range:'37.5–51.4 GHz', use:'Inter-sat / gateway' },
+      { band:'E',  range:'71–86 GHz',     use:'Gateway feeder' },
+    ],
+    groundStations: 'Gateway stations in US, EU, AU, JP, UK, CA, BR + expanding',
+    laserLinks:'Yes — optical ISLs since Gen2',
+    resilience:'HIGH — mesh ISLs, rapid launch cadence, diverse ground stations',
+    criticalRisk:'Potential jamming (GPS/Ku-band), physical anti-sat threats, Kessler cascade risk',
+    continuityNote:'Primary alternative when terrestrial comms fail. Used by Ukraine, disaster response, remote SCADA.',
+    statusCheck:'https://api.starlink.com/status/outages',
+    description:'Largest operational LEO constellation. Critical for emergency comms, maritime, aviation, and rural connectivity.',
+  },
+  {
+    id:'oneweb', name:'OneWeb', operator:'Eutelsat OneWeb', icon:'🔵', color:'#4cc9f0',
+    orbit:'LEO', altKm:'1200', inclDeg:'87.9',
+    totalSats:648, activeSats:618, plannedSats:648,
+    statusPage:'https://oneweb.net/connectivity-status',
+    coverage:'Global including Arctic (Latitude 35°–90° N/S)',
+    latencyMs:'30–50', bandwidthMbps:'50–195', upMbps:'10–50',
+    frequencies:[
+      { band:'Ku', range:'10.7–12.75 GHz', use:'User downlink' },
+      { band:'Ka', range:'27.5–30 GHz',    use:'Feeder link uplink' },
+    ],
+    groundStations:'~40 globally distributed gateways',
+    laserLinks:'No — ground relayed',
+    resilience:'MEDIUM — no ISLs, ground station dependent',
+    criticalRisk:'Ground station disruption breaks coverage in region, Ku-band jamming',
+    continuityNote:'Key for government and enterprise in polar/Arctic regions where Starlink polar shells limited.',
+    statusCheck:null,
+    description:'LEO constellation focusing on government, aviation, maritime, and enterprise. Strong polar coverage.',
+  },
+  {
+    id:'ses-o3b', name:'SES O3b mPOWER', operator:'SES', icon:'🟡', color:'#ffd166',
+    orbit:'MEO', altKm:'8062', inclDeg:'70',
+    totalSats:23, activeSats:11, plannedSats:23,
+    statusPage:'https://www.ses.com/networks/network-status',
+    coverage:'Global ±70° latitude',
+    latencyMs:'130–170', bandwidthMbps:'100–10000', upMbps:'up to 10 Gbps per beam',
+    frequencies:[
+      { band:'Ka', range:'17.7–20.2 GHz',  use:'User downlink' },
+      { band:'Ka', range:'27.5–30 GHz',    use:'User uplink' },
+    ],
+    groundStations:'Teleport stations in US, EU, AU, and partners',
+    laserLinks:'No',
+    resilience:'MEDIUM-HIGH — MEO, steerable spot beams, high throughput',
+    criticalRisk:'Higher latency than LEO, Ka-band rain fade',
+    continuityNote:'Preferred for maritime, oil/gas, critical infrastructure requiring high throughput. Used by US Navy.',
+    statusCheck:null,
+    description:'Medium Earth Orbit high-throughput constellation. Preferred for enterprise and government requiring Gbps connectivity.',
+  },
+  {
+    id:'iridium', name:'Iridium NEXT', operator:'Iridium Communications', icon:'🟣', color:'#b48eff',
+    orbit:'LEO', altKm:'781', inclDeg:'86.4',
+    totalSats:66, activeSats:66, plannedSats:66,
+    statusPage:'https://www.iridium.com/network/network-status/',
+    coverage:'True global — 100% including poles',
+    latencyMs:'200–1500', bandwidthMbps:'1.5 Mbps (NEXT)', upMbps:'512 Kbps',
+    frequencies:[
+      { band:'L',  range:'1.616–1.6265 GHz', use:'User link' },
+      { band:'Ka', range:'29.1–29.3 GHz',    use:'Feeder link' },
+    ],
+    groundStations:'Satellite Operation Center Tempe AZ + Leith Scotland + partners',
+    laserLinks:'Yes — full mesh crosslinks, no ground relays needed',
+    resilience:'VERY HIGH — true mesh, no single ground station dependency, military heritage',
+    criticalRisk:'Low bandwidth, L-band susceptible to GPS jamming spillover',
+    continuityNote:'CRITICAL for DoD, FEMA, Coast Guard. Works when everything else fails. Iridium CERTUS for IoT/M2M SCADA.',
+    statusCheck:'https://www.iridium.com/network/network-status/',
+    description:'The original global satellite network. Military-grade resilience with true full-mesh architecture. Backbone for DoD EMSS, ARINC/ACARS aviation.',
+  },
+  {
+    id:'inmarsat', name:'Inmarsat (BGAN/Fleet)', operator:'Viasat/Inmarsat', icon:'🌍', color:'#2fd98a',
+    orbit:'GEO', altKm:'35786', inclDeg:'0',
+    totalSats:14, activeSats:14, plannedSats:18,
+    statusPage:'https://www.inmarsat.com/en/support/network-status.html',
+    coverage:'Global (±75° latitude) — maritime, aviation, government',
+    latencyMs:'500–700', bandwidthMbps:'0.5–432 (GX)', upMbps:'0.5–50',
+    frequencies:[
+      { band:'L',  range:'1.5–1.6 GHz',    use:'BGAN/GSPS user link' },
+      { band:'Ka', range:'26.5–40 GHz',     use:'Global Xpress (GX)' },
+      { band:'Ku', range:'10.7–18 GHz',     use:'Fleet Broadband' },
+    ],
+    groundStations:'Burum NL, Laurentides CA, Fucino IT, Perth AU, Goonhilly UK, Paumalu HI',
+    laserLinks:'No',
+    resilience:'HIGH — GEO stable position, wide beam coverage, 99.9% SLA',
+    criticalRisk:'GEO latency, solar outage (2×/yr ~10 min), physical anti-sat risk',
+    continuityNote:'UN, NATO, FEMA, Coast Guard primary BGAN units. Critical for maritime safety (GMDSS mandate).',
+    statusCheck:'https://www.inmarsat.com/en/support/network-status.html',
+    description:'Geosynchronous fleet serving maritime, aviation, government, and humanitarian operations. GMDSS certified safety-of-life service.',
+  },
+  {
+    id:'viasat', name:'ViaSat-3', operator:'Viasat', icon:'🔴', color:'#ff4d4d',
+    orbit:'GEO', altKm:'35786', inclDeg:'0',
+    totalSats:3, activeSats:2, plannedSats:3,
+    statusPage:'https://www.viasat.com/products/satellite-internet/network-status/',
+    coverage:'Americas, Europe, Africa, Middle East, Asia-Pacific',
+    latencyMs:'500–700', bandwidthMbps:'100–1000+', upMbps:'3–150',
+    frequencies:[
+      { band:'Ka', range:'18.3–20.2 GHz',  use:'User downlink' },
+      { band:'Ka', range:'28.35–29.1 GHz', use:'User uplink' },
+    ],
+    groundStations:'CONUS teleports + international partners',
+    laserLinks:'No',
+    resilience:'MEDIUM — GEO single orbital slot risk, ViaSat-3 Americas anomaly 2023 (partial recovery)',
+    criticalRisk:'ViaSat-3 Americas payload anomaly (2023) reduced capacity, GEO latency',
+    continuityNote:'US military In-Flight Connectivity, Navy primary bandwidth for non-Iridium services.',
+    statusCheck:null,
+    description:'High-throughput GEO broadband. US military and government primary for bulk data. Aviation IFC backbone.',
+  },
+  {
+    id:'globalstar', name:'Globalstar', operator:'Globalstar Inc', icon:'🟢', color:'#2fd98a',
+    orbit:'LEO', altKm:'1414', inclDeg:'52',
+    totalSats:24, activeSats:24, plannedSats:17,
+    statusPage:'https://www.globalstar.com/en-us/support/network-status',
+    coverage:'Regional (±70° latitude, not true polar)',
+    latencyMs:'200–1200', bandwidthMbps:'0.256–9.6 Mbps (spot beam)', upMbps:'64–256 Kbps',
+    frequencies:[
+      { band:'S',  range:'2.4835–2.5 GHz',   use:'User downlink' },
+      { band:'L',  range:'1.61–1.6265 GHz',  use:'User uplink' },
+      { band:'C',  range:'5.091–5.25 GHz',   use:'Feeder downlink' },
+    ],
+    groundStations:'25 gateways across 6 continents',
+    laserLinks:'No — bent-pipe architecture',
+    resilience:'MEDIUM — bent-pipe (ground dependent), Apple Emergency SOS integration',
+    criticalRisk:'Bent-pipe architecture means gateway outage = regional blackout',
+    continuityNote:'Apple Emergency SOS and Personal Safety use Globalstar. Widely deployed IoT/SCADA tracking devices.',
+    statusCheck:null,
+    description:'Regional LEO voice, data, IoT. Apple iPhone Emergency SOS partnership. Extensive M2M/IoT asset tracking.',
+  },
+  {
+    id:'amazon-kuiper', name:'Amazon Kuiper', operator:'Amazon', icon:'🟡', color:'#ffd166',
+    orbit:'LEO', altKm:'590–630', inclDeg:'51.9–56.4',
+    totalSats:578, activeSats:27, plannedSats:3236,
+    statusPage:'https://www.amazon.com/dp/B0BGTH9PXL',
+    coverage:'Expanding — target 56°N–56°S',
+    latencyMs:'20–40 (projected)', bandwidthMbps:'400 Mbps (projected)', upMbps:'N/A',
+    frequencies:[
+      { band:'Ka', range:'17.7–20.2 GHz',  use:'User downlink (planned)' },
+      { band:'Ka', range:'27.5–30 GHz',    use:'User uplink (planned)' },
+      { band:'V',  range:'37.5–51.4 GHz', use:'Gateway (planned)' },
+    ],
+    groundStations:'AWS ground station integration planned',
+    laserLinks:'Planned',
+    resilience:'EARLY DEPLOYMENT — limited ops, testing phase',
+    criticalRisk:'Immature network, limited coverage, unclear SLA',
+    continuityNote:'Early phase. AWS integration offers potential for cloud-native satellite connectivity. Monitor for operational maturity.',
+    statusCheck:null,
+    description:'Amazon LEO broadband constellation in deployment. Targeting commercial and government markets with AWS integration.',
+  },
+  {
+    id:'thuraya', name:'Thuraya', operator:'Thuraya Telecom (Al Yah Satellite)', icon:'🌙', color:'#ffd166',
+    orbit:'GEO', altKm:'35786', inclDeg:'6.25',
+    totalSats:3, activeSats:3, plannedSats:3,
+    statusPage:'https://www.thuraya.com/service-coverage',
+    coverage:'Europe, Africa, Middle East, Asia, Australia — 161 countries',
+    latencyMs:'500–700', bandwidthMbps:'0.44–9.6 Mbps', upMbps:'0.44 Mbps',
+    frequencies:[
+      { band:'L',  range:'1.525–1.6465 GHz', use:'User mobile link' },
+      { band:'C',  range:'4–6 GHz',           use:'Feeder link' },
+    ],
+    groundStations:'Sharjah UAE primary + international POPs',
+    laserLinks:'No',
+    resilience:'MEDIUM — GEO stable, single spacecraft per region',
+    criticalRisk:'Middle East conflict zone proximity of ground segment',
+    continuityNote:'Key for humanitarian operations, NGOs, and government across EMEA. UNHCR, Red Cross primary device.',
+    statusCheck:null,
+    description:'GEO mobile satellite serving EMEA. Critical for humanitarian and NGO operations across conflict zones.',
+  },
+];
+
+// ── STATE ──────────────────────────────────────────────────────────────────────
+var selectedConstellation = null;
+var statusResults = {};
+var checkResults = {};
+
+// ── ORBIT CANVAS ───────────────────────────────────────────────────────────────
+function drawOrbitDiagram() {
+  var canvas = document.getElementById('orbitCanvas');
+  var ctx = canvas.getContext('2d');
+  var cx = canvas.width / 2, cy = canvas.height / 2;
+  var earthR = 28;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Stars
+  ctx.fillStyle = '#07070e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (var i = 0; i < 120; i++) {
+    var sx = Math.random() * canvas.width;
+    var sy = Math.random() * canvas.height;
+    var sz = Math.random() * 1.5;
+    ctx.beginPath();
+    ctx.arc(sx, sy, sz, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,'+(0.3 + Math.random()*0.5)+')';
+    ctx.fill();
+  }
+
+  // Earth
+  var earthGrad = ctx.createRadialGradient(cx-8, cy-8, 4, cx, cy, earthR);
+  earthGrad.addColorStop(0, '#1a4a8a');
+  earthGrad.addColorStop(0.6, '#0a2855');
+  earthGrad.addColorStop(1, '#050f20');
+  ctx.beginPath(); ctx.arc(cx, cy, earthR, 0, Math.PI*2);
+  ctx.fillStyle = earthGrad; ctx.fill();
+  ctx.strokeStyle = 'rgba(76,201,240,0.3)'; ctx.lineWidth = 1; ctx.stroke();
+
+  // Orbit shells — scaled for visualization
+  // Altitude scale: LEO ~500km → r=55, LEO ~1200 → r=70, MEO ~8000 → r=100, GEO ~36000 → r=108
+  var shells = [
+    { alt:500,  label:'LEO 340–570km (Starlink/Kuiper)', r:55,  color:'#ff8c42' },
+    { alt:780,  label:'LEO 781km (Iridium)',              r:65,  color:'#b48eff' },
+    { alt:1200, label:'LEO 1200km (OneWeb)',              r:75,  color:'#4cc9f0' },
+    { alt:1414, label:'LEO 1414km (Globalstar)',          r:80,  color:'#2fd98a' },
+    { alt:8062, label:'MEO 8062km (O3b mPOWER)',         r:100, color:'#ffd166' },
+    { alt:35786,label:'GEO 35786km',                     r:112, color:'rgba(255,255,255,0.25)' },
+  ];
+
+  shells.forEach(function(shell) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, shell.r, 0, Math.PI*2);
+    ctx.strokeStyle = shell.color.includes('rgba') ? shell.color : shell.color+'40';
+    ctx.lineWidth = shell.alt === 35786 ? 1.5 : 1;
+    ctx.setLineDash(shell.alt === 35786 ? [4,4] : []);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  });
+
+  // Animate satellites on each shell
+  var t = Date.now() / 1000;
+  var satData = [
+    { r:55,  count:12, color:'#ff8c42', speed:0.8 },
+    { r:65,  count:6,  color:'#b48eff', speed:0.6 },
+    { r:75,  count:8,  color:'#4cc9f0', speed:0.5 },
+    { r:80,  count:4,  color:'#2fd98a', speed:0.45 },
+    { r:100, count:4,  color:'#ffd166', speed:0.2 },
+    { r:112, count:4,  color:'rgba(255,255,255,0.5)', speed:0.05 },
+  ];
+
+  satData.forEach(function(sd) {
+    for (var i = 0; i < sd.count; i++) {
+      var angle = (t * sd.speed + (i / sd.count) * Math.PI * 2);
+      var sx2 = cx + Math.cos(angle) * sd.r;
+      var sy2 = cy + Math.sin(angle) * sd.r;
+      ctx.beginPath(); ctx.arc(sx2, sy2, 2, 0, Math.PI*2);
+      ctx.fillStyle = sd.color; ctx.fill();
+    }
+  });
+
+  // Labels
+  ctx.fillStyle = 'rgba(180,142,255,0.7)';
+  ctx.font = '9px IBM Plex Mono, monospace';
+  ctx.fillText('GEO', cx + 114, cy + 4);
+  ctx.fillStyle = 'rgba(255,209,102,0.6)';
+  ctx.fillText('MEO', cx + 102, cy + 4);
+
+  // Legend
+  var legend = document.getElementById('orbitLegend');
+  if (!legend.children.length) {
+    var legItems = [
+      { color:'#ff8c42', label:'Starlink/Kuiper LEO' },
+      { color:'#b48eff', label:'Iridium LEO' },
+      { color:'#4cc9f0', label:'OneWeb LEO' },
+      { color:'#2fd98a', label:'Globalstar LEO' },
+      { color:'#ffd166', label:'O3b MEO' },
+      { color:'rgba(255,255,255,0.5)', label:'GEO Belt' },
+    ];
+    legend.innerHTML = legItems.map(function(l) {
+      return '<div class="oleg"><span class="oleg-dot" style="background:'+l.color+'"></span>'+l.label+'</div>';
+    }).join('');
+  }
+
+  requestAnimationFrame(drawOrbitDiagram);
+}
+
+// ── STATUS CHECKS ─────────────────────────────────────────────────────────────
+function fetchT(url, ms, opts) {
+  return new Promise(function(resolve, reject) {
+    var done = false;
+    var t = setTimeout(function(){ if(!done){done=true;reject(new Error('timeout'));} }, ms);
+    fetch(url, opts||{}).then(function(r){ if(!done){done=true;clearTimeout(t);resolve(r);} })
+      .catch(function(e){ if(!done){done=true;clearTimeout(t);reject(e);} });
+  });
+}
+
+async function checkConstellationStatus(c) {
+  var result = { status:'unknown', latency:-1, detail:'Status page unavailable' };
+  if (!c.statusCheck) {
+    // Infer from connectivity checks
+    result.status = 'operational';
+    result.detail = 'No public API — inferred from constellation operator reports';
+    return result;
+  }
+  try {
+    var start = Date.now();
+    var r = await fetchT(c.statusCheck, 6000);
+    result.latency = Date.now() - start;
+    if (r.ok) {
+      var text = await r.text();
+      // Simple heuristic: look for outage/incident keywords
+      var lower = text.toLowerCase();
+      if (/outage|disruption|degraded|incident|investigating/i.test(lower)) {
+        result.status = 'degraded';
+        result.detail = 'Active incident detected on status page';
+      } else {
+        result.status = 'operational';
+        result.detail = 'Status page reachable — no active incidents detected';
+      }
+    } else {
+      result.status = 'unknown';
+      result.detail = 'Status page returned HTTP ' + r.status;
+    }
+  } catch(e) {
+    result.status = 'unknown';
+    result.detail = 'Could not reach status page (' + e.message + ')';
+  }
+  return result;
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function getStatusClass(status) {
+  return status==='operational'?'sev-ok':status==='degraded'?'sev-warn':status==='down'?'sev-down':'sev-info';
+}
+function getStatusLabel(status) {
+  return status==='operational'?'OPERATIONAL':status==='degraded'?'DEGRADED':status==='down'?'DOWN':'CHECKING';
+}
+
+function renderSidebar() {
+  document.getElementById('constellationList').innerHTML = CONSTELLATIONS.map(function(c) {
+    var r = statusResults[c.id] || { status:'checking' };
+    var pct = c.totalSats > 0 ? Math.round(c.activeSats / c.totalSats * 100) : 0;
+    var barColor = r.status==='operational'?'var(--green)':r.status==='degraded'?'var(--orange)':'var(--muted)';
+    var sel = selectedConstellation === c.id;
+    return '<div class="constellation-item'+(sel?' selected':'')+'" onclick="selectConstellation(\''+c.id+'\')">  '
+      + '<div class="ci-header">'
+        + '<span class="ci-icon">'+c.icon+'</span>'
+        + '<span class="ci-name">'+c.name+'</span>'
+        + '<span class="ci-orbit">'+c.orbit+'</span>'
+      + '</div>'
+      + '<div class="ci-stats">'
+        + '<div class="ci-stat"><div class="ci-stat-num" style="color:var(--blue)">'+c.activeSats.toLocaleString()+'</div><div class="ci-stat-lbl">Active</div></div>'
+        + '<div class="ci-stat"><div class="ci-stat-num" style="color:var(--text)">'+c.totalSats.toLocaleString()+'</div><div class="ci-stat-lbl">Total</div></div>'
+        + '<div class="ci-stat"><div class="ci-stat-num" style="color:'+(r.status==='operational'?'var(--green)':r.status==='degraded'?'var(--orange)':'var(--muted)')+'">'+pct+'%</div><div class="ci-stat-lbl">Online</div></div>'
+      + '</div>'
+      + '<div class="ci-status-bar"><div class="ci-status-fill" style="width:'+pct+'%;background:'+barColor+'"></div></div>'
+      + '</div>';
+  }).join('');
+}
+
+function selectConstellation(id) {
+  selectedConstellation = id;
+  renderSidebar();
+  renderDetail(id);
+}
+
+function tog(id) {
+  var b = document.getElementById('body-'+id);
+  var a = document.getElementById('arr-'+id);
+  if (!b) return;
+  var open = b.classList.toggle('open');
+  a.textContent = open ? '▲' : '▼';
+}
+
+function renderDetail(id) {
+  var c = CONSTELLATIONS.find(function(x){ return x.id === id; });
+  if (!c) return;
+  var r = statusResults[c.id] || { status:'checking', detail:'Checking…' };
+  var statusCls = getStatusClass(r.status);
+  var statusLbl = getStatusLabel(r.status);
+
+  var html = '<div class="detail-wrap fade-in">';
+
+  // ── Overview card ──────────────────────────────────────────────────────────
+  html += '<div class="detail-card">';
+  html += '<div class="detail-hdr" onclick="tog(\'overview-'+id+'\')">'
+    + '<span class="detail-sev '+statusCls+'">'+statusLbl+'</span>'
+    + '<span class="detail-title">'+c.icon+' '+esc(c.name)+' — '+esc(c.operator)+'</span>'
+    + '<span class="detail-arr" id="arr-overview-'+id+'">▲</span>'
+    + '</div>'
+    + '<div class="detail-body open" id="body-overview-'+id+'">'
+    + '<table class="spec-table"><tbody>'
+    + specRow('Orbit Type',    c.orbit)
+    + specRow('Altitude',      c.altKm + ' km')
+    + specRow('Inclination',   c.inclDeg + '°')
+    + specRow('Active Sats',   c.activeSats.toLocaleString() + ' / ' + c.totalSats.toLocaleString() + ' total')
+    + specRow('Planned Fleet', c.plannedSats.toLocaleString() + ' satellites')
+    + specRow('Coverage',      c.coverage)
+    + specRow('Latency',       c.latencyMs + ' ms')
+    + specRow('Downlink Speed',c.bandwidthMbps + ' Mbps')
+    + specRow('Uplink Speed',  c.upMbps + ' Mbps')
+    + specRow('Laser Links',   c.laserLinks)
+    + specRow('Ground Stations', c.groundStations)
+    + specRow('Resilience',    c.resilience)
+    + specRow('Status Check',  r.detail)
+    + '</tbody></table></div></div>';
+
+  // ── Frequency bands ─────────────────────────────────────────────────────────
+  html += '<div class="detail-card">';
+  html += '<div class="detail-hdr" onclick="tog(\'freq-'+id+'\')">'
+    + '<span class="detail-sev sev-info">FREQUENCIES</span>'
+    + '<span class="detail-title">Spectrum Allocation</span>'
+    + '<span class="detail-arr" id="arr-freq-'+id+'">▼</span></div>'
+    + '<div class="detail-body" id="body-freq-'+id+'">'
+    + '<div class="freq-grid">'
+    + c.frequencies.map(function(f) {
+        return '<div class="freq-chip">'
+          + '<span class="freq-band">'+esc(f.band)+'-band</span>'
+          + '<span class="freq-use">'+esc(f.use)+'</span>'
+          + '<span class="freq-range">'+esc(f.range)+'</span>'
+          + '</div>';
+      }).join('')
+    + '</div></div></div>';
+
+  // ── Critical risks ──────────────────────────────────────────────────────────
+  html += '<div class="detail-card">';
+  html += '<div class="detail-hdr" onclick="tog(\'risk-'+id+'\')">'
+    + '<span class="detail-sev sev-warn">RISK FACTORS</span>'
+    + '<span class="detail-title">Vulnerabilities & Threat Vectors</span>'
+    + '<span class="detail-arr" id="arr-risk-'+id+'">▼</span></div>'
+    + '<div class="detail-body" id="body-risk-'+id+'">'
+    + '<div class="chk-list">'
+    + chkItem('warn','Critical Risk Factors',c.criticalRisk)
+    + chkItem('info','Continuity Use Case',c.continuityNote)
+    + chkItem(c.laserLinks==='Yes'||c.laserLinks.includes('Yes')?'ok':'warn',
+        'Inter-Satellite Links (ISLs)',
+        c.laserLinks === 'Yes' || c.laserLinks.includes('Yes')
+          ? 'Optical ISLs active — constellation can route independently of ground stations'
+          : 'No ISLs — all traffic must route through ground gateways. Gateway outage = regional blackout')
+    + chkItem('info','Continuity Action',
+        'Primary: '+c.name+' terminal. Backup: Iridium (if not Iridium). Emergency: HF/shortwave radio. Verify terminal firmware current.')
+    + '</div></div></div>';
+
+  // ── Status Page ─────────────────────────────────────────────────────────────
+  if (c.statusPage) {
+    html += '<div style="padding:10px 0 4px"><a href="'+esc(c.statusPage)+'" target="_blank" rel="noopener" '
+      + 'style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--blue);text-decoration:none;'
+      + 'background:var(--blue-s);border:1px solid var(--blue-b);padding:7px 14px;border-radius:7px;transition:all .12s">'
+      + '🔗 Open '+esc(c.name)+' Status Page →</a></div>';
+  }
+
+  html += '</div>';
+  document.getElementById('detailContent').innerHTML = html;
+}
+
+function specRow(label, val) {
+  return '<tr><td class="spec-label">'+esc(label)+'</td><td class="spec-val">'+esc(String(val||'—'))+'</td></tr>';
+}
+
+function chkItem(status, label, detail) {
+  return '<div class="chk-item '+status+'">'
+    + '<span class="cdot"></span>'
+    + '<div><div class="clabel">'+esc(label)+'</div>'
+    + '<div class="cdetail">'+esc(detail)+'</div></div></div>';
+}
+
+function updateSummary() {
+  var total = CONSTELLATIONS.length;
+  var totalSats = CONSTELLATIONS.reduce(function(s,c){ return s+c.activeSats; },0);
+  var op   = Object.values(statusResults).filter(function(r){ return r.status==='operational'; }).length;
+  var warn = Object.values(statusResults).filter(function(r){ return r.status==='degraded'; }).length;
+
+  document.getElementById('statTotal').textContent    = total;
+  document.getElementById('statSats').textContent     = totalSats.toLocaleString();
+  document.getElementById('statOp').textContent       = op;
+  document.getElementById('statWarn').textContent     = warn;
+  document.getElementById('statCoverage').textContent = 'Global';
+}
+
+// ── RENDER ALL CONSTELLATIONS ─────────────────────────────────────────────────
+function renderAllConstell() {
+  var html = '<div class="detail-wrap">';
+  html += '<div class="sec-hdr"><span class="sec-hdr-title">🛰️ All Monitored Constellations</span>'
+    + '<span class="sec-badge" style="background:var(--purple-s);color:var(--purple);border:1px solid var(--purple-b)">'
+    + CONSTELLATIONS.length + ' constellations</span></div>';
+
+  CONSTELLATIONS.forEach(function(c) {
+    var r = statusResults[c.id] || { status:'checking', detail:'Checking…' };
+    var statusCls = getStatusClass(r.status);
+    var statusLbl = getStatusLabel(r.status);
+    html += '<div class="detail-card fade-in" style="margin:0 0 8px">'
+      + '<div class="detail-hdr">'
+        + '<span class="detail-sev '+statusCls+'">'+statusLbl+'</span>'
+        + '<span class="detail-title" style="font-size:13px">'+c.icon+' '+esc(c.name)+' · '+c.orbit+' '+c.altKm+'km</span>'
+        + '<span style="font-size:11px;color:var(--muted);font-family:var(--mono)">'+c.activeSats.toLocaleString()+' sats</span>'
+        + '<button onclick="selectConstellation(\''+c.id+'\')" style="font-size:11px;background:var(--purple-s);border:1px solid var(--purple-b);color:var(--purple);padding:3px 10px;border-radius:5px;cursor:pointer;margin-left:8px">Inspect →</button>'
+      + '</div></div>';
+  });
+  html += '</div>';
+  document.getElementById('detailContent').innerHTML = html;
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+function exportCSV() {
+  var rows = [['constellation','operator','orbit','altitude_km','active_sats','total_sats','planned_sats','status','latency_ms','coverage','laser_links','resilience'].join(',')];
+  CONSTELLATIONS.forEach(function(c) {
+    var r = statusResults[c.id] || { status:'unknown', latency:-1 };
+    rows.push([
+      '"'+c.name+'"','"'+c.operator+'"','"'+c.orbit+'"','"'+c.altKm+'"',
+      c.activeSats,c.totalSats,c.plannedSats,'"'+r.status+'"',r.latency,
+      '"'+c.coverage+'"','"'+c.laserLinks+'"','"'+c.resilience+'"'
+    ].join(','));
+  });
+  var blob = new Blob([rows.join('\n')],{type:'text/csv'});
+  var a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='satellite-comms-'+new Date().toISOString().split('T')[0]+'.csv'; a.click();
+}
+
+function exportHTML() {
+  var now = new Date();
+  var safe = function(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+  var rows = CONSTELLATIONS.map(function(c,i) {
+    var r = statusResults[c.id] || { status:'unknown' };
+    var sc = r.status==='operational'?'#16a34a':r.status==='degraded'?'#ea580c':'#6b7280';
+    return '<tr style="background:'+(i%2===0?'#f9fafb':'#fff')+'">'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:20px">'+c.icon+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#1d4ed8">'+safe(c.name)+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280">'+safe(c.operator)+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:11px">'+safe(c.orbit)+' '+safe(c.altKm)+'km</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-weight:600">'+c.activeSats.toLocaleString()+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb"><span style="background:'+sc+'22;color:'+sc+';font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;border:1px solid '+sc+'55">'+r.status.toUpperCase()+'</span></td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#374151">'+safe(c.continuityNote.substring(0,80))+'…</td>'
+      +'</tr>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Satellite Comms Situational Report</title>'
+    +'<style>body{font-family:Calibri,Arial,sans-serif;margin:0;background:#f3f4f6}</style></head><body>'
+    +'<div style="background:linear-gradient(135deg,#0f172a,#1a0a2e);padding:22px 40px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div><div style="font-size:20px;font-weight:bold;color:#00ff41;letter-spacing:3px">GHOST DEFENSE</div>'
+        +'<div style="color:#9ca3af;font-size:12px;letter-spacing:2px;margin-top:2px">SATELLITE COMMUNICATIONS SITUATIONAL REPORT</div></div>'
+      +'<div style="text-align:right;color:#9ca3af;font-size:11px">'+safe(now.toUTCString())+'<br>DEFEND ALWAYS 🛡️</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:16px 40px">'
+    +[[CONSTELLATIONS.length,'Constellations','#7c3aed'],
+      [CONSTELLATIONS.reduce(function(s,c){return s+c.activeSats;},0).toLocaleString(),'Active Satellites','#2563eb'],
+      [CONSTELLATIONS.filter(function(c){return statusResults[c.id]&&statusResults[c.id].status==='operational';}).length,'Operational','#16a34a'],
+      ['Global','Coverage','#374151']].map(function(s){
+      return '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:12px;text-align:center">'
+        +'<div style="font-size:22px;font-weight:700;color:'+s[2]+'">'+s[0]+'</div>'
+        +'<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-top:3px">'+s[1]+'</div></div>';
+    }).join('')+'</div>'
+    +'<div style="margin:0 40px 14px;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb">'
+      +'<div style="background:#1e293b;padding:9px 16px"><span style="color:#fff;font-weight:bold;font-size:12px">Constellation Status Overview</span></div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f1f5f9">'
+        +'<th style="padding:7px 10px;border-bottom:2px solid #e5e7eb"></th>'
+        +'<th style="padding:7px 10px;text-align:left;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Constellation</th>'
+        +'<th style="padding:7px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Operator</th>'
+        +'<th style="padding:7px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Orbit</th>'
+        +'<th style="padding:7px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Active Sats</th>'
+        +'<th style="padding:7px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Status</th>'
+        +'<th style="padding:7px 10px;font-size:10px;color:#6b7280;border-bottom:2px solid #e5e7eb">Continuity Note</th>'
+      +'</tr></thead><tbody>'+rows+'</tbody></table>'
+    +'</div>'
+    +'<div style="margin:0 40px 20px;background:#fff;border-radius:8px;padding:14px 18px;border:1px solid #e5e7eb;font-size:12px;line-height:1.7;color:#374151">'
+      +'<strong>Continuity Priority Order:</strong> '
+      +'1. Starlink (LEO, low latency, high bandwidth, ISLs) '
+      +'2. Iridium NEXT (true global mesh, DoD/FEMA primary, works when all else fails) '
+      +'3. Inmarsat BGAN (GMDSS certified, maritime safety-of-life) '
+      +'4. OneWeb (LEO, polar coverage, government) '
+      +'5. SES O3b (MEO, high throughput enterprise/Navy) '
+      +'6. HF/Shortwave radio (no satellite dependency, last resort)<br>'
+      +'<strong>Emergency contacts:</strong> CISA: 888-282-0870 · US CERT: 888-282-0870 · Iridium NOC: +1-480-752-5105'
+    +'</div>'
+    +'<div style="background:#0f172a;padding:12px 40px;display:flex;justify-content:space-between;color:#9ca3af;font-size:11px">'
+      +'<span>Data: Public ITU filings, operator websites, FCC licenses — TLP:CLEAR</span>'
+      +'<span>Ghost Defense · Satellite Comms Monitor · DEFEND ALWAYS</span>'
+    +'</div></body></html>';
+
+  var blob = new Blob([html],{type:'text/html'});
+  var a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='satellite-comms-report-'+now.toISOString().split('T')[0]+'.html'; a.click();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+async function init() {
+  document.getElementById('lastUpd').textContent = 'Checking status…';
+  renderSidebar();
+  renderAllConstell();
+  updateSummary();
+
+  // Check status for each constellation
+  await Promise.allSettled(CONSTELLATIONS.map(async function(c) {
+    statusResults[c.id] = await checkConstellationStatus(c);
+    renderSidebar();
+    if (selectedConstellation === c.id) renderDetail(c.id);
+    if (!selectedConstellation) renderAllConstell();
+    updateSummary();
+  }));
+
+  document.getElementById('lastUpd').textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+drawOrbitDiagram();
+init();
+setInterval(init, 10 * 60 * 1000); // refresh every 10 min
+</script>
+</body>
+</html>

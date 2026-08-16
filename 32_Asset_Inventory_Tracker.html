@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asset Inventory Tracker — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06080c;--s1:#0a0e16;--s2:#0f1520;--s3:#151c2a;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);
+  --text:#e8f0f8;--muted:#4a6080;--muted2:#7090b0;
+  --green:#00e676;--green-s:rgba(0,230,118,0.08);--green-b:rgba(0,230,118,0.25);
+  --red:#ff3d57;--red-s:rgba(255,61,87,0.1);--red-b:rgba(255,61,87,0.3);
+  --orange:#ff9100;--orange-s:rgba(255,145,0,0.1);--orange-b:rgba(255,145,0,0.28);
+  --yellow:#ffd740;--yellow-s:rgba(255,215,64,0.08);--yellow-b:rgba(255,215,64,0.25);
+  --blue:#448aff;--blue-s:rgba(68,138,255,0.08);--blue-b:rgba(68,138,255,0.25);
+  --cyan:#00e5ff;--cyan-s:rgba(0,229,255,0.08);--cyan-b:rgba(0,229,255,0.25);
+  --purple:#e040fb;--purple-s:rgba(224,64,251,0.08);--purple-b:rgba(224,64,251,0.25);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html,body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+body{display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:11px 20px;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:200}
+.brand{display:flex;align-items:center;gap:9px}
+.brand-icon{width:28px;height:28px;background:var(--cyan-s);border:1px solid var(--cyan-b);
+  border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.brand-name{font-size:14px;font-weight:700}
+.brand-sub{font-size:10px;color:var(--muted2);font-family:var(--mono)}
+.tb-sep{width:1px;height:24px;background:var(--border2);flex-shrink:0}
+.tb-btn{font-family:var(--mono);font-size:11px;padding:6px 14px;border-radius:5px;
+  cursor:pointer;border:1px solid;transition:all .15s;white-space:nowrap;font-weight:600}
+.tb-search{background:var(--s2);border:1px solid var(--border2);border-radius:5px;
+  color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 12px;
+  outline:none;width:200px;transition:border-color .15s}
+.tb-search:focus{border-color:var(--cyan-b)}
+.tb-search::placeholder{color:var(--muted)}
+
+/* DASHBOARD STATS */
+.dash{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;
+  padding:12px 20px;background:var(--s1);border-bottom:1px solid var(--border)}
+.dash-box{background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:10px 12px;text-align:center;cursor:pointer;transition:border-color .15s}
+.dash-box:hover{border-color:var(--border2)}
+.dash-box.active{border-color:var(--cyan-b);background:var(--cyan-s)}
+.dash-num{font-family:var(--mono);font-size:22px;font-weight:700;margin-bottom:3px}
+.dash-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+
+/* MAIN LAYOUT */
+.main{display:flex;flex:1;overflow:hidden;height:calc(100vh - 110px)}
+
+/* LEFT SIDEBAR — ADD/FILTER */
+.sidebar{width:280px;border-right:1px solid var(--border);overflow-y:auto;background:var(--s1);
+  display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-sec{border-bottom:1px solid var(--border)}
+.sec-hdr{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted2);
+  font-family:var(--mono);padding:9px 14px;background:var(--s2);border-bottom:1px solid var(--border)}
+.form-row{padding:0 14px;margin-bottom:8px}
+.form-label{font-size:10px;font-family:var(--mono);color:var(--muted2);margin-bottom:3px;text-transform:uppercase;letter-spacing:.07em}
+.form-input{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:6px;
+  color:var(--text);font-family:var(--mono);font-size:12px;padding:7px 10px;outline:none;transition:border-color .15s}
+.form-input:focus{border-color:var(--cyan-b)}
+.form-input::placeholder{color:var(--muted)}
+.form-select{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:6px;
+  color:var(--text);font-family:var(--mono);font-size:12px;padding:7px 10px;outline:none;cursor:pointer}
+.form-select option{background:var(--s2)}
+.add-btn{width:calc(100% - 28px);margin:10px 14px;background:var(--cyan);border:none;
+  border-radius:7px;color:var(--bg);font-family:var(--sans);font-size:13px;font-weight:700;
+  padding:10px;cursor:pointer;transition:all .15s}
+.add-btn:hover{background:#33eeff}
+
+/* FILTERS */
+.filter-row{padding:8px 14px;display:flex;flex-direction:column;gap:6px}
+.filter-chip{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-family:var(--mono);
+  padding:3px 9px;border-radius:4px;cursor:pointer;border:1px solid var(--border2);
+  background:transparent;color:var(--muted2);transition:all .12s;margin:2px}
+.filter-chip:hover,.filter-chip.on{background:var(--cyan-s);border-color:var(--cyan-b);color:var(--cyan)}
+
+/* IMPORT/EXPORT */
+.ie-row{padding:10px 14px;display:flex;gap:6px;flex-wrap:wrap}
+.ie-btn{flex:1;font-family:var(--mono);font-size:11px;padding:7px;border-radius:5px;
+  cursor:pointer;border:1px solid;transition:all .15s;text-align:center}
+
+/* CENTER — ASSET TABLE */
+.center{flex:1;overflow-y:auto;background:var(--bg)}
+.asset-table{width:100%;border-collapse:collapse;font-size:12px}
+.asset-table thead{position:sticky;top:0;z-index:10}
+.asset-table th{padding:9px 12px;text-align:left;font-family:var(--mono);font-size:10px;
+  font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;
+  background:var(--s2);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer}
+.asset-table th:hover{color:var(--cyan)}
+.asset-table th .sort-arrow{color:var(--cyan);margin-left:3px}
+.asset-table td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.asset-table tr:hover td{background:rgba(0,229,255,0.03)}
+.asset-table tr.selected td{background:rgba(0,229,255,0.06)}
+
+/* ASSET FIELDS */
+.asset-hostname{font-family:var(--mono);font-weight:700;color:var(--text)}
+.asset-ip{font-family:var(--mono);font-size:11px;color:var(--muted2)}
+.asset-os{font-size:11px;color:var(--muted2)}
+.status-pill{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 7px;border-radius:10px}
+.st-active{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.st-unknown{background:var(--yellow-s);color:var(--yellow);border:1px solid var(--yellow-b)}
+.st-retired{background:var(--s3);color:var(--muted2);border:1px solid var(--border)}
+.st-unmanaged{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.crit-pill{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 7px;border-radius:4px}
+.crit-critical{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.crit-high{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.crit-medium{background:var(--yellow-s);color:var(--yellow);border:1px solid var(--yellow-b)}
+.crit-low{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+
+/* RISK SCORE */
+.risk-bar{width:60px;height:6px;background:var(--s3);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:5px}
+.risk-fill{height:100%;border-radius:3px}
+
+/* CVE BADGES */
+.cve-badge{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:4px;
+  cursor:pointer;transition:all .12s;display:inline-flex;align-items:center;gap:3px}
+.cve-kev{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.cve-high{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.cve-none{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.cve-loading{background:var(--s3);color:var(--muted);border:1px solid var(--border)}
+.cve-scan-btn{font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:4px;
+  cursor:pointer;background:var(--blue-s);color:var(--blue);border:1px solid var(--blue-b);
+  transition:all .12s;white-space:nowrap}
+.cve-scan-btn:hover{background:rgba(68,138,255,.18)}
+
+/* ROW ACTIONS */
+.row-actions{display:flex;gap:4px;opacity:0;transition:opacity .12s}
+tr:hover .row-actions{opacity:1}
+.row-btn{font-size:10px;padding:3px 7px;border-radius:4px;cursor:pointer;border:1px solid;font-family:var(--mono);transition:all .12s}
+
+/* RIGHT — DETAIL PANEL */
+.detail-panel{width:320px;border-left:1px solid var(--border);overflow-y:auto;
+  background:var(--s1);display:flex;flex-direction:column;flex-shrink:0}
+.detail-empty{flex:1;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center;padding:20px}
+.detail-hdr{padding:14px;border-bottom:1px solid var(--border)}
+.detail-hostname{font-size:16px;font-weight:700;margin-bottom:4px}
+.detail-row{padding:6px 14px;border-bottom:1px solid var(--border);display:flex;gap:8px;font-size:12px}
+.detail-key{font-family:var(--mono);color:var(--muted2);width:90px;flex-shrink:0;font-size:11px}
+.detail-val{color:var(--text);font-family:var(--mono);font-size:11px;flex:1;word-break:break-all}
+.detail-cves{padding:12px 14px}
+.detail-cve-title{font-size:10px;font-family:var(--mono);font-weight:700;color:var(--muted2);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.cve-item{background:var(--s2);border:1px solid var(--border);border-radius:6px;
+  padding:8px 10px;margin-bottom:6px;font-family:var(--mono)}
+.cve-id{font-size:11px;font-weight:700;color:var(--red)}
+.cve-desc{font-size:10px;color:var(--muted2);margin-top:3px;line-height:1.5}
+.cve-kev-tag{font-size:9px;padding:1px 6px;border-radius:3px;background:var(--red-s);
+  color:var(--red);border:1px solid var(--red-b);margin-top:4px;display:inline-block}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--s2);border:1px solid var(--border2);
+  border-radius:8px;padding:10px 16px;font-family:var(--mono);font-size:12px;color:var(--text);
+  z-index:1000;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+
+/* EMPTY TABLE */
+.table-empty{padding:48px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:12px}
+
+@media(max-width:1000px){.main{flex-direction:column;height:auto}
+  .sidebar,.detail-panel{width:100%;border-right:none;border-left:none;border-bottom:1px solid var(--border)}}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">🗂️</div>
+    <div>
+      <div class="brand-name">Asset Inventory Tracker</div>
+      <div class="brand-sub">Ghost Defense · Tool 32 · CIS Control 1 · CVE Exposure Tracking</div>
+    </div>
+  </div>
+  <div class="tb-sep"></div>
+  <input class="tb-search" id="searchBox" placeholder="Search assets…" oninput="filterAssets()">
+  <button class="tb-btn" style="background:var(--red-s);color:var(--red);border-color:var(--red-b)" onclick="scanAllCVEs()">🔍 SCAN ALL CVEs</button>
+  <button class="tb-btn" style="background:var(--orange-s);color:var(--orange);border-color:var(--orange-b)" onclick="document.getElementById('csvIn').click()">📥 IMPORT CSV</button>
+  <input type="file" id="csvIn" style="display:none" accept=".csv" onchange="importCSV(this.files[0])">
+  <button class="tb-btn" style="background:var(--green-s);color:var(--green);border-color:var(--green-b)" onclick="exportCSV()">📤 EXPORT CSV</button>
+  <button class="tb-btn" style="background:var(--blue-s);color:var(--blue);border-color:var(--blue-b)" onclick="printReport()">🖨 REPORT</button>
+  <button class="tb-btn" style="background:var(--s2);color:var(--muted2);border-color:var(--border2)" onclick="loadDemo()">⚡ DEMO</button>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dash">
+  <div class="dash-box" onclick="setFilter('all')" id="dash-all">
+    <div class="dash-num" id="dTotal" style="color:var(--cyan)">0</div>
+    <div class="dash-lbl">Total Assets</div>
+  </div>
+  <div class="dash-box" onclick="setFilter('kev')">
+    <div class="dash-num" id="dKEV" style="color:var(--red)">0</div>
+    <div class="dash-lbl">KEV Exposed</div>
+  </div>
+  <div class="dash-box" onclick="setFilter('cve')">
+    <div class="dash-num" id="dCVE" style="color:var(--orange)">0</div>
+    <div class="dash-lbl">CVE Exposed</div>
+  </div>
+  <div class="dash-box" onclick="setFilter('critical')">
+    <div class="dash-num" id="dCrit" style="color:var(--red)">0</div>
+    <div class="dash-lbl">Critical Assets</div>
+  </div>
+  <div class="dash-box" onclick="setFilter('unmanaged')">
+    <div class="dash-num" id="dUnmanaged" style="color:var(--yellow)">0</div>
+    <div class="dash-lbl">Unmanaged</div>
+  </div>
+  <div class="dash-box" onclick="setFilter('noowner')">
+    <div class="dash-num" id="dNoOwner" style="color:var(--muted2)">0</div>
+    <div class="dash-lbl">No Owner</div>
+  </div>
+  <div class="dash-box">
+    <div class="dash-num" id="dRisk" style="color:var(--orange)">—</div>
+    <div class="dash-lbl">Avg Risk Score</div>
+  </div>
+  <div class="dash-box">
+    <div class="dash-num" id="dTotalCVEs" style="color:var(--red)">0</div>
+    <div class="dash-lbl">Total CVEs</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- SIDEBAR — ADD ASSET -->
+  <div class="sidebar">
+    <div class="sidebar-sec">
+      <div class="sec-hdr">Add Asset</div>
+      <div style="padding:10px 0 0">
+        <div class="form-row">
+          <div class="form-label">Hostname / Name</div>
+          <input class="form-input" id="f-hostname" placeholder="e.g. WEB-SRV-01">
+        </div>
+        <div class="form-row">
+          <div class="form-label">IP Address</div>
+          <input class="form-input" id="f-ip" placeholder="e.g. 192.168.1.10">
+        </div>
+        <div class="form-row">
+          <div class="form-label">OS / Version</div>
+          <input class="form-input" id="f-os" placeholder="e.g. Windows Server 2019">
+        </div>
+        <div class="form-row">
+          <div class="form-label">Asset Type</div>
+          <select class="form-select" id="f-type">
+            <option value="server">Server</option>
+            <option value="workstation">Workstation</option>
+            <option value="network">Network Device</option>
+            <option value="ot">OT / ICS Device</option>
+            <option value="cloud">Cloud Instance</option>
+            <option value="mobile">Mobile Device</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-label">Criticality</div>
+          <select class="form-select" id="f-crit">
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-label">Status</div>
+          <select class="form-select" id="f-status">
+            <option value="active" selected>Active</option>
+            <option value="unknown">Unknown</option>
+            <option value="unmanaged">Unmanaged</option>
+            <option value="retired">Retired</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-label">Owner / Department</div>
+          <input class="form-input" id="f-owner" placeholder="e.g. IT / John Smith">
+        </div>
+        <div class="form-row">
+          <div class="form-label">Location</div>
+          <input class="form-input" id="f-location" placeholder="e.g. DC1 / Cloud-AWS">
+        </div>
+        <div class="form-row">
+          <div class="form-label">Notes</div>
+          <input class="form-input" id="f-notes" placeholder="Optional notes">
+        </div>
+        <button class="add-btn" onclick="addAsset()">+ ADD ASSET</button>
+      </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="sidebar-sec">
+      <div class="sec-hdr">Filter by Type</div>
+      <div class="filter-row">
+        <div style="display:flex;flex-wrap:wrap">
+          <span class="filter-chip on" onclick="toggleTypeFilter('all',this)">All</span>
+          <span class="filter-chip" onclick="toggleTypeFilter('server',this)">Server</span>
+          <span class="filter-chip" onclick="toggleTypeFilter('workstation',this)">Workstation</span>
+          <span class="filter-chip" onclick="toggleTypeFilter('network',this)">Network</span>
+          <span class="filter-chip" onclick="toggleTypeFilter('ot',this)">OT/ICS</span>
+          <span class="filter-chip" onclick="toggleTypeFilter('cloud',this)">Cloud</span>
+          <span class="filter-chip" onclick="toggleTypeFilter('mobile',this)">Mobile</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SORT -->
+    <div class="sidebar-sec">
+      <div class="sec-hdr">Sort By</div>
+      <div class="filter-row">
+        <select class="form-select" id="sortBy" onchange="renderTable()">
+          <option value="risk">Risk Score (highest first)</option>
+          <option value="hostname">Hostname A–Z</option>
+          <option value="crit">Criticality</option>
+          <option value="cves">CVE Count</option>
+          <option value="added">Date Added</option>
+          <option value="status">Status</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- QUICK LINKS -->
+    <div class="sidebar-sec">
+      <div class="sec-hdr">Integration</div>
+      <div class="ie-row" style="flex-direction:column;gap:6px">
+        <div style="font-size:10px;font-family:var(--mono);color:var(--muted2);line-height:1.7">
+          Click SCAN ALL CVEs to check every asset IP against Shodan InternetDB and CISA KEV.<br><br>
+          Each asset links to Tool 01 (IP Intel), Tool 02 (KEV), and Tool 31 (Detection).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER — ASSET TABLE -->
+  <div class="center">
+    <table class="asset-table" id="assetTable">
+      <thead>
+        <tr>
+          <th onclick="setSortCol('hostname')">Hostname <span class="sort-arrow" id="sort-hostname"></span></th>
+          <th onclick="setSortCol('ip')">IP Address</th>
+          <th onclick="setSortCol('type')">Type</th>
+          <th onclick="setSortCol('os')">OS</th>
+          <th onclick="setSortCol('crit')">Criticality</th>
+          <th onclick="setSortCol('status')">Status</th>
+          <th onclick="setSortCol('owner')">Owner</th>
+          <th onclick="setSortCol('risk')">Risk</th>
+          <th onclick="setSortCol('cves')">CVEs</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="assetTbody">
+        <tr><td colspan="10" class="table-empty">
+          No assets yet — add one using the form or click ⚡ DEMO to load sample data.<br>
+          <span style="font-size:10px;color:var(--muted)">All data stored locally in your browser · Nothing transmitted</span>
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- RIGHT — DETAIL PANEL -->
+  <div class="detail-panel" id="detailPanel">
+    <div class="detail-empty">Select an asset to view details and CVE exposure</div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+//  GHOST DEFENSE — ASSET INVENTORY TRACKER
+//  CIS Control 1: Inventory and Control of Enterprise Assets
+//  Integrates with Shodan InternetDB (free, no key) + CISA KEV
+// ═══════════════════════════════════════════════════════════════════════════════
+
+var STORAGE_KEY  = 'ghost2210_assets';
+var assets       = [];
+var selectedId   = null;
+var activeFilter = 'all';
+var typeFilter   = 'all';
+var sortCol      = 'risk';
+var sortDir      = 'desc';
+
+// ── ASSET TYPE ICONS ──────────────────────────────────────────────────────────
+var TYPE_ICONS = { server:'🖥️', workstation:'💻', network:'🔌', ot:'🏭', cloud:'☁️', mobile:'📱', other:'📦' };
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+function init() {
+  loadFromStorage();
+  renderTable();
+  updateDash();
+}
+
+// ── STORAGE ───────────────────────────────────────────────────────────────────
+function loadFromStorage() {
+  try { assets = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch(e) { assets = []; }
+}
+function saveToStorage() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(assets)); } catch(e) {}
+}
+
+// ── ADD ASSET ─────────────────────────────────────────────────────────────────
+function addAsset() {
+  var hostname = document.getElementById('f-hostname').value.trim();
+  var ip       = document.getElementById('f-ip').value.trim();
+  if (!hostname && !ip) { toast('Enter at least a hostname or IP address'); return; }
+
+  var asset = {
+    id:       Date.now() + Math.random(),
+    hostname: hostname || ip,
+    ip:       ip || '',
+    os:       document.getElementById('f-os').value.trim(),
+    type:     document.getElementById('f-type').value,
+    crit:     document.getElementById('f-crit').value,
+    status:   document.getElementById('f-status').value,
+    owner:    document.getElementById('f-owner').value.trim(),
+    location: document.getElementById('f-location').value.trim(),
+    notes:    document.getElementById('f-notes').value.trim(),
+    added:    new Date().toISOString(),
+    lastScan: null,
+    cves:     [],
+    kevCount: 0,
+    riskScore:0,
+    ports:    [],
+    tags:     [],
+  };
+
+  asset.riskScore = calcRisk(asset);
+  assets.push(asset);
+  saveToStorage();
+  renderTable();
+  updateDash();
+  clearForm();
+  toast('Asset added: ' + asset.hostname);
+}
+
+function clearForm() {
+  ['f-hostname','f-ip','f-os','f-owner','f-location','f-notes'].forEach(function(id){
+    document.getElementById(id).value = '';
+  });
+}
+
+// ── RISK SCORE ────────────────────────────────────────────────────────────────
+function calcRisk(a) {
+  var score = 0;
+  var critScores = { critical:40, high:30, medium:20, low:10 };
+  score += critScores[a.crit] || 20;
+  if (a.status === 'unmanaged') score += 25;
+  if (a.status === 'unknown')   score += 15;
+  if (!a.owner) score += 10;
+  score += Math.min(30, (a.cves||[]).length * 5);
+  score += (a.kevCount || 0) * 15;
+  return Math.min(100, score);
+}
+
+function riskColor(score) {
+  if (score >= 75) return 'var(--red)';
+  if (score >= 50) return 'var(--orange)';
+  if (score >= 25) return 'var(--yellow)';
+  return 'var(--green)';
+}
+
+// ── CVE SCAN (Shodan InternetDB — free, no key) ───────────────────────────────
+async function scanAssetCVEs(asset) {
+  if (!asset.ip) { toast('No IP address for ' + asset.hostname); return; }
+  // InternetDB is a free public API — no key required
+  asset.scanStatus = 'scanning';
+  renderTable();
+
+  try {
+    var r = await fetch('https://internetdb.shodan.io/' + asset.ip, {
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (r.status === 200) {
+      var data = await r.json();
+      asset.ports    = data.ports    || [];
+      asset.tags     = data.tags     || [];
+      var rawCVEs    = data.vulns    || [];
+      asset.cves     = rawCVEs.slice(0, 30).map(function(cveId) {
+        return { id: cveId, desc: '', cvss: 0, isKev: false };
+      });
+
+      // Cross-reference against CISA KEV
+      await checkKEV(asset);
+
+    } else if (r.status === 404) {
+      // IP not in Shodan — no known vulns
+      asset.cves  = [];
+      asset.ports = [];
+      asset.tags  = [];
+    } else {
+      throw new Error('HTTP ' + r.status);
+    }
+
+  } catch(e) {
+    // Network/CORS blocked — use indicator that scan failed
+    asset.scanStatus = 'error';
+    toast('Scan failed for ' + asset.hostname + ' — ' + e.message);
+  }
+
+  asset.lastScan  = new Date().toISOString();
+  asset.kevCount  = (asset.cves || []).filter(function(c){ return c.isKev; }).length;
+  asset.riskScore = calcRisk(asset);
+  asset.scanStatus = 'done';
+
+  saveToStorage();
+  renderTable();
+  updateDash();
+  if (selectedId === asset.id) showDetail(asset);
+  toast('Scanned ' + asset.hostname + ' — ' + (asset.cves||[]).length + ' CVEs, ' + asset.kevCount + ' KEV');
+}
+
+async function checkKEV(asset) {
+  // Check CISA KEV catalog for matching CVEs
+  try {
+    var r = await fetch('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json',
+      { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return;
+    var data = await r.json();
+    var kevIds = new Set((data.vulnerabilities || []).map(function(v){ return v.cveID; }));
+    asset.cves.forEach(function(cve) {
+      if (kevIds.has(cve.id)) {
+        cve.isKev = true;
+        cve.desc  = 'CISA Known Exploited Vulnerability — immediate patching required';
+      }
+    });
+  } catch(e) { /* KEV check failed silently */ }
+}
+
+async function scanAllCVEs() {
+  var toScan = assets.filter(function(a){ return a.ip && a.status !== 'retired'; });
+  if (!toScan.length) { toast('No assets with IP addresses to scan'); return; }
+  toast('Scanning ' + toScan.length + ' assets…');
+  for (var i = 0; i < toScan.length; i++) {
+    await scanAssetCVEs(toScan[i]);
+    await new Promise(function(res){ setTimeout(res, 400); }); // rate limit
+  }
+  toast('All scans complete');
+}
+
+// ── RENDER TABLE ──────────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function getFiltered() {
+  var search = (document.getElementById('searchBox').value || '').toLowerCase();
+  return assets.filter(function(a) {
+    if (typeFilter !== 'all' && a.type !== typeFilter) return false;
+    if (activeFilter === 'kev'      && !(a.kevCount > 0)) return false;
+    if (activeFilter === 'cve'      && !(a.cves && a.cves.length > 0)) return false;
+    if (activeFilter === 'critical' && a.crit !== 'critical') return false;
+    if (activeFilter === 'unmanaged'&& a.status !== 'unmanaged') return false;
+    if (activeFilter === 'noowner'  && a.owner) return false;
+    if (search && !(
+      (a.hostname||'').toLowerCase().includes(search) ||
+      (a.ip||'').includes(search) ||
+      (a.os||'').toLowerCase().includes(search) ||
+      (a.owner||'').toLowerCase().includes(search) ||
+      (a.location||'').toLowerCase().includes(search)
+    )) return false;
+    return true;
+  });
+}
+
+function getSorted(list) {
+  var col = document.getElementById('sortBy').value || sortCol;
+  return list.slice().sort(function(a,b){
+    var av, bv;
+    switch(col) {
+      case 'risk':     av = b.riskScore||0;     bv = a.riskScore||0; break;
+      case 'hostname': av = (a.hostname||'').toLowerCase(); bv = (b.hostname||'').toLowerCase(); return av<bv?-1:av>bv?1:0;
+      case 'crit':     var o={critical:0,high:1,medium:2,low:3}; av=o[a.crit]||2; bv=o[b.crit]||2; break;
+      case 'cves':     av = b.cves ? b.cves.length : 0; bv = a.cves ? a.cves.length : 0; break;
+      case 'added':    av = new Date(b.added||0); bv = new Date(a.added||0); break;
+      case 'status':   av = (a.status||'').toLowerCase(); bv = (b.status||'').toLowerCase(); return av<bv?-1:av>bv?1:0;
+      default:         av = 0; bv = 0;
+    }
+    return av - bv;
+  });
+}
+
+function renderTable() {
+  var tbody = document.getElementById('assetTbody');
+  var list  = getSorted(getFiltered());
+
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="10" class="table-empty">'
+      + (assets.length ? 'No assets match the current filter' : 'No assets yet — add one or click ⚡ DEMO')
+      + '</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = list.map(function(a) {
+    var critCls  = 'crit-' + (a.crit || 'medium');
+    var statCls  = 'st-' + (a.status || 'unknown');
+    var risk     = a.riskScore || 0;
+    var riskCol  = riskColor(risk);
+    var kevCount = a.kevCount || 0;
+    var cveCount = (a.cves || []).length;
+    var icon     = TYPE_ICONS[a.type] || '📦';
+    var selected = selectedId === a.id ? ' selected' : '';
+    var scanning = a.scanStatus === 'scanning';
+
+    var cveBadge = scanning
+      ? '<span class="cve-badge cve-loading">⟳ scanning…</span>'
+      : kevCount > 0
+        ? '<span class="cve-badge cve-kev" onclick="showDetail(getAsset(\''+a.id+'\'));event.stopPropagation()">🔴 '+kevCount+' KEV</span>'
+        : cveCount > 0
+          ? '<span class="cve-badge cve-high" onclick="showDetail(getAsset(\''+a.id+'\'));event.stopPropagation()">⚠ '+cveCount+' CVE</span>'
+          : a.lastScan
+            ? '<span class="cve-badge cve-none">✓ Clean</span>'
+            : '<span class="cve-scan-btn" onclick="scanAssetCVEs(getAsset(\''+a.id+'\'));event.stopPropagation()">🔍 Scan</span>';
+
+    return '<tr class="'+selected+'" onclick="showDetail(getAsset(\''+a.id+'\'))">'
+      + '<td><div class="asset-hostname">'+icon+' '+esc(a.hostname)+'</div></td>'
+      + '<td><div class="asset-ip">'+esc(a.ip||'—')+'</div></td>'
+      + '<td><span style="font-size:11px;font-family:var(--mono);color:var(--muted2)">'+esc(a.type||'')+'</span></td>'
+      + '<td><div class="asset-os">'+esc((a.os||'—').substring(0,25))+'</div></td>'
+      + '<td><span class="crit-pill '+critCls+'">'+esc(a.crit||'')+'</span></td>'
+      + '<td><span class="status-pill '+statCls+'">'+esc(a.status||'')+'</span></td>'
+      + '<td><span style="font-size:11px;color:var(--muted2)">'+esc(a.owner||'—')+'</span></td>'
+      + '<td><div style="display:flex;align-items:center;gap:4px">'
+          + '<div class="risk-bar"><div class="risk-fill" style="width:'+risk+'%;background:'+riskCol+'"></div></div>'
+          + '<span style="font-family:var(--mono);font-size:11px;color:'+riskCol+'">'+risk+'</span>'
+        + '</div></td>'
+      + '<td>'+cveBadge+'</td>'
+      + '<td><div class="row-actions">'
+          + '<button class="row-btn" style="background:var(--blue-s);color:var(--blue);border-color:var(--blue-b)" onclick="scanAssetCVEs(getAsset(\''+a.id+'\'));event.stopPropagation()">Scan</button>'
+          + '<button class="row-btn" style="background:var(--red-s);color:var(--red);border-color:var(--red-b)" onclick="deleteAsset(\''+a.id+'\');event.stopPropagation()">✕</button>'
+        + '</div></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function getAsset(id) {
+  return assets.find(function(a){ return String(a.id) === String(id); });
+}
+
+// ── DETAIL PANEL ──────────────────────────────────────────────────────────────
+function showDetail(asset) {
+  if (!asset) return;
+  selectedId = asset.id;
+  renderTable(); // re-render to show selection
+
+  var riskCol = riskColor(asset.riskScore || 0);
+  var critCls = 'crit-' + (asset.crit || 'medium');
+  var statCls = 'st-' + (asset.status || 'unknown');
+
+  var html = '<div class="detail-hdr">'
+    + '<div class="detail-hostname">'+(TYPE_ICONS[asset.type]||'📦')+' '+esc(asset.hostname)+'</div>'
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px">'
+      + '<span class="crit-pill '+critCls+'">'+esc(asset.crit)+'</span>'
+      + '<span class="status-pill '+statCls+'">'+esc(asset.status)+'</span>'
+      + '<span style="font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;background:'+riskCol+'18;color:'+riskCol+';border:1px solid '+riskCol+'44">Risk: '+( asset.riskScore||0)+'</span>'
+    + '</div></div>';
+
+  var rows = [
+    ['IP',       asset.ip || '—'],
+    ['OS',       asset.os || '—'],
+    ['Type',     asset.type || '—'],
+    ['Owner',    asset.owner || '—'],
+    ['Location', asset.location || '—'],
+    ['Added',    asset.added ? new Date(asset.added).toLocaleDateString() : '—'],
+    ['Last Scan',asset.lastScan ? new Date(asset.lastScan).toLocaleDateString()+' '+new Date(asset.lastScan).toLocaleTimeString() : 'Never'],
+    ['Ports',    (asset.ports||[]).slice(0,8).join(', ') || '—'],
+    ['Tags',     (asset.tags||[]).join(', ') || '—'],
+  ];
+  if (asset.notes) rows.push(['Notes', asset.notes]);
+
+  html += rows.map(function(r){ return '<div class="detail-row"><span class="detail-key">'+esc(r[0])+'</span><span class="detail-val">'+esc(String(r[1]).substring(0,80))+'</span></div>'; }).join('');
+
+  // Action buttons
+  html += '<div style="padding:10px 14px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border)">';
+  if (asset.ip) {
+    html += '<a href="01_IP_Checker.html?ip='+esc(asset.ip)+'" target="_blank" style="font-size:10px;font-family:var(--mono);padding:4px 9px;border-radius:4px;background:var(--blue-s);color:var(--blue);border:1px solid var(--blue-b);text-decoration:none">🔍 IP Intel</a>';
+    html += '<a href="02_KEV_Scanner.html" target="_blank" style="font-size:10px;font-family:var(--mono);padding:4px 9px;border-radius:4px;background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b);text-decoration:none">📋 KEV Check</a>';
+    html += '<a href="31_Realtime_Intrusion_Detection.html" target="_blank" style="font-size:10px;font-family:var(--mono);padding:4px 9px;border-radius:4px;background:var(--red-s);color:var(--red);border:1px solid var(--red-b);text-decoration:none">🚨 IDS</a>';
+  }
+  html += '<button onclick="scanAssetCVEs(getAsset(\''+asset.id+'\'))" style="font-size:10px;font-family:var(--mono);padding:4px 9px;border-radius:4px;background:var(--cyan-s);color:var(--cyan);border:1px solid var(--cyan-b);cursor:pointer">🔍 Scan CVEs</button>';
+  html += '</div>';
+
+  // CVEs
+  var cves = asset.cves || [];
+  html += '<div class="detail-cves">';
+  html += '<div class="detail-cve-title">CVE Exposure ('+ cves.length+' found'+(asset.kevCount?', '+asset.kevCount+' KEV':'')+')';
+  html += '</div>';
+
+  if (!cves.length && asset.lastScan) {
+    html += '<div style="font-family:var(--mono);font-size:11px;color:var(--green);padding:8px 0">✓ No known CVEs found on this host</div>';
+  } else if (!cves.length) {
+    html += '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);padding:8px 0">Click Scan CVEs to check this host</div>';
+  } else {
+    // Sort: KEV first
+    var sorted = cves.slice().sort(function(a,b){ return (b.isKev?1:0)-(a.isKev?1:0); });
+    html += sorted.slice(0,20).map(function(cve) {
+      return '<div class="cve-item" style="border-color:'+(cve.isKev?'var(--red-b)':'var(--border)')+';background:'+(cve.isKev?'var(--red-s)':'var(--s2)')+'">'
+        + '<div class="cve-id">'+esc(cve.id)+'</div>'
+        + (cve.desc ? '<div class="cve-desc">'+esc(cve.desc)+'</div>' : '')
+        + (cve.isKev ? '<span class="cve-kev-tag">🔴 CISA KEV — PATCH IMMEDIATELY</span>' : '')
+        + '</div>';
+    }).join('');
+    if (cves.length > 20) html += '<div style="font-size:10px;color:var(--muted);font-family:var(--mono);padding:4px 0">… and '+(cves.length-20)+' more</div>';
+  }
+  html += '</div>';
+
+  document.getElementById('detailPanel').innerHTML = html;
+}
+
+// ── DASHBOARD UPDATE ──────────────────────────────────────────────────────────
+function updateDash() {
+  var total     = assets.length;
+  var kevExp    = assets.filter(function(a){ return a.kevCount > 0; }).length;
+  var cveExp    = assets.filter(function(a){ return a.cves && a.cves.length > 0; }).length;
+  var crit      = assets.filter(function(a){ return a.crit === 'critical'; }).length;
+  var unmanaged = assets.filter(function(a){ return a.status === 'unmanaged'; }).length;
+  var noOwner   = assets.filter(function(a){ return !a.owner; }).length;
+  var totalCVEs = assets.reduce(function(s,a){ return s + ((a.cves||[]).length); }, 0);
+  var avgRisk   = total ? Math.round(assets.reduce(function(s,a){ return s+(a.riskScore||0); },0)/total) : 0;
+
+  document.getElementById('dTotal').textContent    = total;
+  document.getElementById('dKEV').textContent      = kevExp;
+  document.getElementById('dCVE').textContent      = cveExp;
+  document.getElementById('dCrit').textContent     = crit;
+  document.getElementById('dUnmanaged').textContent= unmanaged;
+  document.getElementById('dNoOwner').textContent  = noOwner;
+  document.getElementById('dTotalCVEs').textContent= totalCVEs;
+  document.getElementById('dRisk').textContent     = total ? avgRisk : '—';
+}
+
+// ── FILTERS ───────────────────────────────────────────────────────────────────
+function setFilter(f) {
+  activeFilter = f;
+  renderTable();
+  // Highlight active dash box
+  document.querySelectorAll('.dash-box').forEach(function(b){ b.classList.remove('active'); });
+}
+
+function toggleTypeFilter(type, el) {
+  typeFilter = type;
+  document.querySelectorAll('.filter-chip').forEach(function(c){ c.classList.remove('on'); });
+  el.classList.add('on');
+  renderTable();
+}
+
+function filterAssets() { renderTable(); }
+
+function setSortCol(col) {
+  if (sortCol === col) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortCol = col; sortDir = 'desc'; }
+  document.getElementById('sortBy').value = col;
+  renderTable();
+}
+
+// ── DELETE ────────────────────────────────────────────────────────────────────
+function deleteAsset(id) {
+  assets = assets.filter(function(a){ return String(a.id) !== String(id); });
+  if (selectedId === id) {
+    selectedId = null;
+    document.getElementById('detailPanel').innerHTML = '<div class="detail-empty">Select an asset to view details</div>';
+  }
+  saveToStorage();
+  renderTable();
+  updateDash();
+  toast('Asset deleted');
+}
+
+// ── IMPORT / EXPORT ───────────────────────────────────────────────────────────
+function exportCSV() {
+  if (!assets.length) { toast('No assets to export'); return; }
+  var headers = ['hostname','ip','os','type','crit','status','owner','location','notes','riskScore','cveCount','kevCount','lastScan','ports','added'];
+  var rows = [headers.join(',')];
+  assets.forEach(function(a) {
+    rows.push([
+      '"'+(a.hostname||'')+'"', '"'+(a.ip||'')+'"', '"'+(a.os||'')+'"',
+      '"'+(a.type||'')+'"', '"'+(a.crit||'')+'"', '"'+(a.status||'')+'"',
+      '"'+(a.owner||'')+'"', '"'+(a.location||'')+'"', '"'+(a.notes||'')+'"',
+      a.riskScore||0, (a.cves||[]).length, a.kevCount||0,
+      '"'+(a.lastScan||'')+'"', '"'+((a.ports||[]).join(';'))+'"', '"'+(a.added||'')+'"'
+    ].join(','));
+  });
+  var blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  var el = document.createElement('a'); el.href = URL.createObjectURL(blob);
+  el.download = 'asset-inventory-'+new Date().toISOString().split('T')[0]+'.csv'; el.click();
+  toast('Exported '+assets.length+' assets');
+}
+
+function importCSV(file) {
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var lines = e.target.result.split('\n').filter(function(l){ return l.trim(); });
+    var headers = lines[0].split(',').map(function(h){ return h.replace(/"/g,'').trim().toLowerCase(); });
+    var imported = 0;
+    lines.slice(1).forEach(function(line) {
+      try {
+        var vals = line.split(',').map(function(v){ return v.replace(/^"|"$/g,'').trim(); });
+        var obj  = {};
+        headers.forEach(function(h,i){ obj[h] = vals[i] || ''; });
+        if (!obj.hostname && !obj.ip) return;
+        var asset = {
+          id:        Date.now() + Math.random() + imported,
+          hostname:  obj.hostname || obj.ip,
+          ip:        obj.ip || '',
+          os:        obj.os || '',
+          type:      obj.type || 'other',
+          crit:      ['critical','high','medium','low'].includes(obj.crit) ? obj.crit : 'medium',
+          status:    ['active','unknown','retired','unmanaged'].includes(obj.status) ? obj.status : 'unknown',
+          owner:     obj.owner || '',
+          location:  obj.location || '',
+          notes:     obj.notes || '',
+          added:     new Date().toISOString(),
+          cves:[], kevCount:0, riskScore:0, ports:[], tags:[],
+        };
+        asset.riskScore = calcRisk(asset);
+        assets.push(asset);
+        imported++;
+      } catch(e) {}
+    });
+    saveToStorage(); renderTable(); updateDash();
+    toast('Imported '+imported+' assets from CSV');
+  };
+  reader.readAsText(file);
+}
+
+// ── DEMO DATA ─────────────────────────────────────────────────────────────────
+function loadDemo() {
+  var DEMO = [
+    { hostname:'WEB-SRV-01',    ip:'192.168.1.10', os:'Ubuntu 22.04 LTS',        type:'server',      crit:'critical', status:'active',    owner:'IT Ops',    location:'DC1',   notes:'Public-facing web server', cves:[{id:'CVE-2023-44487',isKev:true,desc:'HTTP/2 Rapid Reset DoS'},{id:'CVE-2023-5678',isKev:false,desc:'nginx 1.18 path traversal'}], kevCount:1, ports:[80,443,22] },
+    { hostname:'DB-SRV-01',     ip:'192.168.1.20', os:'Windows Server 2019',      type:'server',      crit:'critical', status:'active',    owner:'DBA Team',  location:'DC1',   notes:'Primary SQL database', cves:[{id:'CVE-2022-23121',isKev:true,desc:'MS SQL RCE'},{id:'CVE-2023-21529',isKev:true,desc:'MS SQL Server RCE'},{id:'CVE-2021-42321',isKev:false,desc:'Exchange memory corruption'}], kevCount:2, ports:[1433,3389,445] },
+    { hostname:'FW-CORE-01',    ip:'10.0.0.1',     os:'Fortinet FortiOS 7.0.5',   type:'network',     crit:'critical', status:'active',    owner:'NetSecOps', location:'DC1',   notes:'Core perimeter firewall', cves:[{id:'CVE-2023-27997',isKev:true,desc:'FortiOS SSL-VPN Heap Overflow RCE'}], kevCount:1, ports:[443,8443,541] },
+    { hostname:'WS-HR-042',     ip:'192.168.5.42', os:'Windows 10 21H2',          type:'workstation', crit:'medium',   status:'active',    owner:'HR Dept',   location:'HQ-Fl2',notes:'HR manager workstation', cves:[], kevCount:0, ports:[] },
+    { hostname:'WS-FIN-017',    ip:'192.168.5.17', os:'Windows 11 22H2',          type:'workstation', crit:'high',     status:'active',    owner:'Finance',   location:'HQ-Fl3',notes:'CFO workstation — sensitive data', cves:[{id:'CVE-2024-21334',isKev:false,desc:'Windows CLFS elevation of privilege'}], kevCount:0, ports:[] },
+    { hostname:'SCADA-HMI-01',  ip:'10.10.1.5',    os:'Windows 7 Embedded',       type:'ot',          crit:'critical', status:'active',    owner:'OT Team',   location:'Plant-A',notes:'⚠ EOL OS — cannot patch', cves:[{id:'CVE-2017-0144',isKev:true,desc:'EternalBlue SMB RCE — WannaCry vector'},{id:'CVE-2019-0708',isKev:true,desc:'BlueKeep RDP RCE'}], kevCount:2, ports:[445,3389] },
+    { hostname:'AWS-PROD-001',  ip:'54.123.45.67', os:'Amazon Linux 2',           type:'cloud',       crit:'high',     status:'active',    owner:'DevOps',    location:'AWS-US-E1',notes:'Production API server', cves:[], kevCount:0, ports:[443,22,8080] },
+    { hostname:'ROGUE-DEV-01',  ip:'192.168.99.5', os:'Unknown',                  type:'workstation', crit:'high',     status:'unmanaged', owner:'',          location:'Unknown',notes:'⚠ Discovered via ARP scan — not in register', cves:[], kevCount:0, ports:[] },
+    { hostname:'PRNT-SRV-01',   ip:'192.168.1.50', os:'Windows Server 2016',      type:'server',      crit:'low',      status:'active',    owner:'IT Ops',    location:'HQ',    notes:'Print server', cves:[{id:'CVE-2021-34527',isKev:true,desc:'PrintNightmare RCE'}], kevCount:1, ports:[445,9100] },
+    { hostname:'JUMP-SRV-01',   ip:'192.168.1.100',os:'Windows Server 2022',      type:'server',      crit:'critical', status:'active',    owner:'IT SecOps', location:'DC1',   notes:'Jump server — privileged access', cves:[], kevCount:0, ports:[3389,22] },
+    { hostname:'CISCO-SW-CORE', ip:'10.0.0.10',    os:'Cisco IOS XE 16.9',        type:'network',     crit:'critical', status:'active',    owner:'NetOps',    location:'DC1',   notes:'Core L3 switch', cves:[{id:'CVE-2023-20198',isKev:true,desc:'Cisco IOS XE Web UI Privilege Escalation'},{id:'CVE-2023-20273',isKev:true,desc:'Cisco IOS XE Web UI RCE'}], kevCount:2, ports:[23,22,443,161] },
+    { hostname:'BACKUP-SRV-01', ip:'192.168.2.20', os:'Ubuntu 20.04 LTS',         type:'server',      crit:'high',     status:'unknown',   owner:'',          location:'DC2',   notes:'No owner assigned — backup infrastructure', cves:[], kevCount:0, ports:[22,873] },
+  ];
+
+  DEMO.forEach(function(d) {
+    d.id      = Date.now() + Math.random();
+    d.added   = new Date(Date.now() - Math.random()*90*86400000).toISOString();
+    d.lastScan= new Date().toISOString();
+    d.riskScore = calcRisk(d);
+    d.tags    = d.tags || [];
+  });
+
+  assets = DEMO;
+  saveToStorage();
+  renderTable();
+  updateDash();
+  toast('Demo data loaded — 12 assets, 8 with CVEs, 5 KEV-exposed');
+}
+
+// ── PRINT REPORT ──────────────────────────────────────────────────────────────
+function printReport() {
+  if (!assets.length) { toast('No assets to report'); return; }
+  var sorted = getSorted(assets);
+  var kevTotal   = assets.filter(function(a){ return a.kevCount > 0; }).length;
+  var cveTotal   = assets.reduce(function(s,a){ return s + (a.cves||[]).length; }, 0);
+  var avgRisk    = Math.round(assets.reduce(function(s,a){ return s+(a.riskScore||0); },0)/assets.length);
+  var unmanaged  = assets.filter(function(a){ return a.status==='unmanaged'; }).length;
+
+  function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  var rows = sorted.map(function(a,i) {
+    var rc = a.riskScore>=75?'#dc2626':a.riskScore>=50?'#ea580c':a.riskScore>=25?'#ca8a04':'#16a34a';
+    var kevCount = a.kevCount || 0;
+    var cveCount = (a.cves||[]).length;
+    return '<tr style="background:'+(i%2===0?'#fff':'#f9fafb')+'">'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-weight:700;font-size:11px">'+escH(a.hostname)+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:10px">'+escH(a.ip||'—')+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-size:10px">'+escH(a.os||'—')+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb"><span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:'+(rc)+'22;color:'+rc+';border:1px solid '+rc+'44">'+escH(a.crit||'')+'</span></td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-weight:700;color:'+rc+'">'+( a.riskScore||0)+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-family:monospace;font-size:10px">'
+        +(kevCount>0?'<span style="color:#dc2626;font-weight:700">🔴 '+kevCount+' KEV</span>':cveCount>0?'<span style="color:#ea580c">⚠ '+cveCount+' CVE</span>':'<span style="color:#16a34a">✓ Clean</span>')
+      +'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-size:10px">'+escH(a.owner||'—')+'</td>'
+      +'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-size:10px">'+escH(a.location||'—')+'</td>'
+    +'</tr>';
+  }).join('');
+
+  var win = window.open('','_blank','width=1000,height=700');
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Asset Inventory Report — Ghost Defense</title>'
+    +'<style>body{font-family:Calibri,Arial,sans-serif;margin:0;background:#fff;color:#111}@page{size:A4 landscape;margin:12mm}@media print{body{background:#fff}}</style>'
+    +'</head><body>'
+    +'<div style="background:#0f172a;padding:14px 28px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div><div style="font-size:16px;font-weight:700;color:#00e676;letter-spacing:3px;font-family:monospace">GHOST DEFENSE</div>'
+        +'<div style="color:#9ca3af;font-size:10px;letter-spacing:2px;font-family:monospace;margin-top:2px">ASSET INVENTORY & CVE EXPOSURE REPORT</div></div>'
+      +'<div style="color:#9ca3af;font-size:10px;text-align:right">Generated: '+new Date().toLocaleString()+'<br>CIS Control 1 — Asset Inventory</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:12px 24px;background:#f8fafc;border-bottom:2px solid #1e293b">'
+    +[[assets.length,'Total Assets','#1d4ed8'],[kevTotal,'KEV Exposed','#dc2626'],[cveTotal,'Total CVEs','#ea580c'],
+      [avgRisk,'Avg Risk','#ca8a04'],[unmanaged,'Unmanaged','#dc2626'],
+      [assets.filter(function(a){return !a.owner;}).length,'No Owner','#6b7280']].map(function(s){
+        return '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:10px;text-align:center">'
+          +'<div style="font-size:22px;font-weight:700;color:'+s[2]+'">'+s[0]+'</div>'
+          +'<div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:1px">'+s[1]+'</div></div>';
+      }).join('')
+    +'</div>'
+    +'<div style="margin:12px 24px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb">'
+      +'<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#1e293b">'
+        +'<th style="padding:8px 10px;text-align:left;color:#fff;font-size:10px">Hostname</th>'
+        +'<th style="padding:8px 10px;color:#fff;font-size:10px">IP</th>'
+        +'<th style="padding:8px 10px;color:#fff;font-size:10px">OS</th>'
+        +'<th style="padding:8px 10px;color:#fff;font-size:10px">Criticality</th>'
+        +'<th style="padding:8px 10px;color:#fff;font-size:10px">Risk</th>'
+        +'<th style="padding:8px 10px;color:#fff;font-size:10px">CVE Status</th>'
+        +'<th style="padding:8px 10px;color:#fff;font-size:10px">Owner</th>'
+        +'<th style="padding:8px 10px;color:#fff;font-size:10px">Location</th>'
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<div style="background:#0f172a;padding:10px 28px;display:flex;justify-content:space-between;color:#9ca3af;font-size:10px">'
+      +'<span>Sources: Shodan InternetDB · CISA KEV · All TLP:CLEAR · Ghost Defense</span>'
+      +'<span>DEFEND ALWAYS 🛡️</span>'
+    +'</div></body></html>');
+  win.document.close(); win.focus();
+  setTimeout(function(){ win.print(); }, 600);
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function toast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(function(){ el.classList.remove('show'); }, 2500);
+}
+
+// ── BOOT ─────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

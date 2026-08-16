@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Malicious Link Verifier — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06080c;--s1:#0a0e16;--s2:#0f1520;--s3:#151c2a;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);
+  --text:#e8f0f8;--muted:#4a6080;--muted2:#7090b0;
+  --green:#00e676;--green-s:rgba(0,230,118,0.08);--green-b:rgba(0,230,118,0.25);
+  --red:#ff3d57;--red-s:rgba(255,61,87,0.1);--red-b:rgba(255,61,87,0.3);
+  --orange:#ff9100;--orange-s:rgba(255,145,0,0.1);--orange-b:rgba(255,145,0,0.28);
+  --yellow:#ffd740;--yellow-s:rgba(255,215,64,0.08);--yellow-b:rgba(255,215,64,0.25);
+  --blue:#448aff;--blue-s:rgba(68,138,255,0.08);--blue-b:rgba(68,138,255,0.25);
+  --cyan:#00e5ff;--cyan-s:rgba(0,229,255,0.08);--cyan-b:rgba(0,229,255,0.25);
+  --purple:#e040fb;--purple-s:rgba(224,64,251,0.08);--purple-b:rgba(224,64,251,0.25);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html,body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+body{display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:11px 20px;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:100}
+.brand{display:flex;align-items:center;gap:9px}
+.brand-icon{width:28px;height:28px;background:var(--red-s);border:1px solid var(--red-b);
+  border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.brand-name{font-size:14px;font-weight:700}
+.brand-sub{font-size:10px;color:var(--muted2);font-family:var(--mono)}
+.api-row{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}
+.api-input{background:var(--s2);border:1px solid var(--border2);border-radius:6px;
+  color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 10px;
+  outline:none;width:200px}
+.api-input::placeholder{color:var(--muted)}
+.api-input:focus{border-color:var(--blue-b)}
+.api-btn{font-family:var(--mono);font-size:11px;padding:6px 12px;border-radius:5px;
+  cursor:pointer;border:1px solid;transition:all .15s;white-space:nowrap}
+
+/* SAFETY BANNER */
+.safety{background:rgba(0,230,118,0.05);border-bottom:1px solid var(--green-b);
+  padding:7px 20px;font-family:var(--mono);font-size:11px;color:var(--green);
+  display:flex;align-items:center;gap:8px}
+
+/* MAIN */
+.main{flex:1;padding:24px 20px;max-width:900px;margin:0 auto;width:100%}
+
+/* URL INPUT */
+.url-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;
+  padding:20px;margin-bottom:20px}
+.url-card-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;
+  display:flex;align-items:center;gap:8px}
+.url-input-row{display:flex;gap:8px;margin-bottom:10px}
+.url-input{flex:1;background:var(--s2);border:1px solid var(--border2);border-radius:7px;
+  color:var(--text);font-family:var(--mono);font-size:13px;padding:10px 14px;
+  outline:none;transition:border-color .15s}
+.url-input:focus{border-color:var(--red-b)}
+.url-input::placeholder{color:var(--muted)}
+.check-btn{background:var(--red);border:none;border-radius:7px;color:#fff;
+  font-family:var(--sans);font-size:13px;font-weight:700;padding:10px 22px;
+  cursor:pointer;transition:all .15s;white-space:nowrap}
+.check-btn:hover{background:#ff6677}
+.check-btn:disabled{opacity:.5;cursor:not-allowed}
+.bulk-area{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:7px;
+  color:var(--text);font-family:var(--mono);font-size:12px;padding:10px 14px;
+  outline:none;resize:vertical;min-height:70px;transition:border-color .15s;line-height:1.6}
+.bulk-area:focus{border-color:var(--red-b)}
+.bulk-area::placeholder{color:var(--muted)}
+
+/* RESULT CARD */
+.result-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;
+  overflow:hidden;margin-bottom:16px;animation:fadeIn .3s ease both}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.result-hdr{padding:14px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.verdict-badge{font-family:var(--mono);font-size:13px;font-weight:700;padding:6px 16px;
+  border-radius:6px;letter-spacing:.08em}
+.vb-phishing{background:var(--red-s);color:var(--red);border:2px solid var(--red-b)}
+.vb-malware{background:rgba(224,64,251,0.12);color:var(--purple);border:2px solid var(--purple-b)}
+.vb-suspicious{background:var(--orange-s);color:var(--orange);border:2px solid var(--orange-b)}
+.vb-clean{background:var(--green-s);color:var(--green);border:2px solid var(--green-b)}
+.vb-unknown{background:var(--s3);color:var(--muted2);border:2px solid var(--border2)}
+.result-url{font-family:var(--mono);font-size:12px;color:var(--muted2);flex:1;
+  word-break:break-all;min-width:0}
+.risk-score-wrap{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.risk-score-num{font-family:var(--mono);font-size:24px;font-weight:700}
+.risk-score-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+
+/* CHECKS GRID */
+.checks-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:8px;padding:14px 18px;border-top:1px solid var(--border)}
+.check-item{background:var(--s2);border:1px solid var(--border);border-radius:7px;
+  padding:10px 12px;display:flex;gap:10px;align-items:flex-start}
+.check-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.check-body{flex:1;min-width:0}
+.check-name{font-size:11px;font-weight:600;color:var(--text);margin-bottom:2px}
+.check-result{font-size:10px;font-family:var(--mono);line-height:1.5}
+.check-ok{color:var(--green)}
+.check-warn{color:var(--orange)}
+.check-bad{color:var(--red)}
+.check-info{color:var(--muted2)}
+.check-loading{color:var(--muted);display:flex;align-items:center;gap:4px}
+
+/* INDICATORS */
+.indicators{padding:0 18px 14px}
+.ind-title{font-size:10px;font-family:var(--mono);font-weight:700;color:var(--muted2);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.ind-item{display:flex;gap:8px;align-items:flex-start;padding:6px 0;
+  border-bottom:1px solid var(--border);font-size:12px}
+.ind-item:last-child{border-bottom:none}
+.ind-sev{font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 7px;
+  border-radius:3px;flex-shrink:0;margin-top:1px}
+.ind-c{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.ind-h{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.ind-m{background:var(--yellow-s);color:var(--yellow);border:1px solid var(--yellow-b)}
+.ind-l{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+.ind-text{color:var(--muted2);flex:1;line-height:1.5}
+
+/* DOMAIN INFO */
+.domain-info{padding:0 18px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.di-box{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:8px 12px}
+.di-label{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.di-val{font-size:12px;font-family:var(--mono);color:var(--text)}
+
+/* EXTERNAL LINKS */
+.ext-links{padding:0 18px 14px;display:flex;gap:6px;flex-wrap:wrap}
+.ext-link{font-size:10px;font-family:var(--mono);padding:4px 10px;border-radius:4px;
+  background:var(--s2);color:var(--muted2);border:1px solid var(--border2);
+  text-decoration:none;transition:all .12s}
+.ext-link:hover{color:var(--cyan);border-color:var(--cyan-b)}
+
+/* HISTORY */
+.history-section{margin-top:24px}
+.history-title{font-size:11px;font-family:var(--mono);font-weight:700;color:var(--muted2);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+.history-item{background:var(--s1);border:1px solid var(--border);border-radius:7px;
+  padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:background .12s}
+.history-item:hover{background:var(--s2)}
+.hi-verdict{font-size:10px;font-family:var(--mono);font-weight:700;padding:2px 8px;border-radius:4px;flex-shrink:0}
+.hi-url{font-size:11px;font-family:var(--mono);color:var(--muted2);flex:1;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hi-time{font-size:10px;color:var(--muted);flex-shrink:0}
+.hi-del{font-size:10px;color:var(--red);padding:2px 6px;border-radius:3px;
+  background:var(--red-s);border:1px solid var(--red-b);opacity:0;transition:opacity .12s;cursor:pointer}
+.history-item:hover .hi-del{opacity:1}
+
+/* SPINNER */
+.spin{display:inline-block;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* GENERATING */
+.generating{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;padding:40px;font-family:var(--mono);color:var(--muted2)}
+.gen-spinner{width:40px;height:40px;border:3px solid rgba(255,61,87,0.15);
+  border-top-color:var(--red);border-radius:50%;animation:spin .8s linear infinite}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">🔗</div>
+    <div>
+      <div class="brand-name">Malicious Link Verifier</div>
+      <div class="brand-sub">Ghost Defense · Tool 34 · Phishing & Payload Detection</div>
+    </div>
+  </div>
+  <div class="api-row">
+    <input class="api-input" id="vtKey" type="password" placeholder="VirusTotal API key (optional)">
+    <input class="api-input" id="gsKey" type="password" placeholder="Google Safe Browsing key (optional)" style="width:220px">
+    <a href="https://www.virustotal.com/gui/join-us" target="_blank" rel="noopener"
+      style="font-size:10px;font-family:var(--mono);color:var(--muted2);text-decoration:none">Get free VT key ↗</a>
+  </div>
+</div>
+
+<div class="safety">
+  <span>🛡️</span>
+  <span>For authorized defensive security analysis only · URLs are checked against public threat intelligence feeds · Never click suspicious links directly</span>
+</div>
+
+<div class="main">
+
+  <!-- URL INPUT -->
+  <div class="url-card">
+    <div class="url-card-title">🔗 URL / Link Analysis</div>
+    <div class="url-input-row">
+      <input class="url-input" id="urlInput" type="text"
+        placeholder="Paste URL to analyze — e.g. https://suspicious-domain.com/login"
+        onkeydown="if(event.key==='Enter')checkURL()">
+      <button class="check-btn" id="checkBtn" onclick="checkURL()">🔍 ANALYZE</button>
+    </div>
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;font-family:var(--mono);color:var(--muted2);margin-bottom:6px">Bulk Analysis (one URL per line):</div>
+      <textarea class="bulk-area" id="bulkInput" placeholder="Paste multiple URLs here, one per line…&#10;https://example1.com&#10;https://example2.com"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="api-btn" style="background:var(--orange-s);color:var(--orange);border-color:var(--orange-b)" onclick="checkBulk()">⚡ ANALYZE BULK</button>
+      <button class="api-btn" style="background:var(--s2);color:var(--muted2);border-color:var(--border2)" onclick="clearResults()">✕ CLEAR</button>
+      <button class="api-btn" style="background:var(--green-s);color:var(--green);border-color:var(--green-b)" onclick="exportResults()">📥 EXPORT CSV</button>
+      <span style="font-size:10px;font-family:var(--mono);color:var(--muted);margin-left:auto">
+        Sources: URLScan.io · PhishTank · Google Safe Browsing · VirusTotal · HEURISTIC ENGINE
+      </span>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results"></div>
+
+  <!-- HISTORY -->
+  <div class="history-section" id="historySection" style="display:none">
+    <div class="history-title">Recent Checks</div>
+    <div id="historyList"></div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+//  GHOST DEFENSE — MALICIOUS LINK VERIFIER
+//  Checks URLs against public threat intelligence:
+//  URLScan.io · PhishTank · Google Safe Browsing · VirusTotal · Heuristic Engine
+//  All public TLP:CLEAR APIs — for authorized defensive analysis only
+// ═══════════════════════════════════════════════════════════════════════════════
+
+var HISTORY_KEY = 'ghost2210_link_history';
+var scanResults  = [];
+
+// ── KNOWN PHISHING / PAYLOAD INDICATORS ───────────────────────────────────────
+// All based on publicly documented phishing and malware delivery patterns
+var SUSPICIOUS_TLDS = ['.xyz','.top','.click','.link','.online','.site','.club',
+  '.gq','.ml','.cf','.ga','.tk','.icu','.buzz','.cyou','.cam','.monster','.rest'];
+
+var SHORTENERS = ['bit.ly','tinyurl.com','t.co','goo.gl','ow.ly','buff.ly',
+  'adf.ly','bc.vc','short.io','tiny.cc','is.gd','v.gd','rb.gy','cutt.ly',
+  'shorturl.at','clck.ru','qps.ru'];
+
+var TYPOSQUAT_BRANDS = ['paypa1','payp4l','paypall','arnazon','anazon','arnaz',
+  'g00gle','googel','micros0ft','microsooft','appple','faceb00k','facebok',
+  'linkedln','lnkedin','dropb0x','dropboks','icloud','apple-id','microsoft-update',
+  'security-alert','account-verify','login-secure','signin-verify'];
+
+var PHISHING_PATHS = ['/login','/signin','/verify','/secure','/account','/update',
+  '/confirm','/validate','/.html','/webmail','/owa','/outlook','wp-admin',
+  '/credential','/reset-password','/2fa','/mfa','/checkpoint'];
+
+var PAYLOAD_EXTENSIONS = ['.exe','.dll','.bat','.cmd','.ps1','.vbs','.js',
+  '.hta','.scr','.pif','.com','.msi','.jar','.reg','.inf','.lnk',
+  '.docm','.xlsm','.pptm','.zip','.rar','.7z','.iso','.img'];
+
+var SUSPICIOUS_KEYWORDS = ['invoice','payment','secure','verify','update','alert',
+  'suspended','confirm','login','account','billing','unusual','activity',
+  'locked','expired','credentials','unpaid','refund','delivery','tracking',
+  'click-here','free','winner','prize','bitcoin','crypto','wallet'];
+
+// ── HEURISTIC ENGINE ──────────────────────────────────────────────────────────
+function analyzeHeuristics(url) {
+  var indicators = [];
+  var riskScore  = 0;
+
+  try {
+    // Normalize
+    var raw = url.trim().toLowerCase();
+    if (!raw.startsWith('http')) raw = 'https://' + raw;
+    var parsed = new URL(raw);
+    var hostname = parsed.hostname;
+    var path     = parsed.pathname + parsed.search;
+    var fullUrl  = raw;
+
+    // ── 1. IP-based URL ──────────────────────────────────────────────────────
+    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+      indicators.push({ sev:'critical', text:'Direct IP address used instead of domain — classic phishing/malware indicator' });
+      riskScore += 45;
+    }
+
+    // ── 2. URL shortener ──────────────────────────────────────────────────────
+    var isShortener = SHORTENERS.some(function(s){ return hostname === s || hostname.endsWith('.'+s); });
+    if (isShortener) {
+      indicators.push({ sev:'high', text:'URL shortener detected ('+hostname+') — hides true destination. Expand before clicking.' });
+      riskScore += 30;
+    }
+
+    // ── 3. Suspicious TLD ─────────────────────────────────────────────────────
+    var suspTLD = SUSPICIOUS_TLDS.find(function(t){ return hostname.endsWith(t); });
+    if (suspTLD) {
+      indicators.push({ sev:'high', text:'High-risk TLD "'+suspTLD+'" — commonly abused for phishing and malware distribution' });
+      riskScore += 20;
+    }
+
+    // ── 4. Typosquat / brand impersonation ────────────────────────────────────
+    var typo = TYPOSQUAT_BRANDS.find(function(b){ return hostname.includes(b); });
+    if (typo) {
+      indicators.push({ sev:'critical', text:'Brand impersonation detected: "'+typo+'" in hostname — typosquatting attack' });
+      riskScore += 50;
+    }
+
+    // ── 5. Legitimate brand in subdomain (phishing trick) ────────────────────
+    var brands = ['paypal','google','microsoft','apple','amazon','facebook','netflix',
+      'instagram','twitter','linkedin','dropbox','icloud','office365','outlook'];
+    brands.forEach(function(brand) {
+      if (hostname.includes(brand) && !hostname.endsWith(brand+'.com') &&
+          !hostname.endsWith(brand+'.net') && !hostname.endsWith(brand+'.org')) {
+        indicators.push({ sev:'critical', text:'"'+brand+'" used in subdomain/path but domain is not official '+brand+'.com — credential harvest technique' });
+        riskScore += 45;
+      }
+    });
+
+    // ── 6. Executable / payload extension ─────────────────────────────────────
+    var payloadExt = PAYLOAD_EXTENSIONS.find(function(e){ return path.toLowerCase().includes(e); });
+    if (payloadExt) {
+      indicators.push({ sev:'critical', text:'Payload delivery indicator: "'+payloadExt+'" file type in URL — possible malware download' });
+      riskScore += 40;
+    }
+
+    // ── 7. Phishing path patterns ─────────────────────────────────────────────
+    var phishPath = PHISHING_PATHS.find(function(p){ return path.toLowerCase().includes(p); });
+    if (phishPath) {
+      indicators.push({ sev:'medium', text:'Phishing path pattern "'+phishPath+'" detected — credential harvest page indicator' });
+      riskScore += 15;
+    }
+
+    // ── 8. Suspicious keywords in URL ─────────────────────────────────────────
+    var kwHits = SUSPICIOUS_KEYWORDS.filter(function(k){ return fullUrl.includes(k); });
+    if (kwHits.length >= 2) {
+      indicators.push({ sev:'medium', text:'Multiple phishing keywords in URL: '+kwHits.slice(0,4).join(', ') });
+      riskScore += 15;
+    }
+
+    // ── 9. Excessive subdomains ───────────────────────────────────────────────
+    var parts = hostname.split('.');
+    if (parts.length >= 5) {
+      indicators.push({ sev:'medium', text:'Excessive subdomains ('+hostname+') — evasion technique to hide malicious domain' });
+      riskScore += 15;
+    }
+
+    // ── 10. Domain length anomaly ─────────────────────────────────────────────
+    var domainParts = hostname.split('.');
+    var mainDomain  = domainParts.slice(-2).join('.');
+    if (mainDomain.length > 35) {
+      indicators.push({ sev:'medium', text:'Unusually long domain name ('+mainDomain.length+' chars) — random generation or evasion' });
+      riskScore += 15;
+    }
+
+    // ── 11. Homograph / punycode ──────────────────────────────────────────────
+    if (hostname.startsWith('xn--') || hostname.includes('xn--')) {
+      indicators.push({ sev:'critical', text:'Punycode/homograph domain detected — uses lookalike unicode characters to impersonate legitimate domains' });
+      riskScore += 50;
+    }
+
+    // ── 12. HTTP (not HTTPS) for login/sensitive page ─────────────────────────
+    if (parsed.protocol === 'http:' && phishPath) {
+      indicators.push({ sev:'high', text:'Unencrypted HTTP used for credential/login page — no SSL protection' });
+      riskScore += 25;
+    }
+
+    // ── 13. Port anomaly ──────────────────────────────────────────────────────
+    var port = parsed.port;
+    if (port && !['80','443','8080','8443'].includes(port)) {
+      indicators.push({ sev:'medium', text:'Non-standard port '+port+' — unusual for legitimate websites, common in C2 and malware' });
+      riskScore += 20;
+    }
+
+    // ── 14. URL encoding abuse ────────────────────────────────────────────────
+    if ((fullUrl.match(/%[0-9a-f]{2}/gi) || []).length > 8) {
+      indicators.push({ sev:'medium', text:'Excessive URL encoding detected — common evasion technique to bypass filters' });
+      riskScore += 20;
+    }
+
+    // ── 15. Double extension ──────────────────────────────────────────────────
+    if (/\.(pdf|doc|xls|jpg|png)\.(exe|bat|cmd|vbs|ps1|js)/i.test(path)) {
+      indicators.push({ sev:'critical', text:'Double extension detected (e.g. invoice.pdf.exe) — disguises executable as document' });
+      riskScore += 50;
+    }
+
+    // ── Clean indicator ────────────────────────────────────────────────────────
+    if (indicators.length === 0) {
+      indicators.push({ sev:'low', text:'No heuristic indicators detected — URL structure appears normal' });
+    }
+
+  } catch(e) {
+    indicators.push({ sev:'medium', text:'URL parsing error — malformed or obfuscated URL structure: '+e.message });
+    riskScore += 20;
+  }
+
+  return { indicators, riskScore: Math.min(100, riskScore) };
+}
+
+// ── EXTRACT URL INFO ──────────────────────────────────────────────────────────
+function parseURL(url) {
+  try {
+    var raw = url.trim();
+    if (!raw.startsWith('http')) raw = 'https://' + raw;
+    var p = new URL(raw);
+    return {
+      protocol: p.protocol,
+      hostname:  p.hostname,
+      port:      p.port || (p.protocol==='https:'?'443':'80'),
+      path:      p.pathname,
+      params:    p.search,
+      tld:       p.hostname.split('.').slice(-2).join('.'),
+      subdomain: p.hostname.split('.').length > 2 ? p.hostname.split('.').slice(0,-2).join('.') : '—',
+      fullUrl:   raw,
+    };
+  } catch(e) { return null; }
+}
+
+// ── CHECK URLSCAN.IO (free, no key) ──────────────────────────────────────────
+async function checkURLScan(url) {
+  try {
+    // Search existing scans
+    var domain = new URL(url.startsWith('http')?url:'https://'+url).hostname;
+    var r = await fetch('https://urlscan.io/api/v1/search/?q=domain:'+encodeURIComponent(domain)+'&size=1', {
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    var data = await r.json();
+    var results = data.results || [];
+    if (results.length === 0) return { found:false, verdict:'unknown', score:0 };
+    var latest = results[0];
+    var verdict = latest.verdicts && latest.verdicts.overall;
+    return {
+      found:   true,
+      verdict: verdict ? verdict.malicious ? 'malicious' : verdict.suspicious ? 'suspicious' : 'clean' : 'unknown',
+      score:   verdict ? verdict.score || 0 : 0,
+      tags:    latest.verdicts && latest.verdicts.overall && latest.verdicts.overall.tags || [],
+      scanUrl: 'https://urlscan.io/result/' + (latest.task && latest.task.uuid || ''),
+      screenshot: latest.screenshot || null,
+    };
+  } catch(e) { return { found:false, error:e.message }; }
+}
+
+// ── CHECK PHISHTANK (free, no key for lookups) ────────────────────────────────
+async function checkPhishTank(url) {
+  // PhishTank checkurl endpoint
+  try {
+    var formData = new FormData();
+    formData.append('url', url);
+    formData.append('format', 'json');
+    var r = await fetch('https://checkurl.phishtank.com/checkurl/', {
+      method:'POST', body:formData, signal:AbortSignal.timeout(8000)
+    });
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    var data = await r.json();
+    var result = data.results || {};
+    return {
+      found:    result.in_database || false,
+      phish:    result.valid && result.verified ? true : false,
+      phishId:  result.phish_id || null,
+      detail:   result.phish_detail_url || null,
+    };
+  } catch(e) { return { found:false, error:e.message }; }
+}
+
+// ── CHECK VIRUSTOTAL (free API key) ───────────────────────────────────────────
+async function checkVirusTotal(url) {
+  var vtKey = document.getElementById('vtKey').value.trim();
+  if (!vtKey) return { skipped:true, reason:'No API key — get free key at virustotal.com' };
+  try {
+    // Submit URL for analysis
+    var submitR = await fetch('https://www.virustotal.com/api/v3/urls', {
+      method:'POST',
+      headers:{ 'x-apikey':vtKey, 'content-type':'application/x-www-form-urlencoded' },
+      body:'url='+encodeURIComponent(url),
+      signal: AbortSignal.timeout(10000)
+    });
+    if (submitR.status === 401) return { skipped:true, reason:'Invalid VirusTotal API key' };
+    if (!submitR.ok) throw new Error('Submit failed: HTTP '+submitR.status);
+    var submitData = await submitR.json();
+    var analysisId = submitData.data && submitData.data.id;
+    if (!analysisId) throw new Error('No analysis ID returned');
+
+    // Wait briefly then get results
+    await new Promise(function(r){ setTimeout(r, 3000); });
+    var resultR = await fetch('https://www.virustotal.com/api/v3/analyses/'+analysisId, {
+      headers:{ 'x-apikey':vtKey }, signal:AbortSignal.timeout(10000)
+    });
+    if (!resultR.ok) throw new Error('Result fetch failed');
+    var resultData = await resultR.json();
+    var stats = resultData.data && resultData.data.attributes && resultData.data.attributes.stats || {};
+    return {
+      found:      true,
+      malicious:  stats.malicious || 0,
+      suspicious: stats.suspicious || 0,
+      clean:      stats.harmless || 0,
+      undetected: stats.undetected || 0,
+      total:      (stats.malicious||0)+(stats.suspicious||0)+(stats.harmless||0)+(stats.undetected||0),
+      vtUrl:      'https://www.virustotal.com/gui/url/'+btoa(url.trim()).replace(/=/g,''),
+    };
+  } catch(e) { return { found:false, error:e.message }; }
+}
+
+// ── CHECK GOOGLE SAFE BROWSING (free API key) ─────────────────────────────────
+async function checkGSB(url) {
+  var gsKey = document.getElementById('gsKey').value.trim();
+  if (!gsKey) return { skipped:true, reason:'No key — get free key at developers.google.com/safe-browsing' };
+  try {
+    var r = await fetch('https://safebrowsing.googleapis.com/v4/threatMatches:find?key='+gsKey, {
+      method:'POST',
+      headers:{ 'content-type':'application/json' },
+      body: JSON.stringify({
+        client:{ clientId:'ghost2210', clientVersion:'1.0' },
+        threatInfo:{
+          threatTypes:['MALWARE','SOCIAL_ENGINEERING','UNWANTED_SOFTWARE','POTENTIALLY_HARMFUL_APPLICATION'],
+          platformTypes:['ANY_PLATFORM'],
+          threatEntryTypes:['URL'],
+          threatEntries:[{ url }]
+        }
+      }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (r.status === 400) return { skipped:true, reason:'Invalid Google Safe Browsing API key' };
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    var data = await r.json();
+    var matches = data.matches || [];
+    return {
+      found:   matches.length > 0,
+      threats: matches.map(function(m){ return m.threatType; }),
+    };
+  } catch(e) { return { found:false, error:e.message }; }
+}
+
+// ── MAIN CHECK FUNCTION ───────────────────────────────────────────────────────
+async function checkURL() {
+  var url = document.getElementById('urlInput').value.trim();
+  if (!url) { alert('Enter a URL to analyze'); return; }
+  await analyzeURL(url);
+}
+
+async function checkBulk() {
+  var text = document.getElementById('bulkInput').value.trim();
+  if (!text) { alert('Enter URLs in the bulk field'); return; }
+  var urls = text.split('\n').map(function(u){ return u.trim(); }).filter(Boolean);
+  if (urls.length > 20) { alert('Bulk limit: 20 URLs at once'); return; }
+  document.getElementById('results').innerHTML = '';
+  for (var i = 0; i < urls.length; i++) {
+    await analyzeURL(urls[i]);
+    await new Promise(function(r){ setTimeout(r, 500); });
+  }
+}
+
+async function analyzeURL(url) {
+  var btn = document.getElementById('checkBtn');
+  btn.disabled = true; btn.textContent = '⟳ Analyzing…';
+
+  // Show generating card
+  var placeholder = document.createElement('div');
+  placeholder.className = 'result-card';
+  placeholder.innerHTML = '<div class="generating">'
+    + '<div class="gen-spinner"></div>'
+    + '<div style="color:var(--red)">Analyzing: '+esc(url.substring(0,60))+'…</div>'
+    + '<div style="font-size:11px;color:var(--muted)">Running heuristics · Checking threat feeds…</div>'
+    + '</div>';
+  document.getElementById('results').insertBefore(placeholder, document.getElementById('results').firstChild);
+
+  // ── Run all checks ─────────────────────────────────────────────────────────
+  var info      = parseURL(url);
+  var heuristic = analyzeHeuristics(url);
+
+  var [urlscan, phishtank, virustotal, gsb] = await Promise.all([
+    checkURLScan(url),
+    checkPhishTank(url),
+    checkVirusTotal(url),
+    checkGSB(url),
+  ]);
+
+  // ── Calculate final verdict ────────────────────────────────────────────────
+  var riskScore = heuristic.riskScore;
+  var verdict   = 'clean';
+  var verdictClass = 'vb-clean';
+  var verdictIcon  = '✓';
+
+  // Escalate based on feed results
+  if (phishtank.phish) { riskScore = Math.max(riskScore, 90); }
+  if (gsb.found && gsb.threats && gsb.threats.length) { riskScore = Math.max(riskScore, 85); }
+  if (virustotal.found && virustotal.malicious >= 3) { riskScore = Math.max(riskScore, 80); }
+  if (virustotal.found && virustotal.malicious >= 1) { riskScore = Math.max(riskScore, 60); }
+  if (urlscan.verdict === 'malicious') { riskScore = Math.max(riskScore, 75); }
+  if (urlscan.verdict === 'suspicious') { riskScore = Math.max(riskScore, 50); }
+
+  // Determine verdict
+  var hasPayload  = heuristic.indicators.some(function(i){ return i.text.includes('Payload') || i.text.includes('.exe') || i.text.includes('double extension'); });
+  var hasPhishing = phishtank.phish || (gsb.found && gsb.threats && gsb.threats.includes('SOCIAL_ENGINEERING'));
+
+  if (riskScore >= 70 || phishtank.phish || (virustotal.malicious >= 3)) {
+    verdict = hasPayload ? '⚠ MALWARE / PAYLOAD' : '🎣 PHISHING';
+    verdictClass = hasPayload ? 'vb-malware' : 'vb-phishing';
+    verdictIcon = hasPayload ? '💀' : '🎣';
+  } else if (riskScore >= 40 || urlscan.verdict === 'suspicious' || virustotal.suspicious >= 2) {
+    verdict = '⚠ SUSPICIOUS';
+    verdictClass = 'vb-suspicious';
+    verdictIcon = '⚠';
+  } else if (riskScore > 0) {
+    verdict = '❓ REVIEW';
+    verdictClass = 'vb-unknown';
+    verdictIcon = '❓';
+  } else {
+    verdict = '✓ CLEAN';
+    verdictClass = 'vb-clean';
+    verdictIcon = '✓';
+  }
+
+  // Build result
+  var result = { url, verdict, verdictClass, riskScore, info, heuristic, urlscan, phishtank, virustotal, gsb, time: new Date() };
+  scanResults.unshift(result);
+  saveHistory(result);
+
+  // Replace placeholder with result card
+  placeholder.outerHTML = buildResultCard(result);
+
+  btn.disabled = false; btn.textContent = '🔍 ANALYZE';
+  renderHistory();
+}
+
+// ── BUILD RESULT CARD ─────────────────────────────────────────────────────────
+function buildResultCard(r) {
+  var riskColor = r.riskScore>=70?'var(--red)':r.riskScore>=40?'var(--orange)':r.riskScore>=15?'var(--yellow)':'var(--green)';
+  var info = r.info || {};
+
+  // Checks grid
+  var checks = [
+    { icon:'🦠', name:'VirusTotal',
+      result: r.virustotal.skipped ? r.virustotal.reason
+            : r.virustotal.error  ? 'Error: '+r.virustotal.error
+            : r.virustotal.found  ? r.virustotal.malicious+' malicious / '+r.virustotal.suspicious+' suspicious of '+r.virustotal.total+' scanners'
+            : 'Not found in VT database',
+      cls: r.virustotal.malicious>0?'check-bad':r.virustotal.suspicious>0?'check-warn':r.virustotal.found?'check-ok':'check-info' },
+    { icon:'🐟', name:'PhishTank',
+      result: r.phishtank.error  ? 'Error: '+r.phishtank.error
+            : r.phishtank.phish  ? '⚠ CONFIRMED PHISHING SITE (ID: '+r.phishtank.phishId+')'
+            : r.phishtank.found  ? 'In database — not confirmed phishing'
+            : 'Not found in PhishTank database',
+      cls: r.phishtank.phish?'check-bad':r.phishtank.found?'check-warn':'check-ok' },
+    { icon:'🔍', name:'URLScan.io',
+      result: r.urlscan.error  ? 'Error: '+r.urlscan.error
+            : r.urlscan.found  ? 'Verdict: '+r.urlscan.verdict.toUpperCase()+(r.urlscan.tags&&r.urlscan.tags.length?' | Tags: '+r.urlscan.tags.slice(0,3).join(', '):'')
+            : 'No existing scan found',
+      cls: r.urlscan.verdict==='malicious'?'check-bad':r.urlscan.verdict==='suspicious'?'check-warn':r.urlscan.found?'check-ok':'check-info' },
+    { icon:'🛡️', name:'Google Safe Browsing',
+      result: r.gsb.skipped ? r.gsb.reason
+            : r.gsb.error   ? 'Error: '+r.gsb.error
+            : r.gsb.found   ? '⚠ THREAT DETECTED: '+r.gsb.threats.join(', ')
+            : 'No threats detected',
+      cls: r.gsb.found?'check-bad':'check-ok' },
+    { icon:'🧠', name:'Heuristic Engine',
+      result: r.heuristic.indicators.length+' indicator(s) — Risk score: '+r.riskScore+'/100',
+      cls: r.riskScore>=70?'check-bad':r.riskScore>=40?'check-warn':r.riskScore>0?'check-info':'check-ok' },
+    { icon:'🌐', name:'Protocol',
+      result: (info.protocol||'?')+' on port '+(info.port||'?'),
+      cls: info.protocol==='http:'?'check-warn':'check-ok' },
+  ];
+
+  var checksHtml = checks.map(function(ch) {
+    return '<div class="check-item">'
+      + '<div class="check-icon">'+ch.icon+'</div>'
+      + '<div class="check-body">'
+        + '<div class="check-name">'+esc(ch.name)+'</div>'
+        + '<div class="check-result '+ch.cls+'">'+esc(ch.result)+'</div>'
+      + '</div></div>';
+  }).join('');
+
+  // Indicators
+  var indHtml = r.heuristic.indicators.map(function(ind) {
+    var cls = { critical:'ind-c', high:'ind-h', medium:'ind-m', low:'ind-l' }[ind.sev] || 'ind-l';
+    return '<div class="ind-item">'
+      + '<span class="ind-sev '+cls+'">'+ind.sev.toUpperCase()+'</span>'
+      + '<span class="ind-text">'+esc(ind.text)+'</span>'
+    + '</div>';
+  }).join('');
+
+  // Domain info
+  var domainHtml = [
+    { label:'Hostname',  val:info.hostname||'—' },
+    { label:'TLD',       val:info.tld||'—' },
+    { label:'Subdomain', val:info.subdomain||'—' },
+    { label:'Protocol',  val:(info.protocol||'?').replace(':','') },
+    { label:'Path',      val:info.path||'/' },
+    { label:'Parameters',val:info.params||'—' },
+  ].map(function(d){ return '<div class="di-box"><div class="di-label">'+esc(d.label)+'</div><div class="di-val">'+esc(String(d.val).substring(0,40))+'</div></div>'; }).join('');
+
+  // External link buttons
+  var extLinks = [
+    { label:'URLScan.io', url: r.urlscan.scanUrl || 'https://urlscan.io/search/#'+encodeURIComponent('domain:'+((info&&info.hostname)||'')) },
+    { label:'VirusTotal', url: r.virustotal.vtUrl || 'https://www.virustotal.com/gui/url/'+btoa(r.url.trim()).replace(/=/g,'') },
+    { label:'PhishTank',  url: r.phishtank.detail || 'https://www.phishtank.com/checkurl/' },
+    { label:'Whois',      url: 'https://who.is/whois/'+(info&&info.hostname||'') },
+  ].map(function(l){ return '<a class="ext-link" href="'+esc(l.url)+'" target="_blank" rel="noopener">↗ '+esc(l.label)+'</a>'; }).join('');
+
+  return '<div class="result-card">'
+    // Header
+    + '<div class="result-hdr">'
+      + '<span class="verdict-badge '+r.verdictClass+'">'+esc(r.verdict)+'</span>'
+      + '<div class="result-url">'+esc(r.url.substring(0,120))+'</div>'
+      + '<div class="risk-score-wrap">'
+        + '<div class="risk-score-num" style="color:'+riskColor+'">'+r.riskScore+'</div>'
+        + '<div class="risk-score-lbl">Risk Score</div>'
+      + '</div>'
+    + '</div>'
+    // Checks
+    + '<div class="checks-grid">'+checksHtml+'</div>'
+    // Indicators
+    + (r.heuristic.indicators.length ? '<div class="indicators"><div class="ind-title">Heuristic Indicators</div>'+indHtml+'</div>' : '')
+    // Domain info
+    + '<div class="domain-info">'+domainHtml+'</div>'
+    // External links
+    + '<div class="ext-links">'+extLinks+'</div>'
+  + '</div>';
+}
+
+// ── HISTORY ───────────────────────────────────────────────────────────────────
+function saveHistory(result) {
+  try {
+    var hist = getHistory();
+    hist.unshift({ url:result.url, verdict:result.verdict, verdictClass:result.verdictClass, riskScore:result.riskScore, time:result.time.toISOString() });
+    if (hist.length > 50) hist = hist.slice(0,50);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+  } catch(e) {}
+}
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]'); } catch(e){ return []; }
+}
+
+function renderHistory() {
+  var hist = getHistory();
+  var sec  = document.getElementById('historySection');
+  var list = document.getElementById('historyList');
+  if (!hist.length) { sec.style.display='none'; return; }
+  sec.style.display = 'block';
+  list.innerHTML = hist.slice(0,10).map(function(h) {
+    var riskColor = h.riskScore>=70?'var(--red)':h.riskScore>=40?'var(--orange)':h.riskScore>=15?'var(--yellow)':'var(--green)';
+    var time = new Date(h.time).toLocaleString();
+    return '<div class="history-item" onclick="document.getElementById(\'urlInput\').value=\''+esc(h.url)+'\'">'
+      + '<span class="hi-verdict '+h.verdictClass+'" style="font-size:9px;font-family:var(--mono);font-weight:700;padding:2px 7px;border-radius:3px">'+esc(h.verdict)+'</span>'
+      + '<span class="hi-url">'+esc(h.url)+'</span>'
+      + '<span style="font-family:var(--mono);font-size:11px;color:'+riskColor+';flex-shrink:0">'+h.riskScore+'</span>'
+      + '<span class="hi-time">'+esc(time)+'</span>'
+      + '<span class="hi-del" onclick="event.stopPropagation();deleteHistory(\''+encodeURIComponent(h.url)+'\')">✕</span>'
+    + '</div>';
+  }).join('');
+}
+
+function deleteHistory(encodedUrl) {
+  var url = decodeURIComponent(encodedUrl);
+  try {
+    var hist = getHistory().filter(function(h){ return h.url !== url; });
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+    renderHistory();
+  } catch(e) {}
+}
+
+// ── CLEAR / EXPORT ────────────────────────────────────────────────────────────
+function clearResults() {
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('urlInput').value = '';
+  document.getElementById('bulkInput').value = '';
+  scanResults = [];
+}
+
+function exportResults() {
+  if (!scanResults.length) { alert('No results to export'); return; }
+  var rows = [['URL','Verdict','Risk Score','PhishTank','URLScan','VT Malicious','VT Suspicious','Heuristic Indicators','Time'].join(',')];
+  scanResults.forEach(function(r) {
+    rows.push([
+      '"'+r.url.replace(/"/g,"'")+'"',
+      '"'+r.verdict+'"',
+      r.riskScore,
+      '"'+(r.phishtank.phish?'PHISHING':r.phishtank.found?'IN DATABASE':'CLEAN')+'"',
+      '"'+(r.urlscan.verdict||'unknown')+'"',
+      r.virustotal.malicious||0,
+      r.virustotal.suspicious||0,
+      r.heuristic.indicators.length,
+      '"'+r.time.toISOString()+'"',
+    ].join(','));
+  });
+  var blob = new Blob([rows.join('\n')],{type:'text/csv'});
+  var a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='link-analysis-'+new Date().toISOString().split('T')[0]+'.csv'; a.click();
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+renderHistory();
+</script>
+</body>
+</html>

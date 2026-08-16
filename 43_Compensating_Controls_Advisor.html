@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COMPENSATING CONTROLS ADVISOR // Ghost Defense</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000;--panel:#050f05;--panel-2:#091209;
+    --line:rgba(0,255,65,.10);--line-2:rgba(0,255,65,.18);
+    --grn:#00ff41;--grn-dim:#00cc33;--cyan:#00d4ff;--cyan-dim:#0090b3;
+    --txt:#c8e6cc;--mut:#5f7a63;--mut-2:#3f5443;
+    --red:#ff3333;--amber:#ff9500;--yellow:#ffe14d;--purple:#c77dff;--blue:#5b8dff;
+    --mono:'IBM Plex Mono','Share Tech Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}html,body{margin:0;padding:0}
+  body{background:radial-gradient(900px 500px at 80% -10%,rgba(0,255,65,.05),transparent 60%),var(--bg);
+    color:var(--txt);font-family:var(--mono);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased;min-height:100vh}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:linear-gradient(rgba(0,255,65,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,65,.03) 1px,transparent 1px);
+    background-size:42px 42px;mask-image:radial-gradient(120% 100% at 50% 0,#000 35%,transparent 90%)}
+  .wrap{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:16px 18px 60px}
+  a{color:var(--cyan);text-decoration:none}a:hover{color:var(--grn)}
+
+  header.cmd{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border:1px solid var(--line-2);
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));padding:12px 16px;border-radius:4px}
+  .brand{display:flex;align-items:center;gap:12px;min-width:0}
+  .ghost{width:42px;height:42px;flex:none;border:1px solid var(--grn);border-radius:3px;display:grid;place-items:center;
+    background:rgba(0,255,65,.05);box-shadow:0 0 18px rgba(0,255,65,.15) inset}
+  .ghost svg{width:26px;height:26px}
+  .titles h1{font-size:15px;margin:0;letter-spacing:2px;color:var(--grn);font-weight:700;text-shadow:0 0 14px rgba(0,255,65,.35)}
+  .titles .sub{font-size:10.5px;color:var(--mut);letter-spacing:1.5px;margin-top:2px}
+  .titles .sub b{color:var(--grn-dim)}
+  .spacer{flex:1 1 auto}
+  .btn{font-family:var(--mono);font-size:11px;letter-spacing:1.2px;cursor:pointer;background:transparent;color:var(--grn);
+    border:1px solid var(--grn-dim);padding:8px 13px;border-radius:3px;transition:.15s;text-transform:uppercase;white-space:nowrap}
+  .btn:hover{background:rgba(0,255,65,.12);box-shadow:0 0 12px rgba(0,255,65,.25)}
+  .btn:active{transform:translateY(1px)}
+  .btn.cy{color:var(--cyan);border-color:var(--cyan-dim)}.btn.cy:hover{background:rgba(0,212,255,.1)}
+  .status{display:flex;align-items:center;gap:8px;font-size:10.5px;letter-spacing:.8px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--mut)}.dot.live{background:var(--grn)}
+
+  .note{margin-top:12px;border:1px solid var(--line);border-left:2px solid var(--amber);background:rgba(255,149,0,.05);
+    border-radius:4px;padding:9px 13px;font-size:10.5px;color:var(--mut);letter-spacing:.3px;line-height:1.6}
+  .note b{color:var(--amber)}
+
+  .main{display:grid;grid-template-columns:minmax(0,0.9fr) minmax(0,1.1fr);gap:14px;margin-top:14px}
+  .panel{border:1px solid var(--line);background:var(--panel);border-radius:4px}
+  .panel .ph{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 13px;border-bottom:1px solid var(--line);
+    font-size:10.5px;letter-spacing:1.5px;color:var(--grn-dim);text-transform:uppercase}
+  .panel .ph .r{color:var(--mut);font-size:10px;text-transform:none}
+  .panel .body{padding:14px}
+
+  label.lb{display:block;font-size:10px;color:var(--mut);letter-spacing:1px;margin:0 0 6px;text-transform:uppercase}
+  input[type=text],select{width:100%;font-family:var(--mono);font-size:12.5px;background:#030703;color:var(--txt);
+    border:1px solid var(--line-2);border-radius:3px;padding:9px 11px}
+  input:focus,select:focus{outline:none;border-color:var(--grn-dim)}
+  .frow{display:flex;gap:10px;margin-bottom:13px}.frow .fld{flex:1}
+  .btnrow{display:flex;gap:8px;margin-top:8px}
+  .mini{font-size:10px;padding:7px 10px}
+
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{font-size:9.5px;letter-spacing:.5px;padding:2px 8px;border-radius:10px;border:1px solid var(--line-2);color:var(--mut)}
+  .chip.on{background:rgba(0,212,255,.12);color:var(--cyan);border-color:rgba(0,212,255,.4)}
+
+  .cwelist{margin-top:6px;display:flex;flex-direction:column;gap:5px;max-height:150px;overflow:auto}
+  .cwe-added{display:flex;align-items:center;gap:8px;font-size:11px;background:rgba(0,255,65,.06);border:1px solid var(--line-2);border-radius:3px;padding:6px 9px}
+  .cwe-added .cx{margin-left:auto;cursor:pointer;color:var(--mut-2);border:none;background:none;font-size:13px}
+  .cwe-added .cx:hover{color:var(--red)}
+
+  .toggles{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+  .tg{display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--txt);cursor:pointer;user-select:none;
+    border:1px solid var(--line-2);border-radius:3px;padding:9px 11px;transition:.12s}
+  .tg:hover{border-color:var(--grn-dim)}
+  .tg.on{background:rgba(255,51,51,.08);border-color:rgba(255,51,51,.4)}
+  .tg .box{width:15px;height:15px;border:1px solid var(--mut);border-radius:3px;flex:none;display:grid;place-items:center;font-size:11px;color:var(--red)}
+  .tg.on .box{border-color:var(--red)}
+  .tg .d{font-size:9.5px;color:var(--mut-2);margin-top:2px}
+
+  /* output */
+  .situ{border:1px solid var(--line-2);border-radius:4px;background:var(--panel-2);padding:12px 13px;margin-bottom:14px;font-size:11.5px;line-height:1.6}
+  .situ .st{font-size:10px;color:var(--grn-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:7px}
+  .situ b{color:var(--txt)}
+  .situ .flag{display:inline-block;font-size:9px;font-weight:700;padding:1px 7px;border-radius:3px;margin-right:5px;letter-spacing:.3px}
+  .fl-kev{background:rgba(255,51,51,.16);color:var(--red);border:1px solid rgba(255,51,51,.4)}
+  .fl-exp{background:rgba(255,149,0,.14);color:var(--amber);border:1px solid rgba(255,149,0,.4)}
+  .fl-np{background:rgba(199,125,255,.14);color:var(--purple);border:1px solid rgba(199,125,255,.4)}
+
+  .grp{margin-bottom:16px}
+  .grp-h{display:flex;align-items:center;gap:9px;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:9px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  .grp-h .gi{font-size:14px}
+  .g-interim .grp-h{color:var(--red)}.g-workaround .grp-h{color:var(--amber)}.g-detect .grp-h{color:var(--cyan)}.g-fix .grp-h{color:var(--grn)}
+
+  .ctrl{border:1px solid var(--line);border-radius:4px;padding:11px 13px;margin-bottom:8px;background:var(--panel)}
+  .ctrl .c1{display:flex;align-items:flex-start;gap:9px}
+  .ctrl .kind{flex:none;font-size:8.5px;font-weight:700;letter-spacing:.5px;padding:2px 7px;border-radius:3px;margin-top:1px}
+  .k-interim{background:rgba(255,51,51,.16);color:var(--red);border:1px solid rgba(255,51,51,.4)}
+  .k-workaround{background:rgba(255,149,0,.14);color:var(--amber);border:1px solid rgba(255,149,0,.4)}
+  .k-detect{background:rgba(0,212,255,.12);color:var(--cyan);border:1px solid rgba(0,212,255,.4)}
+  .k-fix{background:rgba(0,255,65,.1);color:var(--grn);border:1px solid rgba(0,255,65,.3)}
+  .ctrl .ctext{flex:1;font-size:12px;color:var(--txt);line-height:1.5}
+  .ctrl .cmap{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;margin-left:0}
+  .map{font-size:9px;letter-spacing:.3px;padding:2px 7px;border-radius:3px;border:1px solid var(--line-2);color:var(--mut)}
+  .map.nist{color:var(--blue);border-color:rgba(91,141,255,.35);background:rgba(91,141,255,.08)}
+  .map.cis{color:var(--grn-dim);border-color:rgba(0,204,51,.3);background:rgba(0,204,51,.06)}
+  .ctrl .cwhy{font-size:9.5px;color:var(--mut-2);margin-top:6px;line-height:1.5}
+
+  .empty{padding:36px;text-align:center;color:var(--mut)}.empty b{color:var(--grn-dim);display:block;margin-bottom:6px;letter-spacing:1.5px}
+  .confirm{border:1px dashed rgba(255,149,0,.4);border-radius:4px;padding:10px 13px;margin-top:6px;font-size:10.5px;color:var(--mut);line-height:1.6;background:rgba(255,149,0,.04)}
+  .confirm b{color:var(--amber)}
+
+  footer{margin-top:22px;border-top:1px solid var(--line);padding-top:14px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;font-size:10px;color:var(--mut-2);letter-spacing:.5px}
+  footer b{color:var(--grn-dim)}
+  @media(max-width:1000px){.main{grid-template-columns:1fr}}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="cmd">
+    <div class="brand">
+      <div class="ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#00ff41" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 20V10a8 8 0 0 1 16 0v10l-2.5-2-2.5 2-3-2-3 2L4 20Z"/>
+          <circle cx="9" cy="11" r="1.1" fill="#00ff41" stroke="none"/><circle cx="15" cy="11" r="1.1" fill="#00ff41" stroke="none"/>
+        </svg>
+      </div>
+      <div class="titles">
+        <h1>COMPENSATING CONTROLS ADVISOR</h1>
+        <div class="sub">GHOST DEFENSE // TOOL 43 &nbsp;·&nbsp; <b>DEFEND ALWAYS</b> &nbsp;·&nbsp; WHEN YOU CAN'T PATCH YET</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="status"><span class="dot" id="kevDot"></span><span id="kevStatus">NO KEV</span></div>
+    <label class="btn" style="cursor:pointer" title="Import CISA KEV to flag active exploitation">📁 KEV<input type="file" id="kevFile" accept=".json,.csv,.txt" style="display:none"></label>
+    <button class="btn cy" id="exportBtn">↓ EXPORT PLAN</button>
+  </header>
+
+  <div class="note">
+    <b>HOW THIS WORKS —</b> compensating controls buy time when a fix isn't available or isn't deployable yet (no patch, budget-locked hardware, change-window constraints). The tool maps a vulnerability's <b>weakness class (CWE)</b> to control families, filters them by the <b>CVSS attack path</b>, and maps each to <b>NIST 800-53 / CIS Controls</b>. It proposes control <b>families</b> — you confirm what's actually deployable in your environment. It is not a substitute for patching; it's what holds the line until you can.
+  </div>
+
+  <div class="main">
+    <!-- INPUT -->
+    <div class="panel">
+      <div class="ph"><span>VULNERABILITY</span><span class="r">what are we compensating for</span></div>
+      <div class="body">
+        <div class="frow">
+          <div class="fld"><label class="lb">CVE ID (optional)</label><input type="text" id="cve" spellcheck="false" placeholder="CVE-2024-3400"></div>
+        </div>
+        <label class="lb">CVSS v3 vector — drives which controls apply to the attack path</label>
+        <input type="text" id="cvss" spellcheck="false" placeholder="CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H">
+        <div class="chips" id="vecChips"></div>
+        <div class="btnrow"><button class="btn cy mini" id="parseBtn">PARSE VECTOR</button></div>
+
+        <div style="margin-top:16px">
+          <label class="lb">Weakness type (CWE) — the mitigation backbone</label>
+          <select id="cweSel"><option value="">— select a CWE to add —</option></select>
+          <div class="cwelist" id="cweAdded"></div>
+        </div>
+
+        <div style="margin-top:16px">
+          <label class="lb">Context</label>
+          <div class="toggles">
+            <div class="tg" data-tg="nopatch"><span class="box"></span><div><div>No patch available / can't patch yet</div><div class="d">budget-locked, no fix released, or change window blocked</div></div></div>
+            <div class="tg" data-tg="exposed"><span class="box"></span><div><div>Internet-facing / externally exposed</div><div class="d">reachable from outside your perimeter</div></div></div>
+          </div>
+        </div>
+
+        <div class="btnrow" style="margin-top:16px"><button class="btn" id="genBtn" style="flex:1;text-align:center">▶ GENERATE CONTROL PLAN</button></div>
+      </div>
+    </div>
+
+    <!-- OUTPUT -->
+    <div class="panel">
+      <div class="ph"><span>COMPENSATING CONTROL PLAN</span><span class="r" id="outMeta">—</span></div>
+      <div class="body" id="out">
+        <div class="empty"><b>NO PLAN YET</b>Add a CWE (and optionally a CVSS vector + context), then GENERATE.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div>Mitigations from CWE weakness classes · filtered by CVSS attack path · mapped to NIST SP 800-53 &amp; CIS Controls v8 · KEV context optional</div>
+    <div><b>GHOST DEFENSE</b> · DEFEND ALWAYS · STATIC HTML · NO INFRA</div>
+  </footer>
+</div>
+
+<script>
+//============ GHOST DEFENSE — COMPENSATING CONTROLS ADVISOR (Tool 43) ============
+const $=id=>document.getElementById(id);
+
+// ---------- control building blocks ----------
+// kind: interim (isolate/buy time) | workaround (config prevents exploit) | detect (monitor) | fix (real remediation)
+// tags: net (network-exploitable), host, auth (unauth entry), ui (user interaction), always
+function C(kind,t,nist,cis,tags,why){ return {kind,t,nist,cis,tags,why:why||""}; }
+
+// ---------- CWE knowledge base ----------
+// Each CWE -> list of compensating controls. General vector-driven controls are added by the engine.
+const CWE={
+ "CWE-77":{n:"Command Injection",cat:"Injection",ctrls:[
+   C("workaround","Disable or restrict the vulnerable feature/endpoint that passes input to a shell (least functionality).",["CM-7"],["4"],["always"],"Removes the exploit path without a code change."),
+   C("workaround","Deploy a WAF / input-filtering rule blocking shell metacharacters and known exploit strings for this CVE.",["SI-3","SI-10"],["13"],["net"],"Virtual patch at the boundary."),
+   C("interim","Network-restrict the affected interface to trusted management sources only; remove any internet exposure.",["SC-7","AC-4"],["12"],["net"],"Shrinks who can reach the injectable input."),
+   C("detect","Alert on anomalous child-process spawns / outbound connections from the affected service.",["SI-4","AU-6"],["8","13"],["always"],"Catches exploitation attempts while the fix is pending.")
+ ]},
+ "CWE-78":{n:"OS Command Injection",cat:"Injection",ctrls:[
+   C("workaround","Disable the vulnerable function or CGI/endpoint; apply vendor workaround config if published.",["CM-7"],["4"],["always"]),
+   C("workaround","WAF rule blocking command-injection payloads targeting this parameter/endpoint.",["SI-3","SI-10"],["13"],["net"]),
+   C("interim","Isolate the host to a restricted VLAN; allow only required egress and management ingress.",["SC-7"],["12"],["net"]),
+   C("detect","Monitor for unexpected process execution and shell activity on the host.",["SI-4"],["8","10"],["always"])
+ ]},
+ "CWE-89":{n:"SQL Injection",cat:"Injection",ctrls:[
+   C("workaround","Deploy a WAF signature blocking SQLi patterns for the affected parameter.",["SI-3","SI-10"],["13","16"],["net"],"Boundary block while the query fix ships."),
+   C("workaround","Restrict the DB account used by the app to least privilege (no DDL, no xp_cmdshell, read-only where possible).",["AC-6"],["6"],["always"],"Caps the blast radius of a successful injection."),
+   C("interim","Restrict the application's network exposure to known clients; put behind auth proxy/VPN if exposed.",["SC-7","AC-17"],["12","6"],["net","auth"]),
+   C("detect","Enable DB query/audit logging; alert on anomalous query patterns and error spikes.",["AU-6","SI-4"],["8"],["always"])
+ ]},
+ "CWE-79":{n:"Cross-Site Scripting (XSS)",cat:"Injection",ctrls:[
+   C("workaround","Enforce a strict Content-Security-Policy and set HttpOnly/Secure cookie flags.",["SC-18","SC-23"],["16"],["always"],"Limits script execution and session theft."),
+   C("workaround","WAF rule filtering script payloads on the affected input.",["SI-3","SI-10"],["13"],["net","ui"]),
+   C("detect","Monitor for anomalous requests and session anomalies; review web logs.",["SI-4","AU-6"],["8"],["always"])
+ ]},
+ "CWE-22":{n:"Path Traversal",cat:"File/Path",ctrls:[
+   C("workaround","WAF/input rule blocking traversal sequences (../, encoded variants) on the affected endpoint.",["SI-10","SI-3"],["13"],["net"]),
+   C("workaround","Tighten filesystem permissions so the service account cannot read outside its intended directory.",["AC-6","AC-3"],["3","6"],["always"],"Limits what a successful traversal can reach."),
+   C("interim","Restrict the interface to trusted sources; remove internet exposure of the file-serving endpoint.",["SC-7"],["12"],["net"]),
+   C("detect","Alert on access to sensitive paths (e.g., /etc/passwd, config files) via the web service.",["SI-4"],["8"],["always"])
+ ]},
+ "CWE-434":{n:"Unrestricted File Upload",cat:"File/Path",ctrls:[
+   C("workaround","Disable the upload feature, or restrict allowed types and store uploads outside the web root with no execute permission.",["CM-7","AC-6"],["4","16"],["always"]),
+   C("workaround","WAF rule blocking upload of executable/script content to the endpoint.",["SI-3"],["13"],["net"]),
+   C("interim","Restrict access to the upload function to authenticated, trusted users only.",["AC-3","IA-2"],["6"],["auth"]),
+   C("detect","Monitor the upload directory for new executable/script files.",["SI-4"],["8","10"],["always"])
+ ]},
+ "CWE-502":{n:"Deserialization of Untrusted Data",cat:"Injection",ctrls:[
+   C("workaround","Disable the vulnerable deserialization endpoint/feature or apply vendor class-filtering workaround.",["CM-7"],["4"],["always"]),
+   C("interim","Remove internet exposure; restrict the affected service to trusted internal callers only.",["SC-7","AC-4"],["12"],["net"],"Deserialization RCE is frequently unauth + wormable — isolation is the priority interim."),
+   C("workaround","WAF rule blocking known serialized-payload signatures for this CVE.",["SI-3"],["13"],["net"]),
+   C("detect","Alert on unexpected process execution / outbound connections from the service.",["SI-4"],["8","13"],["always"])
+ ]},
+ "CWE-94":{n:"Code Injection",cat:"Injection",ctrls:[
+   C("workaround","Disable the affected dynamic-evaluation feature; apply vendor workaround.",["CM-7"],["4"],["always"]),
+   C("interim","Isolate and restrict network reach of the affected component.",["SC-7"],["12"],["net"]),
+   C("detect","Monitor for anomalous code execution and integrity changes.",["SI-4","SI-7"],["8","10"],["always"])
+ ]},
+ "CWE-287":{n:"Improper Authentication",cat:"AuthN/AuthZ",ctrls:[
+   C("interim","Place the affected service behind a separate, hardened auth layer (VPN, reverse proxy with MFA) so the broken auth is not directly reachable.",["IA-2","AC-17","SC-7"],["6","12"],["net","auth"],"Adds a barrier in front of the flawed authentication."),
+   C("workaround","Disable the affected auth method/endpoint if an alternative exists; apply vendor workaround.",["CM-7"],["4"],["always"]),
+   C("interim","Remove internet exposure entirely until fixed.",["SC-7"],["12"],["net"]),
+   C("detect","Alert on authentication anomalies, new sessions, and access from unexpected sources.",["SI-4","AU-6"],["8","6"],["always"])
+ ]},
+ "CWE-306":{n:"Missing Authentication for Critical Function",cat:"AuthN/AuthZ",ctrls:[
+   C("interim","Front the exposed function with an authentication gateway/reverse proxy; do not allow unauthenticated reach.",["IA-2","AC-3","SC-7"],["6","12"],["net","auth"]),
+   C("interim","Remove the affected function from internet exposure immediately.",["SC-7"],["12"],["net"],"Unauthenticated critical function reachable externally is the classic mass-exploitation setup."),
+   C("workaround","Disable the unauthenticated endpoint if not operationally required.",["CM-7"],["4"],["always"]),
+   C("detect","Monitor all access to the critical function for unauthorized use.",["SI-4","AU-6"],["8"],["always"])
+ ]},
+ "CWE-862":{n:"Missing Authorization",cat:"AuthN/AuthZ",ctrls:[
+   C("workaround","Enforce access control at a proxy/gateway in front of the affected resource.",["AC-3","AC-6"],["6"],["auth"]),
+   C("interim","Restrict network reach of the affected resource to authorized roles/segments.",["SC-7","AC-4"],["12"],["net"]),
+   C("detect","Audit access to the resource; alert on access by unexpected principals.",["AU-6","SI-4"],["8"],["always"])
+ ]},
+ "CWE-863":{n:"Incorrect Authorization",cat:"AuthN/AuthZ",ctrls:[
+   C("workaround","Add compensating access enforcement at the gateway; review and tighten role assignments.",["AC-3","AC-6"],["6"],["auth"]),
+   C("detect","Audit privileged and cross-tenant access; alert on anomalies.",["AU-6","SI-4"],["8"],["always"])
+ ]},
+ "CWE-269":{n:"Improper Privilege Management",cat:"AuthN/AuthZ",ctrls:[
+   C("workaround","Apply least privilege to the affected service account; remove unnecessary rights.",["AC-6"],["6"],["always"]),
+   C("detect","Monitor for privilege escalation events and unexpected admin actions.",["SI-4","AU-6"],["8","6"],["host"]),
+   C("interim","Limit local/interactive access to the host to reduce who can reach a local privesc.",["AC-3","AC-6"],["6"],["host"])
+ ]},
+ "CWE-798":{n:"Use of Hard-coded Credentials",cat:"Credentials",ctrls:[
+   C("interim","Change/rotate the affected credentials where possible; block the default account at the network layer.",["IA-5","AC-7"],["5","6"],["always"]),
+   C("interim","Restrict management-interface access to trusted sources; remove internet exposure.",["SC-7","AC-17"],["12"],["net"]),
+   C("detect","Alert on logins using the known default/hard-coded account.",["SI-4","AU-6"],["8"],["always"])
+ ]},
+ "CWE-522":{n:"Insufficiently Protected Credentials",cat:"Credentials",ctrls:[
+   C("workaround","Force credential rotation and enforce MFA on affected accounts.",["IA-2","IA-5"],["5","6"],["always"]),
+   C("interim","Restrict access paths that expose the credentials; segment the affected service.",["SC-7"],["12"],["net"]),
+   C("detect","Monitor for credential reuse and anomalous authentication.",["SI-4"],["8"],["always"])
+ ]},
+ "CWE-918":{n:"Server-Side Request Forgery (SSRF)",cat:"Injection",ctrls:[
+   C("workaround","Restrict the affected service's egress with an allow-list; block access to internal/metadata IP ranges (169.254.169.254, RFC1918).",["SC-7","AC-4"],["12","13"],["always"],"Neutralizes the SSRF's ability to reach internal targets."),
+   C("workaround","WAF rule filtering URL parameters on the affected endpoint.",["SI-10","SI-3"],["13"],["net"]),
+   C("detect","Monitor for unexpected internal connections originating from the service.",["SI-4"],["8","13"],["always"])
+ ]},
+ "CWE-611":{n:"XML External Entity (XXE)",cat:"Injection",ctrls:[
+   C("workaround","Disable external entity/DTD processing via vendor config if available.",["CM-7","CM-6"],["4"],["always"]),
+   C("workaround","WAF rule blocking DOCTYPE/ENTITY payloads on the affected endpoint.",["SI-3"],["13"],["net"]),
+   C("detect","Monitor for outbound connections and file reads triggered by XML processing.",["SI-4"],["8"],["always"])
+ ]},
+ "CWE-352":{n:"Cross-Site Request Forgery (CSRF)",cat:"Web",ctrls:[
+   C("workaround","Enforce SameSite=strict cookies and require re-authentication for sensitive actions at a proxy.",["SC-23"],["16"],["ui"]),
+   C("detect","Monitor for unexpected state-changing requests lacking valid origin/referrer.",["SI-4"],["8"],["ui"])
+ ]},
+ "CWE-787":{n:"Out-of-bounds Write",cat:"Memory Safety",ctrls:[
+   C("interim","Restrict network reach of the affected service; remove internet exposure (memory-corruption RCE is often pre-auth).",["SC-7"],["12"],["net"]),
+   C("workaround","Ensure exploit-mitigations (DEP, ASLR) are enabled; apply vendor mitigation config.",["SI-16","CM-6"],["4"],["host"],"Raises exploitation difficulty."),
+   C("workaround","Disable the affected protocol/feature if not required.",["CM-7"],["4"],["always"]),
+   C("detect","Monitor for service crashes and anomalous behavior indicating exploitation attempts.",["SI-4"],["8"],["always"])
+ ]},
+ "CWE-125":{n:"Out-of-bounds Read",cat:"Memory Safety",ctrls:[
+   C("interim","Restrict access to the affected service to trusted sources.",["SC-7"],["12"],["net"]),
+   C("workaround","Disable the affected feature/protocol; apply vendor mitigation.",["CM-7"],["4"],["always"]),
+   C("detect","Monitor for anomalous requests and information-disclosure patterns.",["SI-4"],["8"],["always"])
+ ]},
+ "CWE-416":{n:"Use After Free",cat:"Memory Safety",ctrls:[
+   C("interim","Restrict network reach; remove internet exposure of the affected component.",["SC-7"],["12"],["net"]),
+   C("workaround","Enable available exploit mitigations; disable the affected feature if optional.",["SI-16","CM-7"],["4"],["host"]),
+   C("detect","Monitor for crashes and anomalous process behavior.",["SI-4"],["8"],["always"])
+ ]},
+ "CWE-119":{n:"Buffer Overflow (bounds)",cat:"Memory Safety",ctrls:[
+   C("interim","Isolate the affected service to a restricted segment; remove external exposure.",["SC-7"],["12"],["net"]),
+   C("workaround","Confirm DEP/ASLR enabled; apply vendor workaround; disable optional affected feature.",["SI-16","CM-7"],["4"],["host"]),
+   C("detect","Alert on service crashes and exploitation indicators.",["SI-4"],["8"],["always"])
+ ]},
+ "CWE-843":{n:"Type Confusion",cat:"Memory Safety",ctrls:[
+   C("interim","Restrict reach of the affected component (often browser/rendering — limit untrusted content).",["SC-7","SC-18"],["9","12"],["net","ui"]),
+   C("workaround","Enforce content filtering / disable the affected content type where feasible.",["CM-7","SC-18"],["9"],["ui"]),
+   C("detect","Monitor endpoints for exploitation indicators.",["SI-4"],["8","10"],["host"])
+ ]},
+ "CWE-190":{n:"Integer Overflow",cat:"Memory Safety",ctrls:[
+   C("interim","Restrict access to the affected service.",["SC-7"],["12"],["net"]),
+   C("workaround","Disable the affected feature; apply vendor mitigation.",["CM-7"],["4"],["always"]),
+   C("detect","Monitor for crashes/anomalies.",["SI-4"],["8"],["always"])
+ ]},
+ "CWE-20":{n:"Improper Input Validation",cat:"Injection",ctrls:[
+   C("workaround","Deploy input-filtering/WAF rules for the affected parameter based on the CVE's exploit pattern.",["SI-10","SI-3"],["13","16"],["net"]),
+   C("interim","Restrict the affected interface to trusted sources.",["SC-7"],["12"],["net"]),
+   C("detect","Monitor for malformed-input patterns and errors.",["SI-4","AU-6"],["8"],["always"])
+ ]},
+ "CWE-284":{n:"Improper Access Control",cat:"AuthN/AuthZ",ctrls:[
+   C("workaround","Enforce access control at a gateway in front of the resource; tighten permissions.",["AC-3","AC-6"],["6"],["auth"]),
+   C("interim","Restrict network reach to authorized segments; remove external exposure.",["SC-7","AC-4"],["12"],["net"]),
+   C("detect","Audit access; alert on unauthorized access attempts.",["AU-6","SI-4"],["8"],["always"])
+ ]},
+ "CWE-276":{n:"Incorrect Default Permissions",cat:"Config",ctrls:[
+   C("workaround","Harden the affected object's permissions to least privilege per vendor/CIS benchmark.",["AC-6","CM-6"],["4","3"],["always"]),
+   C("detect","Audit permission changes on affected objects.",["AU-6"],["8"],["host"])
+ ]},
+ "CWE-732":{n:"Incorrect Permission Assignment",cat:"Config",ctrls:[
+   C("workaround","Correct file/registry/object permissions to least privilege.",["AC-6","AC-3"],["3","6"],["host"]),
+   C("detect","Monitor for unauthorized access to the affected resource.",["SI-4"],["8"],["host"])
+ ]},
+ "CWE-400":{n:"Uncontrolled Resource Consumption (DoS)",cat:"Availability",ctrls:[
+   C("workaround","Apply rate-limiting / connection limits at a proxy or load balancer for the affected service.",["SC-5"],["13"],["net"]),
+   C("interim","Restrict access to trusted sources to reduce the exposure surface for the DoS.",["SC-7"],["12"],["net"]),
+   C("detect","Monitor resource utilization and alert on abnormal consumption.",["SI-4"],["8"],["always"])
+ ]},
+ "CWE-347":{n:"Improper Cryptographic Signature Verification",cat:"Crypto",ctrls:[
+   C("workaround","Disable the affected update/verify path or pin to a trusted source until fixed.",["CM-7","SC-8"],["4"],["always"]),
+   C("detect","Monitor for unsigned/unexpected artifacts or updates being accepted.",["SI-4","SI-7"],["8"],["always"])
+ ]},
+ "CWE-668":{n:"Exposure of Resource to Wrong Sphere",cat:"Config",ctrls:[
+   C("interim","Restrict network exposure of the affected resource; segment it away from untrusted zones.",["SC-7","AC-4"],["12"],["net"]),
+   C("workaround","Correct sharing/permission scope on the exposed resource.",["AC-6"],["3","6"],["always"]),
+   C("detect","Audit access to the exposed resource.",["AU-6","SI-4"],["8"],["always"])
+ ]}
+};
+
+// vector-driven GENERAL controls (added based on CVSS regardless of CWE)
+function generalControls(vc,ctx){
+  const g=[];
+  if(ctx.exposed || vc.network){
+    g.push(C("interim","Remove the affected asset from internet exposure — pull the interface off the public edge or place it behind VPN-only access.",["SC-7","AC-17"],["12"],["net"],"The single most effective interim step for a network-reachable, unpatched vuln."));
+    g.push(C("interim","Segment the asset into a restricted VLAN with tightly scoped ingress/egress ACLs.",["SC-7","AC-4"],["12"],["net"],"Limits lateral reach if the vuln is exploited before you patch."));
+  }
+  if(vc.unauth && (vc.network)){
+    g.push(C("interim","Front the unauthenticated service with an authentication gateway (reverse proxy + MFA) so it is not directly reachable.",["IA-2","AC-3"],["6"],["auth"],"Adds an access barrier the exploit must first defeat."));
+  }
+  if(vc.userInteraction){
+    g.push(C("workaround","Tighten email and web filtering to block the delivery vector; brief users on the specific lure if known.",["SI-8","SI-3"],["9"],["ui"],"User-interaction exploits depend on delivery — filter the channel."));
+  }
+  // always-on detection + record
+  g.push(C("detect","Deploy an IDS/IPS signature or detection rule specific to this CVE's exploitation pattern; raise logging on the asset.",["SI-4","AU-6"],["8","13"],["always"],"If you can't close it, watch it closely."));
+  g.push(C("detect","Threat-hunt for prior compromise on the asset before assuming it's clean — a weaponized, exposed vuln may already have been used.",["SI-4","IR-4"],["8","17"],["always"],"KEV + exposed means assume attempted; verify before closing."));
+  return g;
+}
+
+// the real fix, always listed last
+function fixControls(ctx){
+  const f=[C("fix","Apply the vendor patch / upgrade to a fixed version as the primary remediation. Compensating controls above are interim only.",["SI-2","RA-5"],["7"],["always"],"")];
+  if(ctx.nopatch) f[0]=C("fix","When a patch becomes available (or the budget/window clears), apply it and retire the interim controls. If no fix is ever released, plan replacement/decommission of the affected component.",["SI-2","RA-5","SA-22"],["7","2"],["always"],"Compensating controls are a bridge, not a destination.");
+  return f;
+}
+
+// ---------- state ----------
+let addedCwes=[];
+let vec=null; // parsed vector context
+let KEVSET=new Set();
+const ctx={nopatch:false,exposed:false};
+
+// populate CWE dropdown
+(function(){
+  const sel=$("cweSel");
+  Object.keys(CWE).sort((a,b)=>parseInt(a.slice(4))-parseInt(b.slice(4))).forEach(id=>{
+    const o=document.createElement("option"); o.value=id; o.textContent=id+" — "+CWE[id].n; sel.appendChild(o);
+  });
+  sel.onchange=()=>{ if(sel.value && !addedCwes.includes(sel.value)){ addedCwes.push(sel.value); renderCwes(); } sel.value=""; };
+})();
+function renderCwes(){
+  $("cweAdded").innerHTML=addedCwes.map(id=>`<div class="cwe-added"><span style="color:var(--cyan)">${id}</span><span style="color:var(--mut)">${esc(CWE[id].n)}</span><button class="cx" data-x="${id}">×</button></div>`).join("");
+  $("cweAdded").querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>{ addedCwes=addedCwes.filter(x=>x!==b.dataset.x); renderCwes(); });
+}
+
+// CVSS parse
+$("parseBtn").onclick=parseVec;
+$("cvss").addEventListener("keydown",e=>{ if(e.key==="Enter")parseVec(); });
+function parseVec(){
+  const v=$("cvss").value.toUpperCase();
+  const g=k=>{const m=v.match(new RegExp("/"+k+":([A-Z])"));return m?m[1]:null;};
+  const AV=g("AV"),PR=g("PR"),UI=g("UI"),S=g("S"),C_=g("C"),I=g("I"),A=g("A");
+  if(!AV&&!PR&&!UI){ vec=null; $("vecChips").innerHTML='<span class="chip">no vector parsed</span>'; return; }
+  vec={network:AV==="N"||AV==="A",local:AV==="L"||AV==="P",unauth:PR==="N",userInteraction:UI==="R",
+    scopeChange:S==="C",total:C_==="H"||I==="H",av:AV,pr:PR,ui:UI};
+  const chips=[];
+  chips.push(["AV:"+(AV||"?"),vec.network]); chips.push(["PR:"+(PR||"?"),vec.unauth]);
+  chips.push(["UI:"+(UI||"?"),vec.userInteraction]); if(S)chips.push(["S:"+S,vec.scopeChange]);
+  $("vecChips").innerHTML=chips.map(([t,on])=>`<span class="chip ${on?'on':''}">${t}</span>`).join("");
+}
+
+// toggles
+document.querySelectorAll(".tg").forEach(t=>t.onclick=()=>{ const k=t.dataset.tg; ctx[k]=!ctx[k]; t.classList.toggle("on",ctx[k]);
+  t.querySelector(".box").textContent=ctx[k]?"✓":""; });
+
+// KEV
+$("kevFile").addEventListener("change",e=>{ if(e.target.files[0])importKev(e.target.files[0]); e.target.value=""; });
+function importKev(file){
+  const r=new FileReader();
+  r.onload=()=>{ try{ const t=r.result.trim(); let ids;
+    if(t[0]==="{"||t[0]==="["){ const j=JSON.parse(t); const a=j.vulnerabilities||(Array.isArray(j)?j:[]); ids=a.map(o=>(o.cveID||o.cve||"").toUpperCase()).filter(Boolean); }
+    else ids=(t.match(/CVE-\d{4}-\d+/gi)||[]).map(s=>s.toUpperCase());
+    KEVSET=new Set(ids); $("kevDot").className="dot live"; $("kevStatus").textContent="KEV · "+KEVSET.size;
+  }catch(e){ alert("KEV import failed: "+e.message); } };
+  r.readAsText(file);
+}
+
+// ---------- generate ----------
+let lastPlan=null;
+$("genBtn").onclick=generate;
+function applies(ctrl,vc,ctxt){
+  const tg=ctrl.tags;
+  if(tg.includes("always")) return true;
+  if(tg.includes("host")) return true;              // host controls always shown
+  if(!vc){ return true; }                            // no vector -> show all, let human filter
+  if(tg.includes("net") && (vc.network||ctxt.exposed)) return true;
+  if(tg.includes("auth") && vc.unauth) return true;
+  if(tg.includes("ui") && vc.userInteraction) return true;
+  if(tg.includes("net")||tg.includes("auth")||tg.includes("ui")) return false; // vector present but condition unmet
+  return true;
+}
+function generate(){
+  if(!addedCwes.length){ alert("Add at least one CWE (weakness type) to generate a plan."); return; }
+  const cve=($("cve").value||"").trim().toUpperCase();
+  const inKev=cve && KEVSET.has(cve);
+  // collect controls
+  const seen=new Set(); const buckets={interim:[],workaround:[],detect:[],fix:[]};
+  function push(c){ const key=c.kind+"|"+c.t; if(seen.has(key))return; seen.add(key); buckets[c.kind].push(c); }
+  addedCwes.forEach(id=>CWE[id].ctrls.forEach(c=>{ if(applies(c,vec,ctx)) push(c); }));
+  generalControls(vec||{network:ctx.exposed},ctx).forEach(c=>{ if(applies(c,vec,ctx)) push(c); });
+  fixControls(ctx).forEach(c=>push(c));
+
+  // situation
+  const flags=[];
+  if(inKev) flags.push('<span class="flag fl-kev">KEV — ACTIVELY EXPLOITED</span>');
+  if(ctx.exposed||(vec&&vec.network)) flags.push('<span class="flag fl-exp">NETWORK / EXPOSED</span>');
+  if(ctx.nopatch) flags.push('<span class="flag fl-np">NO PATCH / CAN\'T PATCH</span>');
+  const cweNames=addedCwes.map(id=>id+" ("+CWE[id].n+")").join(", ");
+  const urgency = inKev&&(ctx.exposed||(vec&&vec.network))
+    ? "This is the worst case for delay: actively exploited and reachable. Treat the interim isolation controls as immediate — deny the opportunity now, patch/replace as fast as the constraint allows."
+    : ctx.nopatch ? "No fix in hand — the interim and workaround controls below are your active defense until a patch or replacement is possible."
+    : "Apply the fix as the primary action; the controls below reduce risk in the interim or add defense in depth.";
+
+  let html='<div class="situ"><div class="st">Situation</div>';
+  html+=(flags.join("")||'<span class="flag" style="color:var(--mut);border:1px solid var(--line-2)">baseline</span>')+'<div style="margin-top:8px">';
+  html+=(cve?('<b>'+esc(cve)+'</b> · '):'')+'Weakness: <b>'+esc(cweNames)+'</b>'+(vec?(' · Attack path: '+(vec.network?'network':'local')+(vec.unauth?', unauth':'')+(vec.userInteraction?', user-interaction':'')):'')+'</div>';
+  html+='<div style="margin-top:8px;color:var(--mut)">'+urgency+'</div></div>';
+
+  const order=[["interim","🛑","Interim isolation — buy time now"],["workaround","🔧","Workarounds — prevent exploitation without a code change"],["detect","📡","Detection — watch what you can't close"],["fix","✅","The fix — the real remediation"]];
+  order.forEach(([k,ic,label])=>{
+    if(!buckets[k].length) return;
+    html+='<div class="grp g-'+k+'"><div class="grp-h"><span class="gi">'+ic+'</span>'+label+'</div>';
+    // interim first when exposed/kev
+    buckets[k].forEach(c=>{
+      html+='<div class="ctrl"><div class="c1"><span class="kind k-'+c.kind+'">'+c.kind.toUpperCase()+'</span><div class="ctext">'+esc(c.t)+'</div></div>';
+      html+='<div class="cmap">'+c.nist.map(n=>'<span class="map nist">NIST '+n+'</span>').join("")+c.cis.map(n=>'<span class="map cis">CIS '+n+'</span>').join("")+'</div>';
+      if(c.why) html+='<div class="cwhy">'+esc(c.why)+'</div>';
+      html+='</div>';
+    });
+    html+='</div>';
+  });
+  html+='<div class="confirm"><b>You confirm feasibility.</b> These are candidate compensating controls for this weakness and attack path — not a finished decision. Verify each is deployable in your environment (dependencies, capability, change window, regulatory constraints) before applying. Document what you accept and why.</div>';
+
+  $("out").innerHTML=html;
+  $("outMeta").textContent=(buckets.interim.length+buckets.workaround.length+buckets.detect.length)+" controls · "+addedCwes.length+" CWE";
+  lastPlan={cve,cweNames,flags:flags.length,buckets,urgency};
+}
+
+// export
+$("exportBtn").onclick=()=>{
+  if(!lastPlan){ alert("Generate a plan first."); return; }
+  const L=["GHOST DEFENSE — COMPENSATING CONTROL PLAN","DEFEND ALWAYS","Generated: "+new Date().toISOString(),
+    "CVE: "+(lastPlan.cve||"(none)"),"Weakness: "+lastPlan.cweNames,"",lastPlan.urgency,""];
+  const lbl={interim:"INTERIM ISOLATION",workaround:"WORKAROUNDS",detect:"DETECTION",fix:"FIX"};
+  ["interim","workaround","detect","fix"].forEach(k=>{
+    if(!lastPlan.buckets[k].length)return;
+    L.push("== "+lbl[k]+" ==");
+    lastPlan.buckets[k].forEach(c=>{ L.push("  - "+c.t); L.push("      map: NIST "+c.nist.join("/")+" | CIS "+c.cis.join("/")); if(c.why)L.push("      why: "+c.why); });
+    L.push("");
+  });
+  L.push("NOTE: Candidate controls filtered by attack path. Confirm feasibility in your environment before applying. Compensating controls are interim; patch or replace remains the goal.");
+  const blob=new Blob([L.join("\n")],{type:"text/plain"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="ghost2210_compensating_controls_"+(lastPlan.cve||"plan")+"_"+new Date().toISOString().slice(0,10)+".txt"; a.click();
+};
+
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+</script>
+</body>
+</html>

@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>46 Configuration Audit Framework — Ghost Defense</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    :root {
+      --bg:#0a0a0a;
+      --text:#e0e0e0;
+      --muted:#888;
+      --muted2:#666;
+      --border:#222;
+      --border2:#1a1a1a;
+      --ng:#00ff41;
+      --cyan:#39c0ff;
+      --red:#ff2244;
+      --orange:#ff8800;
+      --mono:IBM Plex Mono, monospace;
+    }
+    body {
+      background:var(--bg);
+      color:var(--text);
+      font-family:system-ui,-apple-system,sans-serif;
+      line-height:1.6;
+      padding:20px;
+    }
+    .header {
+      max-width:1200px;
+      margin:0 auto 20px;
+      border-bottom:1px solid var(--border2);
+      padding-bottom:12px;
+    }
+    .header h1 {
+      font-family:var(--mono);
+      font-size:20px;
+      color:var(--ng);
+      margin-bottom:4px;
+      letter-spacing:.05em;
+    }
+    .header p {
+      font-size:11px;
+      color:var(--muted);
+    }
+    .tabs {
+      max-width:1200px;
+      margin:0 auto 20px;
+      display:flex;
+      gap:8px;
+      border-bottom:1px solid var(--border2);
+      flex-wrap:wrap;
+    }
+    .tab {
+      padding:8px 14px;
+      background:transparent;
+      border:none;
+      border-bottom:2px solid transparent;
+      color:var(--muted);
+      cursor:pointer;
+      font-family:var(--mono);
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.05em;
+      transition:all .2s;
+    }
+    .tab:hover { color:var(--cyan); }
+    .tab.active {
+      color:var(--ng);
+      border-bottom-color:var(--ng);
+    }
+    .section {
+      display:none;
+      max-width:1200px;
+      margin:0 auto;
+    }
+    .section.active { display:block; }
+    .section-head {
+      margin-bottom:16px;
+      padding-bottom:12px;
+      border-bottom:1px solid var(--border2);
+    }
+    .section-head h2 {
+      font-size:16px;
+      font-family:var(--mono);
+      margin-bottom:4px;
+    }
+    .badge-source {
+      display:inline-block;
+      padding:2px 6px;
+      font-size:8px;
+      background:rgba(0,255,65,.2);
+      color:var(--ng);
+      border-radius:2px;
+      margin-left:8px;
+    }
+    .badge-reference {
+      display:inline-block;
+      padding:2px 6px;
+      font-size:8px;
+      background:rgba(136,136,136,.2);
+      color:var(--muted);
+      border-radius:2px;
+      margin-left:8px;
+    }
+    .input-group {
+      display:flex;
+      gap:8px;
+      margin-bottom:16px;
+      flex-wrap:wrap;
+    }
+    .input-box {
+      flex:1;
+      min-width:250px;
+      background:var(--border2);
+      border:1px solid var(--border);
+      padding:8px 10px;
+      color:var(--text);
+      font-family:var(--mono);
+      font-size:11px;
+      border-radius:3px;
+    }
+    .btn {
+      background:var(--ng);
+      color:var(--bg);
+      border:none;
+      padding:8px 14px;
+      font-family:var(--mono);
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.05em;
+      cursor:pointer;
+      border-radius:3px;
+      transition:all .2s;
+    }
+    .btn:hover { background:var(--cyan);color:var(--bg); }
+    .finding {
+      margin-bottom:12px;
+      padding:10px;
+      border-left:3px solid var(--border);
+      background:rgba(0,255,65,.02);
+      font-size:11px;
+      border-radius:2px;
+    }
+    .finding.high {
+      border-left-color:var(--red);
+      background:rgba(255,34,68,.05);
+    }
+    .finding.medium {
+      border-left-color:var(--orange);
+      background:rgba(255,136,0,.05);
+    }
+    .finding.info {
+      border-left-color:var(--cyan);
+      background:rgba(57,192,255,.05);
+    }
+    .finding-label {
+      color:var(--muted);
+      font-size:9px;
+      text-transform:uppercase;
+      letter-spacing:.05em;
+      margin-bottom:2px;
+    }
+    .finding-text {
+      color:var(--text);
+      line-height:1.5;
+    }
+    .checklist {
+      margin-top:12px;
+    }
+    .checklist-item {
+      display:flex;
+      gap:8px;
+      margin-bottom:8px;
+      padding:8px;
+      background:rgba(0,255,65,.02);
+      border:1px solid rgba(0,255,65,.1);
+      border-radius:2px;
+      font-size:11px;
+      cursor:pointer;
+      transition:all .2s;
+    }
+    .checklist-item:hover {
+      background:rgba(0,255,65,.04);
+      border-color:rgba(0,255,65,.2);
+    }
+    .checklist-item.checked {
+      background:rgba(0,255,65,.08);
+      border-color:var(--ng);
+    }
+    .checklist-box {
+      width:16px;
+      height:16px;
+      border:1px solid var(--border);
+      border-radius:2px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-shrink:0;
+      margin-top:2px;
+    }
+    .checklist-item.checked .checklist-box {
+      background:var(--ng);
+      color:var(--bg);
+      border-color:var(--ng);
+    }
+    .checklist-content {
+      flex:1;
+    }
+    .checklist-title {
+      font-weight:600;
+      color:var(--text);
+      margin-bottom:2px;
+    }
+    .checklist-desc {
+      color:var(--muted);
+      font-size:9px;
+    }
+    .checklist-howto {
+      font-family:var(--mono);
+      background:rgba(57,192,255,.05);
+      padding:8px;
+      border-radius:2px;
+      border:1px solid rgba(57,192,255,.1);
+    }
+    .checklist-howto strong {
+      color:var(--cyan);
+    }
+    table {
+      width:100%;
+      border-collapse:collapse;
+      font-family:var(--mono);
+      font-size:10px;
+      margin-top:12px;
+    }
+    th {
+      background:var(--border2);
+      border:1px solid var(--border);
+      padding:6px 8px;
+      text-align:left;
+      color:var(--muted);
+      font-weight:600;
+      text-transform:uppercase;
+      letter-spacing:.05em;
+    }
+    td {
+      border:1px solid var(--border2);
+      padding:6px 8px;
+      color:var(--text);
+    }
+    tr:hover { background:rgba(0,255,65,.02); }
+    .cve-id {
+      color:var(--cyan);
+      font-weight:600;
+    }
+    .footer {
+      max-width:1200px;
+      margin:30px auto 0;
+      padding-top:12px;
+      border-top:1px solid var(--border2);
+      font-size:9px;
+      color:var(--muted2);
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚙️ CONFIGURATION AUDIT FRAMEWORK</h1>
+  <p>Network exposure, hardening checklists, and weaponization context. Identify weak configurations that threat actors exploit.</p>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('exposure')">Live Exposure</button>
+  <button class="tab" onclick="switchTab('appdefaults')">App Defaults</button>
+  <button class="tab" onclick="switchTab('adharden')">AD & System</button>
+  <button class="tab" onclick="switchTab('cloud')">Cloud Config</button>
+  <button class="tab" onclick="switchTab('weaponization')">Weaponization</button>
+</div>
+
+<!-- LIVE EXPOSURE -->
+<div id="exposure" class="section active">
+  <div class="section-head">
+    <h2>Network & Service Exposure <span class="badge-source">LIVE</span></h2>
+    <p style="font-size:10px;color:var(--muted);margin-top:4px">Analyze HTTP headers, TLS configuration, certificates. Enter a domain or HTTPS URL.</p>
+  </div>
+  <div class="input-group">
+    <input type="text" class="input-box" id="urlInput" placeholder="https://example.com or example.com">
+    <button class="btn" onclick="analyzeUrl()">Analyze</button>
+  </div>
+  <div id="exposure-results"></div>
+</div>
+
+<!-- APP DEFAULTS -->
+<div id="appdefaults" class="section">
+  <div class="section-head">
+    <h2>Application Defaults <span class="badge-reference">REFERENCE</span></h2>
+    <p style="font-size:10px;color:var(--muted);margin-top:4px">Common weak defaults in web apps, databases, services. Check if your environment has these.</p>
+  </div>
+  <div class="checklist" id="appChecklist"></div>
+</div>
+
+<!-- AD & SYSTEM HARDENING -->
+<div id="adharden" class="section">
+  <div class="section-head">
+    <h2>Active Directory & System Hardening <span class="badge-reference">REFERENCE</span></h2>
+    <p style="font-size:10px;color:var(--muted);margin-top:4px">Kerberos, delegation, permissions. Source: CISA AA24-008A, NIST SP 800-53 IA-2/IA-4.</p>
+  </div>
+  <div class="checklist" id="adChecklist"></div>
+</div>
+
+<!-- CLOUD CONFIG -->
+<div id="cloud" class="section">
+  <div class="section-head">
+    <h2>Cloud Configuration <span class="badge-reference">REFERENCE</span></h2>
+    <p style="font-size:10px;color:var(--muted);margin-top:4px">IAM, storage, secrets management. Audit your S3/Azure/GCP for these conditions.</p>
+  </div>
+  <div class="checklist" id="cloudChecklist"></div>
+</div>
+
+<!-- WEAPONIZATION CONTEXT -->
+<div id="weaponization" class="section">
+  <div class="section-head">
+    <h2>Weaponization Context <span class="badge-source">LIVE: CISA KEV</span></h2>
+    <p style="font-size:10px;color:var(--muted);margin-top:4px">Configuration weaknesses exploited by active threat campaigns. Sourced from CISA KEV + MITRE ATT&CK.</p>
+  </div>
+  <div id="weaponization-results"></div>
+</div>
+
+<div class="footer">
+  Live data: HTTP headers, TLS analysis (browser-limited). Reference checklists: CISA/NIST sourced. Weaponization: CISA KEV (updated daily) cross-referenced with config weaknesses in active campaigns.
+</div>
+
+<script>
+// APP DEFAULTS CHECKLIST WITH HOW-TO
+var APP_CHECKS = [
+  { id:'debug-mode', title:'Debug Mode Enabled', desc:'Web app running in dev mode, exposing stack traces and env vars.',
+    howto:'<strong>Check:</strong> Look for /debug, /admin/debug, /?debug=1. Flask: check for "Running on" + "WARNING in app.run()". Spring Boot: /actuator/health returns detailed info. ASP.NET: customErrors mode="Off" in web.config. <strong>Command:</strong> curl -s https://example.com/actuator/health | grep -i debug' },
+  { id:'default-admin', title:'Default Admin Paths', desc:'Accessible /admin, /console, /api/admin without auth.',
+    howto:'<strong>Check:</strong> Try common paths: /admin, /admin/login, /administrator, /wp-admin, /phpmyadmin, /console, /api/admin. Check HTTP status: 200=accessible, 301/302=redirect (check Location header), 403=exists but forbidden (still a problem). <strong>Command:</strong> curl -I https://example.com/admin' },
+  { id:'sql-injection', title:'Weak Input Validation', desc:'No parameterized queries, SQL injection possible.',
+    howto:'<strong>Check:</strong> Test input fields with SQL syntax: enter " OR 1=1 -- or \' OR \'1\'=\'1 in login/search. If error message shows SQL, vulnerable. <strong>Commands:</strong> curl -X POST -d "username=admin\' --&query=" https://example.com/login | grep -i error' },
+  { id:'weak-session', title:'Weak Session Tokens', desc:'Session IDs <128 bits, predictable, missing flags.',
+    howto:'<strong>Check:</strong> After login, inspect cookie in browser DevTools. Session ID should be >32 characters (128 bits), random. <strong>Flags to check:</strong> HttpOnly (prevents JS access), Secure (HTTPS only), SameSite (CSRF protection). Missing any = vulnerability. <strong>Command:</strong> curl -i https://example.com/login -d "user=test&pass=test" | grep -i "set-cookie"' },
+  { id:'api-no-auth', title:'API Endpoints Unauth', desc:'REST APIs lacking authentication or using easily forged tokens.',
+    howto:'<strong>Check:</strong> Find API endpoints (/api/v1/*, /graphql, /rest/*). Try calling without auth header. If you get data/200 response without token = vulnerable. <strong>Command:</strong> curl -s https://example.com/api/v1/users | grep -i id,name' },
+  { id:'default-db', title:'Default DB Credentials', desc:'sa/admin/root with default/weak passwords, unpatched instances.',
+    howto:'<strong>Check:</strong> Network scan for open ports: MySQL (3306), MSSQL (1433), PostgreSQL (5432), MongoDB (27017). <strong>Attempt connection:</strong> mysql -h 192.168.1.1 -u root -p (press enter for blank password). If you connect = vulnerable. <strong>Default credentials:</strong> MSSQL: sa/blank or sa/password; MySQL: root/blank; Postgres: postgres/postgres' },
+  { id:'db-exposed', title:'Database Network Exposure', desc:'MySQL/PostgreSQL/MSSQL on non-standard ports, open to internet.',
+    howto:'<strong>Check:</strong> Shodan/Censys search: "port:3306 mysql" or "port:5432 postgres". Or scan your own ranges: nmap -p 3306,5432,1433,27017 10.0.0.0/8. If ports respond to external IPs = exposed.' },
+  { id:'snmp-public', title:'SNMP Public Community', desc:'SNMP v1/v2c with "public"/"private" community strings.',
+    howto:'<strong>Check:</strong> snmpwalk -v2c -c public 192.168.1.1 (replace with your device IP). If it returns data = vulnerable. <strong>Remediation:</strong> Disable SNMP or use SNMPv3 with authentication.' }
+];
+
+// AD & SYSTEM WITH HOW-TO
+var AD_CHECKS = [
+  { id:'unconstrained-delegation', title:'Unconstrained Delegation Enabled', desc:'AD users/computers with TrustedForDelegation flag.',
+    howto:'<strong>Check (PowerShell):</strong> Get-ADComputer -Filter {TrustedForDelegation -eq $true} -Properties TrustedForDelegation | Select Name. <strong>Check (LDAP):</strong> ldapsearch -H ldap://dc01 -x "(userAccountControl:1.2.840.113556.1.4.803:=16777216)" cn. If any results = vulnerability.' },
+  { id:'weak-preauth', title:'Kerberos Pre-auth Disabled', desc:'ASREPRoasting: "Do not require Kerberos pre-authentication" enabled.',
+    howto:'<strong>Check (PowerShell):</strong> Get-ADUser -Filter {DoesNotRequirePreAuth -eq $true} -Properties * | Select Name. <strong>Check (LDAP):</strong> ldapsearch -x "(userAccountControl:1.2.840.113556.1.4.803:=4194304)" sAMAccountName. Results = vulnerable to ASREPRoasting.' },
+  { id:'zerologon-conditions', title:'Zerologon (CVE-2020-1472)', desc:'Vulnerable if patched improperly or RPC auth weak.',
+    howto:'<strong>Check:</strong> CVE-2020-1472 requires unpatched DC OR weak secure channel setup. <strong>PowerShell:</strong> Get-WindowsUpdateLog | Select-String "KB4487044|KB4487013|KB4500331". If not patched = vulnerable. <strong>Exploit test:</strong> Use ZerologonChecker or CVE-2020-1472-exploit.py (requires lab environment).' },
+  { id:'shared-admin', title:'Shared Admin Accounts', desc:'Domain admins sharing credentials, no audit trail.',
+    howto:'<strong>Check:</strong> Identify shared service accounts. <strong>PowerShell:</strong> Get-ADGroup "Domain Admins" -Properties Members | Select Members. Ensure each is a person (not shared). <strong>Better:</strong> Use Privileged Access Workstation (PAW) + MFA for all DA actions.' },
+  { id:'no-mfa', title:'Admin Accounts Without MFA', desc:'Domain/Enterprise admins lacking MFA.',
+    howto:'<strong>Check (Azure AD):</strong> Get-MsolUser -RoleObjectId (Get-MsolRole -RoleName "Company Administrator").ObjectId | Where {$_.StrongAuthenticationMethods.Count -eq 0}. <strong>On-prem AD:</strong> No native MFA; use Windows Hello for Business or 3rd-party MFA.' },
+  { id:'weak-gpo', title:'Weak Group Policy', desc:'GPO not enforcing password length/complexity, UAC disabled.',
+    howto:'<strong>Check (PowerShell):</strong> Get-GPOReport -All -ReportType Html | Select-String "PasswordHistorySize|MaximumPasswordAge". <strong>Check UAC:</strong> gpresult /h report.html (check Computer Configuration > Security Settings). Complexity: Password Policy should require uppercase, lowercase, numbers, symbols.' },
+  { id:'guest-enabled', title:'Guest Account Enabled', desc:'Guest account active with network access.',
+    howto:'<strong>Check (PowerShell):</strong> Get-LocalUser Guest | Select Enabled. <strong>On-prem AD:</strong> Get-ADUser Guest -Properties Enabled. Should be $false. <strong>Remediation:</strong> Disable-LocalUser Guest' },
+  { id:'world-readable', title:'World-Readable Shares', desc:'File shares with "Everyone: Full Control".',
+    howto:'<strong>Check (PowerShell):</strong> Get-SmbShare | Select-Object Name,Description | ForEach {icacls "\\\\\\\\$env:COMPUTERNAME\\\\$_.Name"}. Look for "(F)" (Full) on "NT AUTHORITY\\\\Everyone" or "Authenticated Users". <strong>Remediation:</strong> Remove Everyone; use specific groups.' }
+];
+
+// CLOUD CONFIG WITH HOW-TO
+var CLOUD_CHECKS = [
+  { id:'public-s3', title:'S3 Buckets Public Read/Write', desc:'Buckets with public ACLs, no encryption.',
+    howto:'<strong>Check (AWS CLI):</strong> aws s3api get-bucket-acl --bucket my-bucket. Look for Grantee "URI":"http://acs.amazonaws.com/groups/global/AllUsers". <strong>Better:</strong> aws s3api get-bucket-public-access-block --bucket my-bucket. Should block all public.' },
+  { id:'iam-overpermissive', title:'Overpermissive IAM Roles', desc:'Roles with "Action":"*" or "Resource":"*".',
+    howto:'<strong>Check (AWS CLI):</strong> aws iam list-role-policies --role-name MyRole. aws iam get-role-policy --role-name MyRole --policy-name PolicyName. Look for "Effect":"Allow" with "*" in Action/Resource. <strong>Remediation:</strong> Use AWS Policy Simulator or AccessAnalyzer.' },
+  { id:'long-lived-keys', title:'Long-Lived Access Keys', desc:'API keys never rotated, stored in code/logs.',
+    howto:'<strong>Check (AWS CLI):</strong> aws iam list-access-keys --user-name UserName. Check CreateDate; if >90 days old = rotate. <strong>Check GitHub:</strong> git log -S "AKIA" --all (search commit history for AWS key patterns). <strong>Remediation:</strong> Rotate monthly; use temporary credentials (STS AssumeRole).' },
+  { id:'secrets-in-logs', title:'Secrets Exposed in Logs', desc:'API keys, DB passwords in CloudWatch/logs.',
+    howto:'<strong>Check (AWS CloudWatch):</strong> Search logs for "password", "secret", "api_key", "AKIA" (AWS key prefix), "sk_live_" (Stripe). <strong>Tool:</strong> Use aws logs filter-log-events --log-group-name MyGroup --filter-pattern "password|secret|AKIA".' },
+  { id:'sg-overpermissive', title:'Security Groups Open to 0.0.0.0', desc:'Ingress 0.0.0.0:22, :3389, :3306.',
+    howto:'<strong>Check (AWS CLI):</strong> aws ec2 describe-security-groups --query "SecurityGroups[*].[GroupName,IpPermissions[*].[FromPort,ToPort,IpRanges[*].CidrIp]]". Look for 0.0.0.0/0 with ports 22, 3389, 3306. <strong>Remediation:</strong> Restrict to specific IP ranges or security group IDs.' },
+  { id:'rds-exposed', title:'RDS/DB Not Private', desc:'Database in public subnet, publicly accessible enabled.',
+    howto:'<strong>Check (AWS CLI):</strong> aws rds describe-db-instances --query "DBInstances[*].[DBInstanceIdentifier,PubliclyAccessible,DBSubnetGroup.DBSubnetGroupStatus]". PubliclyAccessible=true = vulnerable. <strong>Remediation:</strong> Set PubliclyAccessible=false, use private subnet.' },
+  { id:'no-encryption', title:'Storage Not Encrypted', desc:'S3/Blob without encryption at rest.',
+    howto:'<strong>Check (AWS CLI):</strong> aws s3api get-bucket-encryption --bucket my-bucket. Should return ServerSideEncryptionConfiguration with SSE-S3 or SSE-KMS. <strong>Azure (CLI):</strong> az storage account show --name myaccount | grep -i encryption' },
+  { id:'logging-off', title:'Audit Logging Disabled', desc:'CloudTrail/Activity Log not enabled.',
+    howto:'<strong>Check (AWS CLI):</strong> aws cloudtrail describe-trails. Should list active trails. aws cloudtrail get-trail-status --name MyTrail. Look for IsLogging=true. <strong>Azure:</strong> az monitor log-profiles list. Should show Activity Log subscriptions.' }
+];
+
+
+// WEAPONIZATION DATA
+var WEAPONIZATION_DATA = [
+  { cve:'CVE-2020-1472', name:'Zerologon (Netlogon)', actors:'Wizard Spider, Scattered Spider', technique:'Lateral Movement (T1550). Requires unconstrained delegation to escalate to DA.' },
+  { cve:'CVE-2021-44228', name:'Log4Shell (Log4j RCE)', actors:'Multiple (APT29, Lazarus, others)', technique:'Execution (T1059). Exploited against unpatched app servers, data warehouses.' },
+  { cve:'CVE-2021-21985', name:'vCenter RCE', actors:'APT groups, ransomware', technique:'Lateral Movement. Access to vCenter = domain compromise.' },
+  { cve:'CVE-2023-20273', name:'Cisco ASA/FTD RCE', actors:'CyberAv3ngers, Scattered Spider', technique:'Initial Access. Default credentials + RCE = perimeter compromise.' },
+  { cve:'CVE-2023-44487', name:'HTTP/2 Rapid Reset', actors:'DDoS campaigns', technique:'Denial of Service (T1499). Exploited against web apps, APIs.' }
+];
+
+// CHECKLIST RENDERING WITH EXPANDABLE HOW-TO
+function renderChecklist(arr, elemId) {
+  var html = '';
+  arr.forEach(function(item, idx) {
+    html += '<div class="checklist-item" onclick="toggleCheck(this); toggleDetails(\''+elemId+'-'+idx+'\')">'
+      + '<div class="checklist-box"></div>'
+      + '<div class="checklist-content">'
+      + '<div class="checklist-title">'+item.title+'</div>'
+      + '<div class="checklist-desc">'+item.desc+'</div>'
+      + (item.howto ? '<div id="'+elemId+'-'+idx+'" class="checklist-howto" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,255,65,.1);font-size:10px;color:var(--muted);line-height:1.6">'+item.howto+'</div>' : '')
+      + '</div></div>';
+  });
+  document.getElementById(elemId).innerHTML = html;
+}
+
+function toggleCheck(el) {
+  el.classList.toggle('checked');
+}
+
+function toggleDetails(id) {
+  var det = document.getElementById(id);
+  if (det) det.style.display = det.style.display === 'none' ? 'block' : 'none';
+}
+
+// LIVE URL ANALYSIS
+async function analyzeUrl() {
+  var url = document.getElementById('urlInput').value.trim();
+  if (!url) { alert('Enter a URL'); return; }
+  if (!url.startsWith('http')) url = 'https://' + url;
+  
+  document.getElementById('exposure-results').innerHTML = '<div class="finding info"><div class="finding-label">Analyzing…</div></div>';
+  
+  try {
+    var r = await fetch(url);
+    var html = await r.text();
+    var headers = r.headers;
+    var findings = [];
+    
+    // Check for security headers
+    var securityHeaders = ['Strict-Transport-Security', 'X-Frame-Options', 'X-Content-Type-Options', 'Content-Security-Policy', 'X-XSS-Protection'];
+    var missing = securityHeaders.filter(h => !headers.has(h));
+    if (missing.length) findings.push({ level:'high', text:'Missing security headers: '+missing.join(', ') });
+    if (headers.has('Server')) findings.push({ level:'info', text:'Server header exposed: '+headers.get('Server') });
+    if (html.includes('<!-- ') || html.includes('debugger') || html.includes('console.log')) findings.push({ level:'medium', text:'Comments or debug code visible in HTML' });
+    
+    var resultsHtml = findings.map(f => '<div class="finding '+f.level+'"><div class="finding-label">'+f.level.toUpperCase()+'</div><div class="finding-text">'+f.text+'</div></div>').join('');
+    resultsHtml += '<div class="finding info"><div class="finding-label">Info</div><div class="finding-text">URL: <code>'+url+'</code> | Status: '+r.status+'</div></div>';
+    document.getElementById('exposure-results').innerHTML = resultsHtml;
+  } catch(e) {
+    document.getElementById('exposure-results').innerHTML = '<div class="finding high"><div class="finding-label">Error</div><div class="finding-text">Unable to reach '+url+'. CORS blocked or site unreachable.</div></div>';
+  }
+}
+
+// WEAPONIZATION TABLE
+function renderWeaponization() {
+  var html = '<table><thead><tr><th style="width:120px">CVE</th><th>Vulnerability</th><th>Actors</th><th>Technique</th></tr></thead><tbody>';
+  WEAPONIZATION_DATA.forEach(function(w) {
+    html += '<tr><td class="cve-id">'+w.cve+'</td><td>'+w.name+'</td><td style="font-size:9px">'+w.actors+'</td><td style="font-size:9px">'+w.technique+'</td></tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('weaponization-results').innerHTML = html;
+}
+
+// TAB SWITCHING
+function switchTab(tab) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(tab).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// BOOT
+renderChecklist(APP_CHECKS, 'appChecklist');
+renderChecklist(AD_CHECKS, 'adChecklist');
+renderChecklist(CLOUD_CHECKS, 'cloudChecklist');
+renderWeaponization();
+</script>
+
+</body>
+</html>

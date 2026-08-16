@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IR Playbook Builder — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070e;--s1:#0e0e1a;--s2:#141728;--s3:#1c2035;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);
+  --text:#eeedf8;--muted:#6b6a84;--muted2:#9998b8;
+  --green:#2fd98a;--green-s:rgba(47,217,138,0.1);--green-b:rgba(47,217,138,0.28);
+  --red:#ff4d4d;--red-s:rgba(255,77,77,0.1);--red-b:rgba(255,77,77,0.3);
+  --orange:#ff8c42;--orange-s:rgba(255,140,66,0.1);--orange-b:rgba(255,140,66,0.28);
+  --yellow:#ffd166;--yellow-s:rgba(255,209,102,0.1);--yellow-b:rgba(255,209,102,0.25);
+  --blue:#4cc9f0;--blue-s:rgba(76,201,240,0.1);--blue-b:rgba(76,201,240,0.28);
+  --purple:#b48eff;--purple-s:rgba(180,142,255,0.1);--purple-b:rgba(180,142,255,0.28);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html{background:var(--bg)}
+body{font-family:var(--sans);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:13px 24px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:30px;height:30px;background:var(--purple-s);border:1px solid var(--purple-b);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.brand-name{font-size:15px;font-weight:600}
+.brand-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.api-row{display:flex;align-items:center;gap:8px}
+.api-input{background:var(--s2);border:1px solid var(--border2);border-radius:7px;
+  color:var(--text);font-family:var(--mono);font-size:12px;padding:7px 12px;
+  outline:none;width:240px;transition:border-color .15s}
+.api-input:focus{border-color:var(--purple-b)}
+.api-input::placeholder{color:var(--muted)}
+.api-btn{background:var(--purple-s);border:1px solid var(--purple-b);border-radius:7px;
+  color:var(--purple);font-family:var(--mono);font-size:11px;padding:7px 14px;cursor:pointer;transition:all .15s}
+.api-btn:hover{background:rgba(180,142,255,0.2)}
+.api-status{font-family:var(--mono);font-size:11px}
+
+/* LAYOUT */
+.main{display:grid;grid-template-columns:340px 1fr;flex:1;height:calc(100vh - 57px);overflow:hidden}
+
+/* LEFT PANEL */
+.left-panel{border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;background:var(--bg)}
+
+/* SCENARIO SELECTOR */
+.sec-label{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);
+  font-family:var(--mono);padding:10px 14px;background:var(--s1);border-bottom:1px solid var(--border)}
+
+.scenario-item{padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
+.scenario-item:hover{background:var(--s2)}
+.scenario-item.selected{background:var(--purple-s);border-left:3px solid var(--purple)}
+.sc-icon{font-size:18px;flex-shrink:0}
+.sc-name{font-size:12px;font-weight:600}
+.sc-desc{font-size:10px;color:var(--muted2);font-family:var(--mono);margin-top:2px}
+.sc-badge{font-size:9px;font-family:var(--mono);font-weight:700;padding:1px 6px;border-radius:3px;margin-top:4px;display:inline-block}
+.sev-critical{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.sev-high{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.sev-medium{background:var(--yellow-s);color:var(--yellow);border:1px solid var(--yellow-b)}
+
+/* CUSTOM INPUT */
+.custom-section{padding:12px 14px;border-bottom:1px solid var(--border)}
+.custom-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted2);
+  font-family:var(--mono);margin-bottom:7px}
+.custom-input{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:7px;
+  color:var(--text);font-family:var(--sans);font-size:12px;padding:9px 12px;outline:none;
+  resize:vertical;min-height:80px;transition:border-color .15s;line-height:1.5}
+.custom-input:focus{border-color:var(--purple-b)}
+.custom-input::placeholder{color:var(--muted)}
+
+/* SETTINGS */
+.settings-section{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.setting-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.setting-label{font-size:11px;color:var(--muted2);font-family:var(--mono)}
+.setting-select{background:var(--s2);border:1px solid var(--border2);border-radius:6px;
+  color:var(--text);font-family:var(--mono);font-size:11px;padding:5px 9px;outline:none;cursor:pointer}
+.setting-select option{background:var(--s2)}
+
+/* GENERATE BTN */
+.gen-btn{margin:12px 14px;background:var(--purple);border:none;border-radius:8px;
+  color:#fff;font-family:var(--sans);font-size:13px;font-weight:700;padding:12px;
+  cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.gen-btn:hover{background:#c49aff;transform:translateY(-1px)}
+.gen-btn:active{transform:scale(.98)}
+.gen-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* LIBRARY */
+.library-item{padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;
+  display:flex;align-items:center;gap:8px;transition:background .12s}
+.library-item:hover{background:var(--s2)}
+.li-icon{font-size:14px;flex-shrink:0}
+.li-name{font-size:11px;font-weight:600;color:var(--purple);flex:1}
+.li-date{font-size:10px;color:var(--muted);font-family:var(--mono)}
+.li-del{font-size:10px;color:var(--red);cursor:pointer;padding:2px 6px;border-radius:3px;
+  background:var(--red-s);border:1px solid var(--red-b);opacity:0;transition:opacity .15s}
+.library-item:hover .li-del{opacity:1}
+
+/* RIGHT PANEL — PLAYBOOK DISPLAY */
+.right-panel{overflow-y:auto;background:var(--bg);display:flex;flex-direction:column}
+
+/* EMPTY STATE */
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;padding:40px;text-align:center;color:var(--muted)}
+.empty-icon{font-size:48px;margin-bottom:8px}
+.empty-title{font-size:16px;font-weight:600;color:var(--text)}
+.empty-sub{font-size:13px;color:var(--muted2);max-width:400px;line-height:1.6}
+
+/* GENERATING STATE */
+.generating{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:40px}
+.gen-spinner{width:48px;height:48px;border:3px solid rgba(180,142,255,0.15);
+  border-top-color:var(--purple);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.gen-status{font-family:var(--mono);font-size:12px;color:var(--muted2)}
+
+/* PLAYBOOK */
+.playbook-wrap{padding:20px 24px;display:flex;flex-direction:column;gap:0}
+
+/* PLAYBOOK HEADER */
+.pb-header{background:var(--s1);border:1px solid var(--border);border-radius:10px;
+  padding:20px;margin-bottom:16px}
+.pb-title{font-size:20px;font-weight:700;margin-bottom:6px;color:var(--text)}
+.pb-meta{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.pb-tag{font-size:10px;font-family:var(--mono);padding:3px 9px;border-radius:4px}
+.pb-summary{font-size:13px;color:var(--muted2);line-height:1.7}
+.pb-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:14px}
+.pb-stat{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;text-align:center}
+.pb-stat-num{font-family:var(--mono);font-size:18px;font-weight:600}
+.pb-stat-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+
+/* PHASES */
+.phase-card{border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden}
+.phase-hdr{padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;
+  transition:background .12s;user-select:none}
+.phase-hdr:hover{background:var(--s2)}
+.phase-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-family:var(--mono);font-size:12px;font-weight:700;flex-shrink:0}
+.phase-name{font-size:13px;font-weight:700;flex:1}
+.phase-time{font-size:10px;font-family:var(--mono);color:var(--muted2)}
+.phase-count{font-size:10px;font-family:var(--mono);color:var(--muted);
+  background:var(--s3);padding:2px 7px;border-radius:3px}
+.phase-arrow{color:var(--muted);font-size:11px;transition:transform .2s}
+.phase-arrow.open{transform:rotate(180deg)}
+.phase-body{display:none;border-top:1px solid var(--border);padding:14px 16px;
+  display:flex;flex-direction:column;gap:8px}
+
+/* STEPS */
+.step-item{background:var(--s2);border:1px solid var(--border);border-radius:7px;
+  padding:12px 14px;display:flex;gap:12px;align-items:flex-start}
+.step-num{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-family:var(--mono);font-size:10px;font-weight:700;
+  flex-shrink:0;margin-top:1px}
+.step-content{flex:1}
+.step-action{font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px}
+.step-detail{font-size:11px;color:var(--muted2);line-height:1.6;font-family:var(--mono)}
+.step-tools{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.step-tool{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:3px;
+  background:var(--s3);color:var(--muted2);border:1px solid var(--border2)}
+.step-mitre{font-size:9px;font-family:var(--mono);padding:2px 7px;border-radius:3px;
+  background:var(--blue-s);color:var(--blue);border:1px solid var(--blue-b)}
+.step-priority{font-size:9px;font-family:var(--mono);padding:2px 7px;border-radius:3px;font-weight:700}
+.pri-immediate{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.pri-high{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.pri-normal{background:var(--green-s);color:var(--green);border:1px solid var(--green-b)}
+
+/* IOC TABLE */
+.ioc-section{background:var(--s1);border:1px solid var(--border);border-radius:8px;
+  overflow:hidden;margin-bottom:12px}
+.ioc-hdr{padding:10px 14px;background:var(--s2);border-bottom:1px solid var(--border);
+  font-size:11px;font-family:var(--mono);font-weight:700;color:var(--muted2);
+  text-transform:uppercase;letter-spacing:.1em}
+.ioc-table{width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono)}
+.ioc-table td{padding:7px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.ioc-table tr:last-child td{border-bottom:none}
+.ioc-type{color:var(--orange);font-weight:700;width:90px}
+.ioc-val{color:var(--text);word-break:break-all}
+.ioc-desc{color:var(--muted2);font-size:10px}
+
+/* COMMS TEMPLATE */
+.comms-card{background:var(--s1);border:1px solid var(--border);border-radius:8px;
+  overflow:hidden;margin-bottom:12px}
+.comms-hdr{padding:10px 14px;background:var(--s2);border-bottom:1px solid var(--border);
+  font-size:11px;font-family:var(--mono);font-weight:700;color:var(--muted2);
+  display:flex;justify-content:space-between;align-items:center}
+.comms-body{padding:14px;font-size:12px;font-family:var(--mono);color:var(--text);
+  line-height:1.8;white-space:pre-wrap}
+.copy-btn{font-size:10px;background:var(--s3);border:1px solid var(--border2);border-radius:4px;
+  color:var(--muted2);padding:2px 8px;cursor:pointer;transition:all .12s;font-family:var(--mono)}
+.copy-btn:hover{color:var(--text)}
+
+/* EXPORT */
+.export-row{display:flex;gap:8px;padding:16px 24px;border-top:1px solid var(--border);
+  background:var(--s1);flex-wrap:wrap;flex-shrink:0}
+.exp-btn{display:flex;align-items:center;gap:5px;font-size:12px;font-family:var(--sans);
+  font-weight:600;padding:8px 16px;border-radius:7px;cursor:pointer;transition:all .15s;border:1px solid}
+.exp-purple{background:var(--purple-s);color:var(--purple);border-color:var(--purple-b)}
+.exp-green{background:var(--green-s);color:var(--green);border-color:var(--green-b)}
+.exp-blue{background:var(--blue-s);color:var(--blue);border-color:var(--blue-b)}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .3s ease both}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+@media(max-width:860px){.main{grid-template-columns:1fr;height:auto}
+  .left-panel{border-right:none;border-bottom:1px solid var(--border);max-height:60vh}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">📋</div>
+    <div>
+      <div class="brand-name">IR Playbook Builder</div>
+      <div class="brand-sub">Ghost Defense · Tool 29 · AI-Powered · NIST SP 800-61</div>
+    </div>
+  </div>
+  <div class="api-row">
+    <input class="api-input" id="apiKey" type="password" placeholder="sk-ant-... Anthropic API key">
+    <button class="api-btn" onclick="testKey()">TEST KEY</button>
+    <span class="api-status" id="keyStatus" style="color:var(--muted)">—</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <!-- Preset scenarios -->
+    <div class="sec-label">Preset Attack Scenarios</div>
+    <div id="scenarioList"></div>
+
+    <!-- Custom description -->
+    <div class="custom-section">
+      <div class="custom-label">Custom Attack Description</div>
+      <textarea class="custom-input" id="customDesc"
+        placeholder="Describe the incident or attack scenario in plain English…
+
+Examples:
+• Ransomware deployed after RDP brute force, lateral movement via PsExec, data encrypted on file shares
+• Phishing email with malicious macro delivered LokiBot, C2 to 185.220.x.x, credential theft observed
+• Insider threat — employee exfiltrating customer PII via USB and personal email before resignation"></textarea>
+    </div>
+
+    <!-- Settings -->
+    <div class="settings-section">
+      <div class="setting-row">
+        <span class="setting-label">Organization Type</span>
+        <select class="setting-select" id="orgType">
+          <option value="enterprise">Enterprise</option>
+          <option value="healthcare">Healthcare</option>
+          <option value="government">Government</option>
+          <option value="financial">Financial</option>
+          <option value="manufacturing">Manufacturing / OT</option>
+          <option value="education">Education</option>
+          <option value="smb">Small Business</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Severity Level</span>
+        <select class="setting-select" id="severity">
+          <option value="critical">Critical (P1)</option>
+          <option value="high" selected>High (P2)</option>
+          <option value="medium">Medium (P3)</option>
+          <option value="low">Low (P4)</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Framework</span>
+        <select class="setting-select" id="framework">
+          <option value="nist">NIST SP 800-61r2</option>
+          <option value="sans">SANS PICERL</option>
+          <option value="mitre">MITRE ATT&CK</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Include Comms</span>
+        <select class="setting-select" id="includeComms">
+          <option value="yes">Yes — stakeholder templates</option>
+          <option value="no">No</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="gen-btn" id="genBtn" onclick="generatePlaybook()">
+      ⚡ GENERATE IR PLAYBOOK
+    </button>
+
+    <!-- Saved library -->
+    <div class="sec-label" style="margin-top:auto">Saved Playbook Library</div>
+    <div id="libraryList">
+      <div style="padding:12px 14px;font-size:11px;color:var(--muted);font-family:var(--mono)">No saved playbooks yet</div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel" id="rightPanel">
+    <div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <div class="empty-title">IR Playbook Builder</div>
+      <div class="empty-sub">
+        Select a preset scenario or describe an attack in plain English.<br>
+        AI generates a complete step-by-step incident response playbook aligned to NIST SP 800-61, with MITRE ATT&CK mappings, IOC tables, tool recommendations, and stakeholder communication templates.
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px">
+        <span style="font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:4px;background:var(--purple-s);color:var(--purple);border:1px solid var(--purple-b)">NIST SP 800-61r2</span>
+        <span style="font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:4px;background:var(--blue-s);color:var(--blue);border:1px solid var(--blue-b)">MITRE ATT&CK</span>
+        <span style="font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:4px;background:var(--green-s);color:var(--green);border:1px solid var(--green-b)">SANS PICERL</span>
+        <span style="font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:4px;background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)">Stakeholder Comms</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── PRESET SCENARIOS ──────────────────────────────────────────────────────────
+var SCENARIOS = [
+  { id:'ransomware',    icon:'🔒', name:'Ransomware Attack',           severity:'critical',
+    desc:'Ransomware deployed across enterprise. Files encrypted on workstations and file shares. Ransom note present. Possible data exfiltration prior to encryption.',
+    mitre:['T1566.001','T1486','T1490','T1489','T1562.001'] },
+  { id:'phishing',      icon:'🎣', name:'Spearphishing / BEC',          severity:'high',
+    desc:'Targeted spearphishing email with malicious attachment or link. Possible credential theft, MFA bypass, or business email compromise. Internal forwarding rules observed.',
+    mitre:['T1566.001','T1078','T1114.001','T1534'] },
+  { id:'rdp-brute',     icon:'🖥️', name:'RDP Brute Force / Compromise',  severity:'high',
+    desc:'Brute force attack on RDP exposed to internet. Successful authentication from foreign IP. Possible lateral movement and privilege escalation.',
+    mitre:['T1110.001','T1021.001','T1078','T1548'] },
+  { id:'supply-chain',  icon:'⛓️', name:'Supply Chain Compromise',       severity:'critical',
+    desc:'Malicious code introduced via trusted third-party software update or vendor access. Possible widespread compromise of downstream customers.',
+    mitre:['T1195.002','T1195.003','T1199','T1078.004'] },
+  { id:'insider',       icon:'👤', name:'Insider Threat / Data Theft',   severity:'high',
+    desc:'Privileged employee or contractor exfiltrating sensitive data. Anomalous access patterns, large data transfers, USB usage, or personal email forwarding detected.',
+    mitre:['T1052.001','T1567','T1048','T1537'] },
+  { id:'web-shell',     icon:'🌐', name:'Web Shell / Server Compromise', severity:'critical',
+    desc:'Web shell uploaded to public-facing web server. Attacker executing commands, accessing internal systems, and potentially pivoting into the network.',
+    mitre:['T1190','T1505.003','T1059','T1071.001'] },
+  { id:'credential',    icon:'🔑', name:'Credential Stuffing / ATO',     severity:'high',
+    desc:'Mass credential stuffing attack using leaked username/password combinations. Successful account takeovers observed. Possible session hijacking.',
+    mitre:['T1110.004','T1078','T1539','T1550.004'] },
+  { id:'ddos',          icon:'🌊', name:'DDoS Attack',                   severity:'medium',
+    desc:'Distributed denial of service attack impacting availability of public-facing services. Volumetric, protocol, or application layer attack in progress.',
+    mitre:['T1498','T1499'] },
+  { id:'ics-ot',        icon:'🏭', name:'ICS / OT Intrusion',            severity:'critical',
+    desc:'Unauthorized access to industrial control systems or operational technology network. Possible manipulation of SCADA, PLCs, or HMI systems.',
+    mitre:['T0817','T0811','T0831','T0836','T0869'] },
+  { id:'data-breach',   icon:'📂', name:'Data Breach / Exfiltration',    severity:'critical',
+    desc:'Sensitive data exfiltrated from internal systems. PII, financial records, or intellectual property accessed and transferred externally without authorization.',
+    mitre:['T1005','T1039','T1041','T1567','T1048'] },
+  { id:'zero-day',      icon:'💣', name:'Zero-Day Exploitation',         severity:'critical',
+    desc:'Active exploitation of unpatched zero-day vulnerability in internet-facing system. Vendor patch unavailable. Active threat actor campaign.',
+    mitre:['T1190','T1210','T1059','T1078'] },
+  { id:'cloud-breach',  icon:'☁️', name:'Cloud Account Compromise',      severity:'high',
+    desc:'Cloud account (AWS/Azure/GCP) compromised via stolen credentials or misconfiguration. Possible resource abuse, data access, or persistence mechanisms deployed.',
+    mitre:['T1078.004','T1537','T1530','T1580'] },
+];
+
+// ── NIST IR PHASES ────────────────────────────────────────────────────────────
+var NIST_PHASES = [
+  { name:'Preparation',        color:'#4cc9f0', short:'PREP',   time:'Ongoing' },
+  { name:'Detection & Analysis',color:'#ffd166', short:'DETECT', time:'0–1 hr' },
+  { name:'Containment',        color:'#ff8c42', short:'CONTAIN',time:'1–4 hr' },
+  { name:'Eradication',        color:'#b48eff', short:'ERAD',   time:'4–24 hr' },
+  { name:'Recovery',           color:'#2fd98a', short:'RECOVER',time:'24–72 hr' },
+  { name:'Post-Incident',      color:'#9998b8', short:'POST',   time:'1–2 wk' },
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+var currentPlaybook = null;
+var selectedScenario = null;
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+function init() {
+  renderScenarios();
+  renderLibrary();
+}
+
+function renderScenarios() {
+  document.getElementById('scenarioList').innerHTML = SCENARIOS.map(function(s) {
+    var sevCls = 'sev-' + s.severity;
+    return '<div class="scenario-item" id="sc-'+s.id+'" onclick="selectScenario(\''+s.id+'\')"> '
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'
+        + '<span class="sc-icon">'+s.icon+'</span>'
+        + '<span class="sc-name">'+s.name+'</span>'
+      + '</div>'
+      + '<div class="sc-desc">'+s.desc.substring(0,80)+'…</div>'
+      + '<span class="sc-badge '+sevCls+'">'+s.severity.toUpperCase()+'</span>'
+      + '</div>';
+  }).join('');
+}
+
+function selectScenario(id) {
+  selectedScenario = SCENARIOS.find(function(s){ return s.id === id; });
+  document.querySelectorAll('.scenario-item').forEach(function(el){ el.classList.remove('selected'); });
+  var el = document.getElementById('sc-'+id);
+  if (el) el.classList.add('selected');
+  document.getElementById('customDesc').value = selectedScenario.desc;
+  document.getElementById('severity').value = selectedScenario.severity;
+}
+
+// ── API KEY TEST ──────────────────────────────────────────────────────────────
+async function testKey() {
+  var key = document.getElementById('apiKey').value.trim();
+  var statusEl = document.getElementById('keyStatus');
+  if (!key) { statusEl.textContent = '⚠ Enter key'; statusEl.style.color='var(--yellow)'; return; }
+  statusEl.textContent = '⟳ Testing…'; statusEl.style.color='var(--muted2)';
+  try {
+    var r = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{ 'content-type':'application/json','x-api-key':key,
+        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:10, messages:[{role:'user',content:'Hi'}] })
+    });
+    if (r.ok) { statusEl.textContent='KEY OK ✓'; statusEl.style.color='var(--green)'; }
+    else if (r.status===401) { statusEl.textContent='✗ Invalid key'; statusEl.style.color='var(--red)'; }
+    else { statusEl.textContent='✗ Error '+r.status; statusEl.style.color='var(--red)'; }
+  } catch(e) { statusEl.textContent='✗ Network error'; statusEl.style.color='var(--red)'; }
+}
+
+// ── GENERATE PLAYBOOK ─────────────────────────────────────────────────────────
+async function generatePlaybook() {
+  var key     = document.getElementById('apiKey').value.trim();
+  var desc    = document.getElementById('customDesc').value.trim();
+  var orgType = document.getElementById('orgType').value;
+  var sev     = document.getElementById('severity').value;
+  var fw      = document.getElementById('framework').value;
+  var comms   = document.getElementById('includeComms').value;
+
+  if (!key)  { alert('Paste your Anthropic API key first.'); return; }
+  if (!desc) { alert('Select a scenario or describe the attack.'); return; }
+
+  var btn = document.getElementById('genBtn');
+  btn.disabled = true; btn.textContent = '⟳ Generating…';
+
+  showGenerating();
+
+  var fwName = { nist:'NIST SP 800-61r2', sans:'SANS PICERL', mitre:'MITRE ATT&CK' }[fw];
+  var phases = fw === 'sans'
+    ? ['Preparation','Identification','Containment','Eradication','Recovery','Lessons Learned']
+    : ['Preparation','Detection & Analysis','Containment','Eradication','Recovery','Post-Incident Activities'];
+
+  var prompt = 'You are a senior incident response consultant generating a professional IR playbook.\n\n'
+    + 'INCIDENT DESCRIPTION:\n' + desc + '\n\n'
+    + 'PARAMETERS:\n'
+    + '- Organization type: ' + orgType + '\n'
+    + '- Severity: ' + sev + ' (P' + {critical:1,high:2,medium:3,low:4}[sev] + ')\n'
+    + '- Framework: ' + fwName + '\n'
+    + '- Include stakeholder comms: ' + comms + '\n\n'
+    + 'Return a JSON object with these fields:\n'
+    + '- title (string)\n'
+    + '- severity (string: "' + sev + '")\n'
+    + '- framework (string: "' + fwName + '")\n'
+    + '- summary (string, 2 sentences max)\n'
+    + '- estimatedDuration (string)\n'
+    + '- requiredRoles (array of strings, max 5)\n'
+    + '- phases (array of ' + phases.length + ' objects, one per phase: ' + phases.join(', ') + ')\n'
+    + '  Each phase: {name, timeframe, objective(1 sentence), steps(array of 4 objects)}\n'
+    + '  Each step: {action(short title), detail(2 sentences max), tools(array, max 3), mitre(array, max 2), priority(immediate|high|normal), owner(string)}\n'
+    + '- iocs (array of max 8 objects: {type, value, description(short)})\n'
+    + '- mitreMapping (array of max 6 objects: {technique, name, tactic, detection(1 sentence), mitigation(1 sentence)})\n'
+    + (comms==='yes' ? '- communications: {executiveBrief(3 sentences), technicalUpdate(3 sentences), regulatoryNote(2 sentences), customerTemplate(3 sentences)}\n' : '')
+    + '- lessonsLearned (array of max 4 strings)\n'
+    + '- references (array of max 3 strings)\n\n'
+    + 'CRITICAL RULES:\n'
+    + '1. Return ONLY the raw JSON object. No markdown. No backticks. No explanation.\n'
+    + '2. Start your response with { and end with }\n'
+    + '3. Keep ALL strings concise — do not write long paragraphs\n'
+    + '4. Do not exceed the max array sizes specified above';
+
+  try {
+    var r = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{ 'content-type':'application/json','x-api-key':key,
+        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 16000,
+        messages: [{ role:'user', content: prompt }]
+      })
+    });
+
+    if (!r.ok) throw new Error('API ' + r.status + (r.status===401?' — Invalid key':''));
+    var data = await r.json();
+    var raw  = (data.content && data.content[0] && data.content[0].text) || '';
+
+    // Strip markdown fences and extract JSON
+    raw = raw.trim();
+    // Remove ```json ... ``` or ``` ... ``` wrappers
+    raw = raw.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+    // If response has text before the JSON, find the first {
+    var jsonStart = raw.indexOf('{');
+    var jsonEnd   = raw.lastIndexOf('}');
+    if (jsonStart > 0) raw = raw.substring(jsonStart);
+    if (jsonEnd > 0 && jsonEnd < raw.length - 1) raw = raw.substring(0, jsonEnd + 1);
+
+    var playbook;
+    try {
+      playbook = JSON.parse(raw);
+    } catch(parseErr) {
+      // Show the raw response so user can debug
+      showError('JSON parse failed: ' + parseErr.message + '\n\nFirst 300 chars of response:\n' + raw.substring(0, 300));
+      btn.disabled = false; btn.textContent = '⚡ GENERATE IR PLAYBOOK';
+      return;
+    }
+
+    currentPlaybook = playbook;
+    saveToLibrary(playbook);
+    renderPlaybook(playbook);
+
+  } catch(e) {
+    showError(e.message);
+  }
+
+  btn.disabled = false; btn.textContent = '⚡ GENERATE IR PLAYBOOK';
+}
+
+// ── RENDER STATES ─────────────────────────────────────────────────────────────
+function showGenerating() {
+  document.getElementById('rightPanel').innerHTML =
+    '<div class="generating">'
+    + '<div class="gen-spinner"></div>'
+    + '<div style="font-size:14px;font-weight:600;color:var(--purple)">Generating IR Playbook</div>'
+    + '<div class="gen-status">AI analyzing incident · Building phase-by-phase response · Mapping MITRE ATT&CK…</div>'
+    + '</div>';
+}
+
+function showError(msg) {
+  document.getElementById('rightPanel').innerHTML =
+    '<div class="generating" style="gap:10px;max-width:600px;margin:0 auto;text-align:left">'
+    + '<div style="font-size:32px;text-align:center">⚠</div>'
+    + '<div style="font-size:14px;font-weight:600;color:var(--red);text-align:center">Generation Failed</div>'
+    + '<div style="background:var(--s2);border:1px solid var(--red-b);border-radius:7px;padding:12px;'
+      + 'font-family:var(--mono);font-size:11px;color:var(--red);line-height:1.7;white-space:pre-wrap;word-break:break-all">'
+      + esc(msg) + '</div>'
+    + '<div style="font-size:11px;color:var(--muted2);font-family:var(--mono);line-height:1.7">'
+      + 'Troubleshooting:\n'
+      + '• Verify key starts with sk-ant-\n'
+      + '• Click TEST KEY to verify the key works\n'
+      + '• Check console (F12) for network errors\n'
+      + '• If JSON parse error: the model response was cut off — try again'
+    + '</div>'
+    + '</div>';
+}
+
+// ── RENDER PLAYBOOK ───────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderPlaybook(pb) {
+  var sevColor = { critical:'var(--red)', high:'var(--orange)', medium:'var(--yellow)', low:'var(--green)' }[pb.severity] || 'var(--text)';
+  var sevBg    = { critical:'var(--red-s)', high:'var(--orange-s)', medium:'var(--yellow-s)', low:'var(--green-s)' }[pb.severity] || 'var(--s3)';
+  var sevBd    = { critical:'var(--red-b)', high:'var(--orange-b)', medium:'var(--yellow-b)', low:'var(--green-b)' }[pb.severity] || 'var(--border2)';
+
+  var totalSteps = (pb.phases||[]).reduce(function(acc,p){ return acc + (p.steps||[]).length; }, 0);
+
+  var html = '<div class="playbook-wrap">';
+
+  // ── Header ────────────────────────────────────────────────────────────────
+  html += '<div class="pb-header fade-in">'
+    + '<div class="pb-title">'+esc(pb.title||'IR Playbook')+'</div>'
+    + '<div class="pb-meta">'
+      + '<span class="pb-tag" style="background:'+sevBg+';color:'+sevColor+';border:1px solid '+sevBd+'">'+( pb.severity||'').toUpperCase()+'</span>'
+      + '<span class="pb-tag" style="background:var(--purple-s);color:var(--purple);border:1px solid var(--purple-b)">'+esc(pb.framework||'NIST')+'</span>'
+      + '<span class="pb-tag" style="background:var(--s3);color:var(--muted2);border:1px solid var(--border2)">⏱ '+esc(pb.estimatedDuration||'TBD')+'</span>'
+    + '</div>'
+    + '<div class="pb-summary">'+esc(pb.summary||'')+'</div>';
+
+  // Roles
+  if (pb.requiredRoles && pb.requiredRoles.length) {
+    html += '<div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:5px">'
+      + '<span style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-right:4px;align-self:center">ROLES:</span>'
+      + pb.requiredRoles.map(function(r){ return '<span style="font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:4px;background:var(--s3);color:var(--muted2);border:1px solid var(--border2)">'+esc(r)+'</span>'; }).join('')
+    + '</div>';
+  }
+
+  // Stats
+  html += '<div class="pb-stats">'
+    + pbStat((pb.phases||[]).length, 'Phases', 'var(--purple)')
+    + pbStat(totalSteps, 'Steps', 'var(--blue)')
+    + pbStat((pb.iocs||[]).length, 'IOCs', 'var(--red)')
+    + pbStat((pb.mitreMapping||[]).length, 'ATT&CK', 'var(--cyan)')
+    + '</div>'
+    + '</div>';
+
+  // ── Phases ────────────────────────────────────────────────────────────────
+  (pb.phases||[]).forEach(function(phase, pi) {
+    var phColor = NIST_PHASES[pi] ? NIST_PHASES[pi].color : 'var(--purple)';
+    html += '<div class="phase-card fade-in" style="border-color:'+phColor+'33">'
+      + '<div class="phase-hdr" onclick="togglePhase('+pi+')" id="phdr-'+pi+'">'
+        + '<div class="phase-num" style="background:'+phColor+'22;color:'+phColor+'">'+( pi+1)+'</div>'
+        + '<div class="phase-name" style="color:'+phColor+'">'+esc(phase.name||'Phase '+(pi+1))+'</div>'
+        + '<span class="phase-time">'+esc(phase.timeframe||'')+'</span>'
+        + '<span class="phase-count">'+( phase.steps||[]).length+' steps</span>'
+        + '<span class="phase-arrow open" id="parr-'+pi+'">▼</span>'
+      + '</div>'
+      + '<div class="phase-body" id="pbody-'+pi+'" style="display:flex">';
+
+    // Phase objective
+    if (phase.objective) {
+      html += '<div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;'
+        + 'padding:8px 12px;font-size:11px;font-family:var(--mono);color:var(--muted2);margin-bottom:4px">'
+        + '<span style="color:'+phColor+';font-weight:700">OBJECTIVE: </span>'+esc(phase.objective)+'</div>';
+    }
+
+    // Steps
+    (phase.steps||[]).forEach(function(step, si) {
+      var priCls = { immediate:'pri-immediate', high:'pri-high', normal:'pri-normal' }[step.priority] || 'pri-normal';
+      html += '<div class="step-item">'
+        + '<div class="step-num" style="background:'+phColor+'22;color:'+phColor+'">'+(si+1)+'</div>'
+        + '<div class="step-content">'
+          + '<div class="step-action">'+esc(step.action||'')+'</div>'
+          + '<div class="step-detail">'+esc(step.detail||'')+'</div>'
+          + '<div class="step-tools">'
+            + (step.priority ? '<span class="step-priority '+priCls+'">'+( step.priority||'').toUpperCase()+'</span>' : '')
+            + (step.owner ? '<span style="font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:3px;background:var(--s3);color:var(--muted2);border:1px solid var(--border2)">👤 '+esc(step.owner)+'</span>' : '')
+            + (step.tools||[]).map(function(t){ return '<span class="step-tool">'+esc(t)+'</span>'; }).join('')
+            + (step.mitre||[]).map(function(m){ return '<span class="step-mitre">'+esc(m)+'</span>'; }).join('')
+          + '</div>'
+        + '</div>'
+        + '</div>';
+    });
+
+    html += '</div></div>';
+  });
+
+  // ── MITRE ATT&CK Mapping ──────────────────────────────────────────────────
+  if (pb.mitreMapping && pb.mitreMapping.length) {
+    html += '<div class="ioc-section fade-in">'
+      + '<div class="ioc-hdr">🎯 MITRE ATT&CK Mapping</div>'
+      + '<table class="ioc-table"><tbody>'
+      + pb.mitreMapping.map(function(m,i) {
+          return '<tr style="background:'+(i%2===0?'var(--s2)':'var(--s1)')+'">'
+            + '<td class="ioc-type" style="color:var(--cyan)">'+esc(m.technique||'')+'</td>'
+            + '<td><div style="font-weight:600;color:var(--text);font-size:11px">'+esc(m.name||'')+'</div>'
+              + '<div style="font-size:10px;color:var(--muted);font-family:var(--mono)">'+esc(m.tactic||'')+'</div></td>'
+            + '<td class="ioc-desc"><div style="margin-bottom:3px"><span style="color:var(--green);font-weight:700">Detect: </span>'+esc(m.detection||'')+'</div>'
+              + '<div><span style="color:var(--orange);font-weight:700">Mitigate: </span>'+esc(m.mitigation||'')+'</div></td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table></div>';
+  }
+
+  // ── IOCs ──────────────────────────────────────────────────────────────────
+  if (pb.iocs && pb.iocs.length) {
+    html += '<div class="ioc-section fade-in">'
+      + '<div class="ioc-hdr">🔍 IOCs to Hunt</div>'
+      + '<table class="ioc-table"><tbody>'
+      + pb.iocs.map(function(ioc,i) {
+          return '<tr style="background:'+(i%2===0?'var(--s2)':'var(--s1)')+'">'
+            + '<td class="ioc-type">'+esc(ioc.type||'')+'</td>'
+            + '<td class="ioc-val">'+esc(ioc.value||'')+'</td>'
+            + '<td class="ioc-desc">'+esc(ioc.description||'')+'</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table></div>';
+  }
+
+  // ── Communications ────────────────────────────────────────────────────────
+  if (pb.communications) {
+    var commsEntries = [
+      { key:'executiveBrief',    label:'Executive Brief (CISO/CEO)', icon:'👔' },
+      { key:'technicalUpdate',   label:'Technical Update (SOC/IT)',   icon:'🔧' },
+      { key:'regulatoryNote',    label:'Regulatory Notification',     icon:'⚖️' },
+      { key:'customerTemplate',  label:'Customer/User Notification',  icon:'📧' },
+    ];
+    commsEntries.forEach(function(ce) {
+      if (pb.communications[ce.key]) {
+        html += '<div class="comms-card fade-in">'
+          + '<div class="comms-hdr">'
+            + '<span>'+ce.icon+' '+ce.label+'</span>'
+            + '<button class="copy-btn" onclick="copyText(\''+ce.key+'\')">Copy</button>'
+          + '</div>'
+          + '<div class="comms-body" id="ct-'+ce.key+'">'+esc(pb.communications[ce.key])+'</div>'
+          + '</div>';
+      }
+    });
+  }
+
+  // ── Lessons Learned ────────────────────────────────────────────────────────
+  if (pb.lessonsLearned && pb.lessonsLearned.length) {
+    html += '<div class="ioc-section fade-in">'
+      + '<div class="ioc-hdr">📚 Lessons Learned</div>'
+      + '<div style="padding:12px 14px;display:flex;flex-direction:column;gap:7px">'
+      + pb.lessonsLearned.map(function(l,i){ return '<div style="display:flex;gap:10px;font-size:12px;color:var(--muted2);font-family:var(--mono)"><span style="color:var(--green);font-weight:700;flex-shrink:0">'+(i+1)+'.</span><span>'+esc(l)+'</span></div>'; }).join('')
+      + '</div></div>';
+  }
+
+  // ── References ────────────────────────────────────────────────────────────
+  if (pb.references && pb.references.length) {
+    html += '<div style="padding:10px 14px;font-size:11px;font-family:var(--mono);color:var(--muted);line-height:1.8;border-top:1px solid var(--border)">'
+      + 'References: '+pb.references.map(function(r){ return esc(r); }).join(' · ')+'</div>';
+  }
+
+  html += '</div>';
+
+  // Export row
+  html += '<div class="export-row">'
+    + '<button class="exp-btn exp-purple" onclick="exportPrintPlaybook()">🖨 Print / PDF</button>'
+    + '<button class="exp-btn exp-green" onclick="exportCSVPlaybook()">📥 Export CSV</button>'
+    + '<button class="exp-btn exp-blue" onclick="exportHTMLPlaybook()">📋 Export HTML</button>'
+    + '</div>';
+
+  document.getElementById('rightPanel').innerHTML = html;
+}
+
+function pbStat(num, lbl, col) {
+  return '<div class="pb-stat"><div class="pb-stat-num" style="color:'+col+'">'+num+'</div><div class="pb-stat-lbl">'+lbl+'</div></div>';
+}
+
+function togglePhase(pi) {
+  var body = document.getElementById('pbody-'+pi);
+  var arr  = document.getElementById('parr-'+pi);
+  if (!body) return;
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'flex';
+  if (arr) arr.textContent = open ? '▶' : '▼';
+}
+
+function copyText(key) {
+  var el = document.getElementById('ct-'+key);
+  if (el) {
+    navigator.clipboard.writeText(el.textContent).then(function(){
+      var btn = event.target;
+      btn.textContent = 'Copied!';
+      setTimeout(function(){ btn.textContent = 'Copy'; }, 2000);
+    });
+  }
+}
+
+// ── LIBRARY ───────────────────────────────────────────────────────────────────
+var LIBRARY_KEY = 'ghost2210_ir_playbooks';
+
+function saveToLibrary(pb) {
+  try {
+    var lib = getLibrary();
+    var entry = { id: Date.now(), title: pb.title, severity: pb.severity, date: new Date().toLocaleDateString(), pb: pb };
+    lib.unshift(entry);
+    if (lib.length > 20) lib = lib.slice(0,20);
+    localStorage.setItem(LIBRARY_KEY, JSON.stringify(lib));
+    renderLibrary();
+  } catch(e) { console.warn('Library save failed:', e); }
+}
+
+function getLibrary() {
+  try { return JSON.parse(localStorage.getItem(LIBRARY_KEY) || '[]'); } catch(e) { return []; }
+}
+
+function renderLibrary() {
+  var lib = getLibrary();
+  var el  = document.getElementById('libraryList');
+  if (!lib.length) {
+    el.innerHTML = '<div style="padding:12px 14px;font-size:11px;color:var(--muted);font-family:var(--mono)">No saved playbooks yet</div>';
+    return;
+  }
+  el.innerHTML = lib.map(function(entry) {
+    var sevCol = { critical:'var(--red)', high:'var(--orange)', medium:'var(--yellow)', low:'var(--green)' }[entry.severity] || 'var(--muted2)';
+    return '<div class="library-item" onclick="loadLibraryEntry('+entry.id+')">'
+      + '<span class="li-icon" style="color:'+sevCol+'">📋</span>'
+      + '<div style="flex:1;min-width:0">'
+        + '<div class="li-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(entry.title||'Playbook')+'</div>'
+        + '<div class="li-date">'+esc(entry.date)+'</div>'
+      + '</div>'
+      + '<button class="li-del" onclick="event.stopPropagation();deleteEntry('+entry.id+')">✕</button>'
+      + '</div>';
+  }).join('');
+}
+
+function loadLibraryEntry(id) {
+  var lib = getLibrary();
+  var entry = lib.find(function(e){ return e.id === id; });
+  if (entry && entry.pb) { currentPlaybook = entry.pb; renderPlaybook(entry.pb); }
+}
+
+function deleteEntry(id) {
+  try {
+    var lib = getLibrary().filter(function(e){ return e.id !== id; });
+    localStorage.setItem(LIBRARY_KEY, JSON.stringify(lib));
+    renderLibrary();
+  } catch(e) {}
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+function exportPrintPlaybook() {
+  if (!currentPlaybook) return;
+  var pb = currentPlaybook;
+  var sevColor = { critical:'#dc2626', high:'#ea580c', medium:'#ca8a04', low:'#16a34a' }[pb.severity] || '#374151';
+
+  var win = window.open('', '_blank', 'width=900,height=700');
+  var phasesHtml = (pb.phases||[]).map(function(phase, pi) {
+    var stepsHtml = (phase.steps||[]).map(function(step, si) {
+      var priColor = { immediate:'#dc2626', high:'#ea580c', normal:'#16a34a' }[step.priority] || '#6b7280';
+      return '<div style="display:flex;gap:12px;margin-bottom:8px;padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;page-break-inside:avoid">'
+        + '<div style="width:22px;height:22px;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0;color:#374151">'+(si+1)+'</div>'
+        + '<div style="flex:1">'
+          + '<div style="font-weight:700;font-size:12px;margin-bottom:3px">'+esc(step.action||'')+'</div>'
+          + '<div style="font-size:11px;color:#374151;line-height:1.6;font-family:monospace">'+esc(step.detail||'')+'</div>'
+          + '<div style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap">'
+            + (step.priority ? '<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;color:'+priColor+';border:1px solid '+priColor+'44;background:'+priColor+'11">'+step.priority.toUpperCase()+'</span>' : '')
+            + (step.tools||[]).map(function(t){ return '<span style="font-size:9px;padding:1px 6px;border-radius:3px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0">'+esc(t)+'</span>'; }).join('')
+            + (step.mitre||[]).map(function(m){ return '<span style="font-size:9px;padding:1px 6px;border-radius:3px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe">'+esc(m)+'</span>'; }).join('')
+          + '</div>'
+        + '</div></div>';
+    }).join('');
+    var phColors = ['#0284c7','#ca8a04','#ea580c','#7c3aed','#16a34a','#6b7280'];
+    var phColor  = phColors[pi] || '#374151';
+    return '<div style="margin-bottom:16px;page-break-inside:avoid">'
+      + '<div style="background:#1e293b;color:#fff;padding:9px 14px;border-radius:6px 6px 0 0;display:flex;align-items:center;gap:10px">'
+        + '<span style="width:24px;height:24px;background:'+phColor+'33;color:'+phColor+';border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px">'+(pi+1)+'</span>'
+        + '<span style="font-weight:700">'+esc(phase.name||'')+'</span>'
+        + '<span style="color:#94a3b8;font-size:11px;margin-left:auto">'+esc(phase.timeframe||'')+'</span>'
+      + '</div>'
+      + (phase.objective ? '<div style="background:#f8fafc;padding:7px 12px;font-size:11px;color:#475569;border-left:4px solid '+phColor+';margin-bottom:8px;font-family:monospace"><strong>Objective:</strong> '+esc(phase.objective)+'</div>' : '')
+      + '<div style="border:1px solid #e5e7eb;border-top:none;border-radius:0 0 6px 6px;padding:10px">' + stepsHtml + '</div>'
+    + '</div>';
+  }).join('');
+
+  var iocHtml = (pb.iocs||[]).length ? '<div style="margin-bottom:16px">'
+    + '<div style="background:#7f1d1d;color:#fff;padding:8px 14px;border-radius:6px 6px 0 0;font-weight:700;font-size:12px">IOCs to Hunt</div>'
+    + '<table style="width:100%;border-collapse:collapse;border:1px solid #fca5a5;border-top:none;font-size:11px"><tbody>'
+    + (pb.iocs||[]).map(function(ioc,i){ return '<tr style="background:'+(i%2===0?'#fff':'#fef2f2')+'">'
+        +'<td style="padding:5px 10px;border-bottom:1px solid #fee2e2;font-weight:700;color:#dc2626;font-family:monospace;white-space:nowrap">'+esc(ioc.type||'')+'</td>'
+        +'<td style="padding:5px 10px;border-bottom:1px solid #fee2e2;font-family:monospace;word-break:break-all">'+esc(ioc.value||'')+'</td>'
+        +'<td style="padding:5px 10px;border-bottom:1px solid #fee2e2;color:#6b7280">'+esc(ioc.description||'')+'</td>'
+        +'</tr>'; }).join('')
+    + '</tbody></table></div>' : '';
+
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc(pb.title||'IR Playbook')+'</title>'
+    +'<style>body{font-family:Calibri,Arial,sans-serif;margin:0;padding:0;background:#fff;color:#111;font-size:12px}@page{size:A4;margin:14mm}@media print{body{background:#fff}}</style>'
+    +'</head><body>'
+    +'<div style="background:#0f172a;padding:18px 28px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div><div style="font-size:16px;font-weight:700;color:#00ff41;letter-spacing:3px;font-family:monospace">GHOST DEFENSE</div>'
+        +'<div style="color:#9ca3af;font-size:11px;letter-spacing:2px;font-family:monospace;margin-top:2px">INCIDENT RESPONSE PLAYBOOK</div></div>'
+      +'<div style="text-align:right;color:#9ca3af;font-size:10px"><span style="background:'+sevColor+'22;color:'+sevColor+';border:1px solid '+sevColor+'55;padding:2px 8px;border-radius:3px;font-weight:700;font-size:10px">'+( pb.severity||'').toUpperCase()+'</span><br><span style="font-size:10px">'+pb.framework+'</span></div>'
+    +'</div>'
+    +'<div style="padding:16px 24px">'
+      +'<h1 style="font-size:20px;margin-bottom:6px">'+esc(pb.title||'')+'</h1>'
+      +'<div style="font-size:12px;color:#374151;margin-bottom:8px;line-height:1.6">'+esc(pb.summary||'')+'</div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
+        + (pb.requiredRoles||[]).map(function(r){ return '<span style="font-size:10px;padding:2px 8px;border-radius:3px;background:#f1f5f9;color:#475569;font-family:monospace">'+esc(r)+'</span>'; }).join('')
+      +'</div>'
+      + phasesHtml + iocHtml
+    +'</div>'
+    +'<div style="background:#0f172a;padding:10px 28px;display:flex;justify-content:space-between;color:#9ca3af;font-size:10px">'
+      +'<span>Ghost Defense · '+esc(pb.framework||'')+' · Generated '+new Date().toLocaleDateString()+'</span>'
+      +'<span>DEFEND ALWAYS 🛡️</span>'
+    +'</div></body></html>');
+  win.document.close();
+  win.focus();
+  setTimeout(function(){ win.print(); }, 800);
+}
+
+function exportCSVPlaybook() {
+  if (!currentPlaybook) return;
+  var pb = currentPlaybook;
+  var rows = [['Phase','Step','Action','Detail','Priority','Owner','Tools','MITRE'].join(',')];
+  (pb.phases||[]).forEach(function(phase) {
+    (phase.steps||[]).forEach(function(step) {
+      rows.push([
+        '"'+esc(phase.name||'')+'"',
+        '"'+esc(step.action||'')+'"',
+        '"'+esc(step.action||'')+'"',
+        '"'+(step.detail||'').replace(/"/g,"'")+'"',
+        '"'+(step.priority||'')+'"',
+        '"'+(step.owner||'')+'"',
+        '"'+(step.tools||[]).join('; ')+'"',
+        '"'+(step.mitre||[]).join('; ')+'"',
+      ].join(','));
+    });
+  });
+  var blob = new Blob([rows.join('\n')],{type:'text/csv'});
+  var a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='ir-playbook-'+new Date().toISOString().split('T')[0]+'.csv'; a.click();
+}
+
+function exportHTMLPlaybook() {
+  exportPrintPlaybook();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

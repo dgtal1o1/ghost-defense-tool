@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>EOL Checker — Device End-of-Life Scanner</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ── RESET & VARIABLES ─────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080b14;
+  --s1:#0e1220;
+  --s2:#141929;
+  --s3:#1c2238;
+  --s4:#232a42;
+  --b1:rgba(255,255,255,0.06);
+  --b2:rgba(255,255,255,0.11);
+  --b3:rgba(255,255,255,0.18);
+  --text:#00ff41;
+  --muted:#1a7a35;
+  --muted2:#39c45a;
+  --red:#ff3737;
+  --red-g:rgba(255,55,55,0.14);
+  --red-b:rgba(255,55,55,0.28);
+  --orange:#ff8130;
+  --orange-g:rgba(255,129,48,0.13);
+  --yellow:#ffc93c;
+  --yellow-g:rgba(255,201,60,0.11);
+  --green:#1fda8b;
+  --green-g:rgba(31,218,139,0.11);
+  --cyan:#38c8f0;
+  --cyan-g:rgba(56,200,240,0.10);
+  --accent:#6c8fff;
+  --accent-g:rgba(108,143,255,0.12);
+  --mono:'Space Mono',monospace;
+  --sans:'Space Grotesk',sans-serif;
+  --radius:14px;
+  --radius-sm:8px;
+}
+html{background:var(--bg);scroll-behavior:smooth}
+body{font-family:var(--sans);color:var(--text);min-height:100vh;overflow-x:hidden;text-shadow:0 0 8px rgba(0,255,65,0.25)}
+
+/* ── BACKGROUND GRID ───────────────────────────────────────── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(108,143,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108,143,255,0.03) 1px, transparent 1px);
+  background-size:48px 48px;
+  pointer-events:none;z-index:0;
+}
+body::after{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 50% -10%, rgba(108,143,255,0.08) 0%, transparent 70%);
+  pointer-events:none;z-index:0;
+}
+
+/* ── LAYOUT ────────────────────────────────────────────────── */
+.wrap{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:0 20px 80px}
+
+/* ── HEADER ────────────────────────────────────────────────── */
+header{
+  padding:40px 0 36px;
+  display:flex;flex-direction:column;align-items:center;
+  text-align:center;
+  animation:fadeDown .6s ease both;
+}
+.logo-row{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.logo-hex{
+  width:52px;height:52px;border-radius:16px;
+  background:linear-gradient(135deg,rgba(108,143,255,.2),rgba(31,218,139,.1));
+  border:1px solid rgba(108,143,255,.35);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;flex-shrink:0;
+}
+.logo-text{font-size:28px;font-weight:700;letter-spacing:-0.03em;line-height:1}
+.logo-text span{color:var(--accent)}
+.tagline{font-size:14px;color:var(--muted2);font-weight:400;max-width:520px;line-height:1.6;margin-bottom:20px}
+.header-badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.hbadge{
+  font-size:11px;font-family:var(--mono);
+  padding:4px 10px;border-radius:20px;
+  border:1px solid var(--b2);color:var(--muted2);
+}
+
+/* ── CATEGORY TABS ─────────────────────────────────────────── */
+.cat-tabs{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:8px;margin-bottom:24px;
+  animation:fadeUp .5s .1s ease both;
+}
+.cat-tab{
+  background:var(--s1);border:1px solid var(--b1);
+  border-radius:var(--radius-sm);
+  padding:12px 10px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  transition:all .15s;-webkit-tap-highlight-color:transparent;
+}
+.cat-tab:hover{background:var(--s2);border-color:var(--b2)}
+.cat-tab.active{
+  background:var(--accent-g);
+  border-color:rgba(108,143,255,.35);
+}
+.cat-icon{font-size:22px}
+.cat-label{font-size:11px;font-weight:500;color:var(--muted2);text-align:center;line-height:1.3}
+.cat-tab.active .cat-label{color:var(--accent)}
+.cat-count{
+  font-size:10px;font-family:var(--mono);
+  background:var(--s3);border-radius:20px;padding:1px 7px;
+  color:var(--muted);
+}
+
+/* ── SEARCH CARD ───────────────────────────────────────────── */
+.search-card{
+  background:var(--s1);border:1px solid var(--b1);
+  border-radius:var(--radius);
+  padding:24px;margin-bottom:20px;
+  animation:fadeUp .5s .15s ease both;
+}
+.search-card-title{
+  font-size:11px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);
+  font-family:var(--mono);margin-bottom:16px;
+}
+.search-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:11px;color:var(--muted2);font-weight:500;letter-spacing:.04em}
+.field select,.field input{
+  background:var(--s2);border:1px solid var(--b1);
+  border-radius:var(--radius-sm);
+  color:var(--text);font-family:var(--sans);font-size:13px;
+  padding:10px 12px;outline:none;
+  transition:border-color .15s;
+  -webkit-appearance:none;appearance:none;
+  width:100%;
+}
+.field select:focus,.field input:focus{border-color:rgba(108,143,255,.45)}
+.field select option{background:var(--s2)}
+.check-btn{
+  align-self:flex-end;
+  background:linear-gradient(135deg,var(--accent),#4d70ee);
+  border:none;border-radius:var(--radius-sm);
+  color:#fff;font-family:var(--sans);font-size:13px;font-weight:600;
+  padding:10px 24px;cursor:pointer;white-space:nowrap;
+  transition:all .15s;-webkit-tap-highlight-color:transparent;
+  display:flex;align-items:center;gap:7px;
+}
+.check-btn:hover{opacity:.88;transform:translateY(-1px)}
+.check-btn:active{transform:scale(.97)}
+.check-btn:disabled{opacity:.5;pointer-events:none}
+.check-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* quick examples */
+.quick-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+.qlabel{font-size:11px;color:var(--muted);align-self:center;white-space:nowrap;font-family:var(--mono)}
+.qchip{
+  font-size:11px;font-family:var(--mono);
+  background:var(--s2);border:1px solid var(--b1);border-radius:6px;
+  padding:4px 10px;color:var(--muted2);cursor:pointer;
+  transition:all .12s;-webkit-tap-highlight-color:transparent;
+}
+.qchip:hover{background:var(--s3);color:var(--text)}
+
+/* ── RESULT CARD ───────────────────────────────────────────── */
+.result-area{animation:fadeUp .4s ease both}
+
+.result-card{
+  border-radius:var(--radius);overflow:hidden;
+  margin-bottom:16px;
+}
+.result-card.eol{
+  background:rgba(255,55,55,.06);
+  border:1px solid rgba(255,55,55,.25);
+}
+.result-card.warning{
+  background:rgba(255,129,48,.06);
+  border:1px solid rgba(255,129,48,.2);
+}
+.result-card.supported{
+  background:rgba(31,218,139,.06);
+  border:1px solid rgba(31,218,139,.2);
+}
+.result-card.unknown{
+  background:var(--s1);border:1px solid var(--b1);
+}
+
+.rc-header{
+  padding:20px 22px 16px;
+  display:flex;align-items:flex-start;gap:14px;
+  border-bottom:1px solid var(--b1);
+}
+.rc-status-icon{
+  width:44px;height:44px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;flex-shrink:0;
+}
+.rc-status-icon.eol{background:var(--red-g)}
+.rc-status-icon.warning{background:var(--orange-g)}
+.rc-status-icon.supported{background:var(--green-g)}
+.rc-status-icon.unknown{background:var(--s3)}
+
+.rc-main{flex:1}
+.rc-device{font-size:18px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px}
+.rc-version{font-size:12px;font-family:var(--mono);color:var(--muted2);margin-bottom:8px}
+.rc-status-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:12px;font-weight:600;letter-spacing:.06em;
+  padding:4px 12px;border-radius:20px;text-transform:uppercase;
+}
+.badge-eol{background:var(--red-g);color:var(--red);border:1px solid var(--red-b)}
+.badge-warning{background:var(--orange-g);color:var(--orange);border:1px solid rgba(255,129,48,.28)}
+.badge-supported{background:var(--green-g);color:var(--green);border:1px solid rgba(31,218,139,.28)}
+.badge-unknown{background:var(--s3);color:var(--muted2);border:1px solid var(--b2)}
+.badge-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+
+.rc-body{padding:20px 22px}
+.rc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.rc-cell{background:rgba(0,0,0,.25);border:1px solid var(--b1);border-radius:var(--radius-sm);padding:11px 13px}
+.rc-cell-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;font-family:var(--mono)}
+.rc-cell-val{font-size:13px;font-family:var(--mono);color:var(--text);line-height:1.4;word-break:break-word}
+.rc-cell-val.eol-date{color:var(--red)}
+.rc-cell-val.warn-date{color:var(--orange)}
+.rc-cell-val.good-date{color:var(--green)}
+
+.rc-section-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--b1)}
+
+.rc-desc{font-size:13px;color:var(--muted2);line-height:1.7;margin-bottom:16px}
+
+.risk-box{
+  border-radius:var(--radius-sm);padding:13px 15px;
+  font-size:13px;line-height:1.6;margin-bottom:16px;
+}
+.risk-box.eol{background:rgba(255,55,55,.08);border:1px solid rgba(255,55,55,.18);border-left:3px solid var(--red)}
+.risk-box.warning{background:rgba(255,129,48,.08);border:1px solid rgba(255,129,48,.18);border-left:3px solid var(--orange)}
+.risk-box.supported{background:rgba(31,218,139,.07);border:1px solid rgba(31,218,139,.18);border-left:3px solid var(--green)}
+.risk-box strong{color:inherit}
+
+.action-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.action-chip{
+  font-size:12px;font-family:var(--mono);font-weight:700;
+  padding:5px 12px;border-radius:6px;
+}
+.chip-red{background:var(--red-g);color:var(--red);border:1px solid rgba(255,55,55,.2)}
+.chip-orange{background:var(--orange-g);color:var(--orange);border:1px solid rgba(255,129,48,.2)}
+.chip-green{background:var(--green-g);color:var(--green);border:1px solid rgba(31,218,139,.2)}
+.chip-cyan{background:var(--cyan-g);color:var(--cyan);border:1px solid rgba(56,200,240,.2)}
+
+.rc-refs{display:flex;gap:8px;flex-wrap:wrap}
+.rc-ref{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;font-family:var(--mono);color:var(--accent);
+  background:var(--s2);border:1px solid var(--b1);border-radius:6px;
+  padding:5px 10px;text-decoration:none;transition:all .12s;
+}
+.rc-ref:hover{background:var(--s3)}
+.rc-ref svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* countdown pill */
+.countdown-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:12px;font-family:var(--mono);font-weight:700;
+  padding:5px 12px;border-radius:20px;
+  margin-left:10px;
+}
+.cp-red{background:var(--red-g);color:var(--red)}
+.cp-orange{background:var(--orange-g);color:var(--orange)}
+.cp-green{background:var(--green-g);color:var(--green)}
+
+/* loading spinner */
+.spinner-wrap{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:50px 20px;gap:16px;
+}
+.spinner{
+  width:36px;height:36px;border:3px solid var(--s3);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+.spinner-text{font-size:13px;color:var(--muted);font-family:var(--mono)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* history */
+.history-section{margin-top:24px;animation:fadeUp .5s ease both}
+.history-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono);margin-bottom:12px}
+.history-list{display:flex;flex-direction:column;gap:6px}
+.history-item{
+  background:var(--s1);border:1px solid var(--b1);border-radius:var(--radius-sm);
+  padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;
+  cursor:pointer;transition:all .1s;
+}
+.history-item:hover{background:var(--s2)}
+.hi-device{font-size:13px;font-weight:500}
+.hi-version{font-size:11px;font-family:var(--mono);color:var(--muted2)}
+.hi-badge{
+  font-size:10px;font-family:var(--mono);font-weight:700;
+  padding:3px 9px;border-radius:20px;white-space:nowrap;
+}
+
+/* empty state */
+.empty-state{
+  text-align:center;padding:50px 20px;color:var(--muted);
+}
+.empty-icon{font-size:44px;margin-bottom:14px;opacity:.4}
+.empty-text{font-size:14px;line-height:1.7}
+
+/* ── FOOTER CREDIT ─────────────────────────────────────────── */
+.ghost-footer{
+  position:relative;
+  margin-top:48px;
+  padding:22px 0 10px;
+  display:flex;align-items:center;justify-content:center;
+  gap:14px;
+  border-top:1px solid var(--b1);
+  overflow:hidden;
+}
+.ghost-footer::before{
+  content:'';
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse 60% 80% at 50% 100%, rgba(108,143,255,0.07) 0%, transparent 70%);
+  pointer-events:none;
+}
+.ghost-credit{
+  display:flex;align-items:center;gap:10px;
+  font-family:var(--mono);font-size:11px;letter-spacing:0.12em;
+  color:var(--muted);text-transform:uppercase;
+  position:relative;z-index:1;
+}
+.ghost-icon{
+  display:flex;align-items:center;justify-content:center;
+  width:28px;height:28px;border-radius:8px;
+  background:linear-gradient(135deg,rgba(108,143,255,.18),rgba(31,218,139,.08));
+  border:1px solid rgba(108,143,255,.25);
+  font-size:14px;
+  animation:ghostFloat 4s ease-in-out infinite;
+}
+@keyframes ghostFloat{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-4px)}
+}
+.ghost-name{
+  background:linear-gradient(90deg, #00ff41, #39ff14);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+  font-weight:700;font-size:12px;letter-spacing:0.08em;
+  text-shadow:none;
+  filter:drop-shadow(0 0 6px #00ff4188);
+}
+.ghost-sep{color:var(--b2);margin:0 2px}
+.ghost-scanline{
+  position:absolute;inset:0;
+  background:repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(108,143,255,0.015) 2px,
+    rgba(108,143,255,0.015) 4px
+  );
+  pointer-events:none;
+}
+
+/* ── AMERICAN FLAG ─────────────────────────────────────────── */
+.flag-wrap{
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  margin-bottom:18px;
+  animation:fadeDown .6s .05s ease both;
+}
+.defend-text{
+  font-family:var(--mono);
+  font-size:13px;
+  font-weight:700;
+  letter-spacing:0.32em;
+  text-transform:uppercase;
+  color:#00ff41;
+  text-shadow:
+    0 0 8px #00ff41,
+    0 0 20px #00ff4188,
+    0 0 40px #00ff4144;
+  animation:defendPulse 2.5s ease-in-out infinite;
+}
+@keyframes defendPulse{
+  0%,100%{opacity:1;text-shadow:0 0 8px #00ff41,0 0 20px #00ff4188,0 0 40px #00ff4144}
+  50%{opacity:.75;text-shadow:0 0 4px #00ff41,0 0 12px #00ff4166,0 0 24px #00ff4122}
+}
+.us-flag{
+  width:110px;height:58px;
+  border-radius:5px;
+  overflow:hidden;
+  box-shadow:0 0 18px rgba(0,255,65,0.18), 0 0 40px rgba(0,0,0,.6), 0 2px 8px rgba(0,0,0,.5);
+  border:1px solid rgba(0,255,65,0.2);
+  flex-shrink:0;
+  animation:flagWave 3s ease-in-out infinite;
+  transform-origin:left center;
+}
+@keyframes flagWave{
+  0%,100%{transform:skewY(0deg) scaleX(1)}
+  25%{transform:skewY(0.6deg) scaleX(1.008)}
+  50%{transform:skewY(-0.4deg) scaleX(0.996)}
+  75%{transform:skewY(0.5deg) scaleX(1.005)}
+}
+
+/* ── ANIMATIONS ────────────────────────────────────────────── */
+@keyframes fadeDown{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* ── RESPONSIVE ────────────────────────────────────────────── */
+@media(max-width:700px){
+  .cat-tabs{grid-template-columns:repeat(2,1fr)}
+  .search-row{grid-template-columns:1fr 1fr}
+  .check-btn{grid-column:1/-1;justify-content:center}
+  .rc-grid{grid-template-columns:1fr 1fr}
+  .logo-text{font-size:22px}
+}
+@media(max-width:480px){
+  .search-row{grid-template-columns:1fr}
+  .cat-tabs{grid-template-columns:repeat(2,1fr)}
+}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HEADER -->
+<header>
+  <div class="flag-wrap">
+    <svg class="us-flag" viewBox="0 0 190 100" xmlns="http://www.w3.org/2000/svg">
+      <!-- 13 stripes -->
+      <rect width="190" height="100" fill="#B22234"/>
+      <rect y="7.69"  width="190" height="7.69" fill="#FFFFFF"/>
+      <rect y="15.38" width="190" height="7.69" fill="#B22234"/>
+      <rect y="23.08" width="190" height="7.69" fill="#FFFFFF"/>
+      <rect y="30.77" width="190" height="7.69" fill="#B22234"/>
+      <rect y="38.46" width="190" height="7.69" fill="#FFFFFF"/>
+      <rect y="46.15" width="190" height="7.69" fill="#B22234"/>
+      <rect y="53.85" width="190" height="7.69" fill="#FFFFFF"/>
+      <rect y="61.54" width="190" height="7.69" fill="#B22234"/>
+      <rect y="69.23" width="190" height="7.69" fill="#FFFFFF"/>
+      <rect y="76.92" width="190" height="7.69" fill="#B22234"/>
+      <rect y="84.62" width="190" height="7.69" fill="#FFFFFF"/>
+      <!-- Canton (union) blue field -->
+      <rect width="76" height="53.85" fill="#3C3B6E"/>
+      <!-- 50 stars — 9 rows alternating 6 and 5 -->
+      <g fill="#FFFFFF">
+        <!-- Row 1 (6 stars) y=5 -->
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(1,1) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(12.5,1) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(24,1) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(35.5,1) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(47,1) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(58.5,1) scale(0.72)"/>
+        <!-- Row 2 (5 stars offset) y=11 -->
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(6.25,6.5) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(17.75,6.5) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(29.25,6.5) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(40.75,6.5) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(52.25,6.5) scale(0.72)"/>
+        <!-- Row 3 -->
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(1,12) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(12.5,12) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(24,12) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(35.5,12) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(47,12) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(58.5,12) scale(0.72)"/>
+        <!-- Row 4 (5) -->
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(6.25,17.5) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(17.75,17.5) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(29.25,17.5) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(40.75,17.5) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(52.25,17.5) scale(0.72)"/>
+        <!-- Row 5 (6) -->
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(1,23) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(12.5,23) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(24,23) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(35.5,23) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(47,23) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(58.5,23) scale(0.72)"/>
+        <!-- Row 6 (5) -->
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(6.25,28.5) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(17.75,28.5) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(29.25,28.5) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(40.75,28.5) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(52.25,28.5) scale(0.72)"/>
+        <!-- Row 7 (6) -->
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(1,34) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(12.5,34) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(24,34) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(35.5,34) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(47,34) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(58.5,34) scale(0.72)"/>
+        <!-- Row 8 (5) -->
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(6.25,39.5) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(17.75,39.5) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(29.25,39.5) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(40.75,39.5) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(52.25,39.5) scale(0.72)"/>
+        <!-- Row 9 (6) -->
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(1,45) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(12.5,45) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(24,45) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(35.5,45) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(47,45) scale(0.72)"/>
+        <polygon points="7,3.5 8.2,7 11.8,7 9,9.2 10.1,12.7 7,10.5 3.9,12.7 5,9.2 2.2,7 5.8,7" transform="translate(58.5,45) scale(0.72)"/>
+      </g>
+    </svg>
+    <div class="defend-text">DEFEND ALWAYS</div>
+  </div>
+  <div class="logo-row">
+    <div class="logo-hex">🛡️</div>
+    <div class="logo-text">EOL<span>Check</span></div>
+  </div>
+  <div class="tagline">Instantly check if any device, OS, or firmware version has reached End-of-Life — covering network gear, servers, operating systems, and mobile platforms.</div>
+  <div class="header-badges">
+    <div class="hbadge">Network / Firewall</div>
+    <div class="hbadge">Operating Systems</div>
+    <div class="hbadge">Servers &amp; Hardware</div>
+    <div class="hbadge">Mobile Devices</div>
+  </div>
+</header>
+
+<!-- CATEGORY TABS -->
+<div class="cat-tabs" id="catTabs">
+  <div class="cat-tab active" data-cat="network" onclick="selectCat('network',this)">
+    <div class="cat-icon">🔥</div>
+    <div class="cat-label">Network / Firewall</div>
+    <div class="cat-count">Cisco · Fortinet · Palo Alto · F5</div>
+  </div>
+  <div class="cat-tab" data-cat="os" onclick="selectCat('os',this)">
+    <div class="cat-icon">💻</div>
+    <div class="cat-label">Operating Systems</div>
+    <div class="cat-count">Windows · Linux · macOS</div>
+  </div>
+  <div class="cat-tab" data-cat="server" onclick="selectCat('server',this)">
+    <div class="cat-icon">🖥️</div>
+    <div class="cat-label">Servers &amp; Hardware</div>
+    <div class="cat-count">Dell · HPE · Lenovo</div>
+  </div>
+  <div class="cat-tab" data-cat="mobile" onclick="selectCat('mobile',this)">
+    <div class="cat-icon">📱</div>
+    <div class="cat-label">Mobile Devices</div>
+    <div class="cat-count">iOS · Android</div>
+  </div>
+</div>
+
+<!-- SEARCH CARD -->
+<div class="search-card">
+  <div class="search-card-title">Device Lookup</div>
+  <div class="search-row">
+    <div class="field">
+      <label>Vendor</label>
+      <select id="vendorSelect" onchange="updateModels()">
+        <option value="">Select vendor…</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Product / Model</label>
+      <select id="modelSelect" onchange="updateVersionHint()">
+        <option value="">Select product…</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Version / Release <span id="verHint" style="color:var(--muted);font-size:10px;font-family:var(--mono)"></span></label>
+      <input id="versionInput" type="text" placeholder="e.g. 7.0.14" autocomplete="off" spellcheck="false"
+        onkeydown="if(event.key==='Enter')doCheck()">
+    </div>
+    <button class="check-btn" id="checkBtn" onclick="doCheck()">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      Check EOL
+    </button>
+  </div>
+  <div class="quick-row" id="quickRow">
+    <span class="qlabel">Quick:</span>
+  </div>
+</div>
+
+<!-- RESULT AREA -->
+<div id="resultArea"></div>
+
+<!-- SEARCH HISTORY -->
+<div class="history-section" id="historySection" style="display:none">
+  <div class="history-title">Recent Checks</div>
+  <div class="history-list" id="historyList"></div>
+</div>
+
+<!-- GHOST DEFENSE CREDIT -->
+<div class="ghost-footer">
+  <div class="ghost-scanline"></div>
+  <div class="ghost-credit">
+    <div class="ghost-icon">👻</div>
+    <span>Designed by</span>
+    <span class="ghost-sep">·</span>
+    <span class="ghost-name">GHOST DEFENSE</span>
+    <span class="ghost-sep">·</span>
+    <span style="letter-spacing:.06em;font-size:10px;color:var(--muted)">EOL CHECKER v1.0</span>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+// ──────────────────────────────────────────────────────────────────────────────
+//  CATALOG DATA
+// ──────────────────────────────────────────────────────────────────────────────
+var TODAY = new Date("2026-06-06");
+
+var CATALOG = {
+  network: {
+    label:"Network / Firewall",
+    vendors:{
+      "Cisco":{
+        models:{
+          "IOS XE":{
+            hint:"e.g. 17.9.4a",
+            examples:["17.9.4","17.6.6","17.3.8","16.12.8","16.9.8"],
+            versions:{
+              "17.15":{ eol:"2028-10-01", eos:"2030-10-01", status:"supported", successor:"N/A - latest"},
+              "17.12":{ eol:"2027-03-01", eos:"2029-03-01", status:"supported", successor:"17.15"},
+              "17.9": { eol:"2025-08-01", eos:"2027-08-01", status:"eol",       successor:"17.12 or 17.15"},
+              "17.6": { eol:"2024-07-01", eos:"2026-07-01", status:"eol",       successor:"17.12"},
+              "17.3": { eol:"2023-09-01", eos:"2025-09-01", status:"eol",       successor:"17.9"},
+              "16.12":{ eol:"2023-01-31", eos:"2025-01-31", status:"eol",       successor:"17.6"},
+              "16.9": { eol:"2022-03-01", eos:"2024-03-01", status:"eol",       successor:"17.3"},
+            },
+            advisory:"https://www.cisco.com/c/en/us/products/ios-nx-os-software/ios-xe-17/eos-eol-notice-listing.html"
+          },
+          "ASA":{
+            hint:"e.g. 9.20.3",
+            examples:["9.20.3","9.18.4","9.16.4","9.14.4","9.12.4"],
+            versions:{
+              "9.20":{ eol:"2027-01-01", eos:"2029-01-01", status:"supported", successor:"N/A - current"},
+              "9.18":{ eol:"2026-01-01", eos:"2028-01-01", status:"supported", successor:"9.20"},
+              "9.16":{ eol:"2025-06-01", eos:"2027-06-01", status:"eol",       successor:"9.18"},
+              "9.14":{ eol:"2024-06-01", eos:"2026-06-01", status:"eol",       successor:"9.16"},
+              "9.12":{ eol:"2023-09-01", eos:"2025-09-01", status:"eol",       successor:"9.16"},
+              "9.8": { eol:"2022-01-01", eos:"2024-01-01", status:"eol",       successor:"9.14"},
+            },
+            advisory:"https://www.cisco.com/c/en/us/products/security/asa-firepower-services/eos-eol-notice-listing.html"
+          },
+          "Catalyst 9000":{
+            hint:"Select IOS XE version",
+            examples:["17.12.x","17.9.x","16.12.x"],
+            versions:{
+              "9300-17.12":{ eol:"2027-03-01", eos:"2029-03-01", status:"supported", successor:"17.15"},
+              "9300-17.9": { eol:"2025-08-01", eos:"2027-08-01", status:"eol",       successor:"17.12"},
+              "9300-16.12":{ eol:"2023-01-31", eos:"2025-01-31", status:"eol",       successor:"17.9"},
+            },
+            advisory:"https://www.cisco.com/c/en/us/products/switches/catalyst-9300-series-switches/eos-eol-notice-listing.html"
+          },
+          "ISR 4000":{
+            hint:"e.g. 17.9.4 (IOS XE version)",
+            examples:["17.12.x","17.9.x","17.6.x"],
+            versions:{
+              "17.12":{ eol:"2027-03-01", eos:"2029-03-01", status:"supported", successor:"17.15"},
+              "17.9": { eol:"2025-08-01", eos:"2027-08-01", status:"eol",       successor:"17.12"},
+              "17.6": { eol:"2024-07-01", eos:"2026-07-01", status:"eol",       successor:"17.9"},
+            },
+            advisory:"https://www.cisco.com/c/en/us/products/routers/4000-series-integrated-services-routers-isr/eos-eol-notice-listing.html"
+          },
+        }
+      },
+      "Fortinet":{
+        models:{
+          "FortiOS":{
+            hint:"e.g. 7.4.3",
+            examples:["7.4.3","7.2.9","7.0.14","6.4.15","6.2.16"],
+            versions:{
+              "8.0": { eol:"2030-10-21", eos:"2030-10-21", status:"supported", successor:"N/A - latest"},
+              "7.6": { eol:"2030-01-25", eos:"2030-01-25", status:"supported", successor:"8.0"},
+              "7.4": { eol:"2027-05-11", eos:"2027-11-11", status:"supported", successor:"7.6"},
+              "7.2": { eol:"2025-03-31", eos:"2026-03-31", status:"warning",   successor:"7.4"},
+              "7.0": { eol:"2025-09-30", eos:"2025-09-30", status:"eol",       successor:"7.4"},
+              "6.4": { eol:"2024-09-30", eos:"2026-03-31", status:"eol",       successor:"7.2"},
+              "6.2": { eol:"2023-09-28", eos:"2023-09-28", status:"eol",       successor:"7.0"},
+              "6.0": { eol:"2022-09-29", eos:"2022-09-29", status:"eol",       successor:"6.4"},
+            },
+            advisory:"https://endoflife.date/fortios"
+          },
+          "FortiGate (Hardware)":{
+            hint:"e.g. FG-60F, FG-100F",
+            examples:["FG-60E","FG-100E","FG-60F","FG-100F","FG-200F"],
+            versions:{
+              "FG-60E": { eol:"2024-09-30", eos:"2024-09-30", status:"eol",       successor:"FG-60F"},
+              "FG-100E":{ eol:"2024-09-30", eos:"2024-09-30", status:"eol",       successor:"FG-100F"},
+              "FG-60F": { eol:"2028-01-01", eos:"2028-01-01", status:"supported", successor:"N/A"},
+              "FG-100F":{ eol:"2028-01-01", eos:"2028-01-01", status:"supported", successor:"N/A"},
+              "FG-200F":{ eol:"2028-06-01", eos:"2028-06-01", status:"supported", successor:"N/A"},
+              "FG-40F": { eol:"2027-09-01", eos:"2027-09-01", status:"supported", successor:"N/A"},
+            },
+            advisory:"https://support.fortinet.com/Information/ProductLifeCycle.aspx"
+          }
+        }
+      },
+      "Palo Alto":{
+        models:{
+          "PAN-OS":{
+            hint:"e.g. 11.1.3",
+            examples:["11.2.x","11.1.x","10.2.x","10.1.x","9.1.x"],
+            versions:{
+              "11.2":{ eol:"2027-11-18", eos:"2027-11-18", status:"supported", successor:"N/A - latest"},
+              "11.1":{ eol:"2027-03-15", eos:"2027-03-15", status:"supported", successor:"11.2"},
+              "10.2":{ eol:"2025-11-30", eos:"2025-11-30", status:"warning",   successor:"11.1"},
+              "10.1":{ eol:"2025-03-15", eos:"2025-03-15", status:"eol",       successor:"10.2"},
+              "9.1": { eol:"2024-10-25", eos:"2024-10-25", status:"eol",       successor:"10.2"},
+              "9.0": { eol:"2022-09-01", eos:"2022-09-01", status:"eol",       successor:"10.1"},
+              "8.1": { eol:"2022-10-25", eos:"2022-10-25", status:"eol",       successor:"10.1"},
+            },
+            advisory:"https://endoflife.date/pan-os"
+          }
+        }
+      },
+      "F5":{
+        models:{
+          "BIG-IP":{
+            hint:"e.g. 17.1.1",
+            examples:["17.1.x","16.1.x","15.1.x","14.1.x","13.1.x"],
+            versions:{
+              "17.5":{ eol:"2028-01-01", eos:"2028-01-01", status:"supported", successor:"N/A - latest"},
+              "17.1":{ eol:"2027-01-01", eos:"2027-01-01", status:"supported", successor:"17.5"},
+              "16.1":{ eol:"2026-01-01", eos:"2026-01-01", status:"warning",   successor:"17.1"},
+              "15.1":{ eol:"2025-12-31", eos:"2025-12-31", status:"eol",       successor:"16.1"},
+              "14.1":{ eol:"2024-12-31", eos:"2024-12-31", status:"eol",       successor:"16.1"},
+              "13.1":{ eol:"2023-09-30", eos:"2023-09-30", status:"eol",       successor:"15.1"},
+              "12.1":{ eol:"2022-12-31", eos:"2022-12-31", status:"eol",       successor:"15.1"},
+              "11.6":{ eol:"2021-12-31", eos:"2021-12-31", status:"eol",       successor:"14.1"},
+            },
+            advisory:"https://my.f5.com/manage/s/article/K5903"
+          }
+        }
+      }
+    }
+  },
+
+  os: {
+    label:"Operating Systems",
+    vendors:{
+      "Microsoft":{
+        models:{
+          "Windows Server":{
+            hint:"e.g. 2022, 2019",
+            examples:["2025","2022","2019","2016","2012 R2","2012","2008 R2"],
+            versions:{
+              "2025":   { eol:"2030-10-10", eos:"2035-10-10", status:"supported", successor:"N/A - latest"},
+              "2022":   { eol:"2026-10-13", eos:"2031-10-14", status:"supported", successor:"2025"},
+              "2019":   { eol:"2024-01-09", eos:"2029-01-09", status:"warning",   successor:"2022"},
+              "2016":   { eol:"2022-01-11", eos:"2027-01-12", status:"warning",   successor:"2022"},
+              "2012 R2":{ eol:"2018-10-09", eos:"2023-10-10", status:"eol",       successor:"2022"},
+              "2012":   { eol:"2018-10-09", eos:"2023-10-10", status:"eol",       successor:"2022"},
+              "2008 R2":{ eol:"2015-01-13", eos:"2020-01-14", status:"eol",       successor:"2022"},
+              "2008":   { eol:"2015-01-13", eos:"2020-01-14", status:"eol",       successor:"2022"},
+            },
+            advisory:"https://learn.microsoft.com/en-us/lifecycle/products/?products=windows-server"
+          },
+          "Windows (Client)":{
+            hint:"e.g. 11 24H2, 10 22H2",
+            examples:["11 24H2","11 23H2","10 22H2","10 21H2","10 1909","7"],
+            versions:{
+              "11 24H2":{ eol:"2026-10-13", eos:"2026-10-13", status:"supported", successor:"N/A - latest"},
+              "11 23H2":{ eol:"2025-11-11", eos:"2025-11-11", status:"eol",       successor:"11 24H2"},
+              "11 22H2":{ eol:"2024-10-08", eos:"2024-10-08", status:"eol",       successor:"11 23H2"},
+              "10 22H2":{ eol:"2025-10-14", eos:"2025-10-14", status:"warning",   successor:"11 24H2"},
+              "10 21H2":{ eol:"2024-06-11", eos:"2024-06-11", status:"eol",       successor:"11"},
+              "10 1909":{ eol:"2021-05-11", eos:"2021-05-11", status:"eol",       successor:"11"},
+              "10 1809":{ eol:"2021-05-11", eos:"2021-05-11", status:"eol",       successor:"11"},
+              "8.1":    { eol:"2018-01-09", eos:"2023-01-10", status:"eol",       successor:"11"},
+              "7":      { eol:"2015-01-13", eos:"2020-01-14", status:"eol",       successor:"11"},
+            },
+            advisory:"https://learn.microsoft.com/en-us/lifecycle/products/windows-client"
+          }
+        }
+      },
+      "Linux - RHEL":{
+        models:{
+          "Red Hat Enterprise Linux":{
+            hint:"e.g. 9.4, 8.10",
+            examples:["9.4","8.10","8.9","7.9","6.10"],
+            versions:{
+              "9":{ eol:"2027-05-31", eos:"2032-05-31", status:"supported", successor:"N/A - current"},
+              "8":{ eol:"2024-05-31", eos:"2029-05-31", status:"warning",   successor:"9"},
+              "7":{ eol:"2019-08-06", eos:"2024-06-30", status:"eol",       successor:"8"},
+              "6":{ eol:"2016-05-10", eos:"2020-11-30", status:"eol",       successor:"8"},
+            },
+            advisory:"https://access.redhat.com/support/policy/updates/errata"
+          }
+        }
+      },
+      "Linux - Ubuntu":{
+        models:{
+          "Ubuntu LTS":{
+            hint:"e.g. 24.04, 22.04",
+            examples:["24.04","22.04","20.04","18.04","16.04"],
+            versions:{
+              "24.04":{ eol:"2029-04-30", eos:"2034-04-30", status:"supported", successor:"N/A - latest"},
+              "22.04":{ eol:"2027-04-30", eos:"2032-04-30", status:"supported", successor:"24.04"},
+              "20.04":{ eol:"2025-04-30", eos:"2030-04-30", status:"warning",   successor:"22.04"},
+              "18.04":{ eol:"2023-04-30", eos:"2028-04-30", status:"eol",       successor:"22.04"},
+              "16.04":{ eol:"2021-04-30", eos:"2026-04-30", status:"eol",       successor:"22.04"},
+            },
+            advisory:"https://endoflife.date/ubuntu"
+          }
+        }
+      },
+      "Apple":{
+        models:{
+          "macOS":{
+            hint:"e.g. 15.x Sequoia, 14.x Sonoma",
+            examples:["15.x Sequoia","14.x Sonoma","13.x Ventura","12.x Monterey","11.x Big Sur"],
+            versions:{
+              "15":{ eol:"2027-09-01", eos:"2027-09-01", status:"supported", successor:"N/A - latest"},
+              "14":{ eol:"2026-09-01", eos:"2026-09-01", status:"supported", successor:"15"},
+              "13":{ eol:"2025-09-01", eos:"2025-09-01", status:"warning",   successor:"14"},
+              "12":{ eol:"2024-09-01", eos:"2024-09-01", status:"eol",       successor:"14"},
+              "11":{ eol:"2023-09-01", eos:"2023-09-01", status:"eol",       successor:"13"},
+              "10.15":{ eol:"2022-09-01", eos:"2022-09-01", status:"eol",   successor:"12"},
+            },
+            advisory:"https://endoflife.date/macos"
+          }
+        }
+      }
+    }
+  },
+
+  server: {
+    label:"Servers & Hardware",
+    vendors:{
+      "Dell":{
+        models:{
+          "PowerEdge":{
+            hint:"e.g. R750, R740, R640",
+            examples:["R760","R750","R740","R640","R630","R620"],
+            versions:{
+              "R760":{ eol:"2031-01-01", eos:"2031-01-01", status:"supported", successor:"N/A - current gen"},
+              "R750":{ eol:"2030-01-01", eos:"2030-01-01", status:"supported", successor:"R760"},
+              "R740":{ eol:"2027-06-30", eos:"2027-06-30", status:"supported", successor:"R750"},
+              "R640":{ eol:"2027-06-30", eos:"2027-06-30", status:"supported", successor:"R650"},
+              "R730":{ eol:"2024-12-31", eos:"2024-12-31", status:"eol",       successor:"R740"},
+              "R630":{ eol:"2024-12-31", eos:"2024-12-31", status:"eol",       successor:"R640"},
+              "R720":{ eol:"2022-09-30", eos:"2022-09-30", status:"eol",       successor:"R730"},
+              "R620":{ eol:"2022-09-30", eos:"2022-09-30", status:"eol",       successor:"R630"},
+              "R710":{ eol:"2019-04-30", eos:"2019-04-30", status:"eol",       successor:"R720"},
+            },
+            advisory:"https://www.dell.com/support/kbdoc/en-us/000177144/dell-emc-server-product-end-of-life"
+          }
+        }
+      },
+      "HPE":{
+        models:{
+          "ProLiant DL":{
+            hint:"e.g. DL380 Gen10, Gen11",
+            examples:["DL380 Gen11","DL360 Gen11","DL380 Gen10","DL360 Gen10","DL380 Gen9"],
+            versions:{
+              "DL380 Gen11":{ eol:"2031-01-01", eos:"2031-01-01", status:"supported", successor:"N/A"},
+              "DL360 Gen11":{ eol:"2031-01-01", eos:"2031-01-01", status:"supported", successor:"N/A"},
+              "DL380 Gen10":{ eol:"2027-12-31", eos:"2027-12-31", status:"supported", successor:"Gen11"},
+              "DL360 Gen10":{ eol:"2027-12-31", eos:"2027-12-31", status:"supported", successor:"Gen11"},
+              "DL380 Gen9": { eol:"2024-12-31", eos:"2024-12-31", status:"eol",       successor:"Gen10"},
+              "DL360 Gen9": { eol:"2024-12-31", eos:"2024-12-31", status:"eol",       successor:"Gen10"},
+              "DL380 Gen8": { eol:"2019-12-31", eos:"2019-12-31", status:"eol",       successor:"Gen10"},
+              "DL360 Gen8": { eol:"2019-12-31", eos:"2019-12-31", status:"eol",       successor:"Gen10"},
+            },
+            advisory:"https://support.hpe.com/hpesc/public/docDisplay?docId=a00045463en_us"
+          }
+        }
+      },
+      "Lenovo":{
+        models:{
+          "ThinkSystem SR":{
+            hint:"e.g. SR650 V3, SR630 V2",
+            examples:["SR650 V3","SR630 V3","SR650 V2","SR630 V2","SR650","SR630"],
+            versions:{
+              "SR650 V3":{ eol:"2031-01-01", eos:"2031-01-01", status:"supported", successor:"N/A"},
+              "SR630 V3":{ eol:"2031-01-01", eos:"2031-01-01", status:"supported", successor:"N/A"},
+              "SR650 V2":{ eol:"2028-12-31", eos:"2028-12-31", status:"supported", successor:"V3"},
+              "SR630 V2":{ eol:"2028-12-31", eos:"2028-12-31", status:"supported", successor:"V3"},
+              "SR650":   { eol:"2025-12-31", eos:"2025-12-31", status:"eol",       successor:"V2"},
+              "SR630":   { eol:"2025-12-31", eos:"2025-12-31", status:"eol",       successor:"V2"},
+              "SR550":   { eol:"2024-06-30", eos:"2024-06-30", status:"eol",       successor:"SR650 V2"},
+            },
+            advisory:"https://datacentersupport.lenovo.com/us/en/solutions/ht505413"
+          }
+        }
+      }
+    }
+  },
+
+  mobile: {
+    label:"Mobile Devices",
+    vendors:{
+      "Apple":{
+        models:{
+          "iOS / iPadOS":{
+            hint:"e.g. 18.5, 17.7",
+            examples:["18.5","17.7","16.7","15.8","14.8"],
+            versions:{
+              "18":{ eol:"2027-09-01", eos:"2027-09-01", status:"supported", successor:"N/A - latest"},
+              "17":{ eol:"2026-09-01", eos:"2026-09-01", status:"supported", successor:"18"},
+              "16":{ eol:"2025-09-01", eos:"2025-09-01", status:"warning",   successor:"17"},
+              "15":{ eol:"2024-09-01", eos:"2024-09-01", status:"eol",       successor:"16"},
+              "14":{ eol:"2023-09-01", eos:"2023-09-01", status:"eol",       successor:"16"},
+              "13":{ eol:"2022-09-01", eos:"2022-09-01", status:"eol",       successor:"15"},
+              "12":{ eol:"2021-09-01", eos:"2021-09-01", status:"eol",       successor:"15"},
+            },
+            advisory:"https://endoflife.date/ios"
+          },
+          "iPhone (Hardware)":{
+            hint:"e.g. iPhone 13, 12, SE",
+            examples:["iPhone 16","iPhone 15","iPhone 14","iPhone 13","iPhone 12","iPhone SE (3rd gen)","iPhone 11","iPhone X"],
+            versions:{
+              "iPhone 16":        { eol:"2028-09-01", eos:"2028-09-01", status:"supported", successor:"N/A"},
+              "iPhone 15":        { eol:"2027-09-01", eos:"2027-09-01", status:"supported", successor:"16"},
+              "iPhone 14":        { eol:"2026-09-01", eos:"2026-09-01", status:"supported", successor:"15"},
+              "iPhone 13":        { eol:"2025-09-01", eos:"2025-09-01", status:"warning",   successor:"14"},
+              "iPhone 12":        { eol:"2024-09-01", eos:"2024-09-01", status:"eol",       successor:"14"},
+              "iPhone SE (3rd gen)":{ eol:"2027-03-01",eos:"2027-03-01",status:"supported", successor:"N/A"},
+              "iPhone 11":        { eol:"2023-09-01", eos:"2023-09-01", status:"eol",       successor:"13"},
+              "iPhone X":         { eol:"2021-09-01", eos:"2021-09-01", status:"eol",       successor:"12"},
+            },
+            advisory:"https://support.apple.com/en-us/111900"
+          }
+        }
+      },
+      "Google / Android":{
+        models:{
+          "Android OS":{
+            hint:"e.g. 15, 14, 13",
+            examples:["15","14","13","12","11","10"],
+            versions:{
+              "15":{ eol:"2027-10-01", eos:"2027-10-01", status:"supported", successor:"N/A - latest"},
+              "14":{ eol:"2026-10-01", eos:"2026-10-01", status:"supported", successor:"15"},
+              "13":{ eol:"2025-10-01", eos:"2025-10-01", status:"warning",   successor:"14"},
+              "12":{ eol:"2024-10-01", eos:"2024-10-01", status:"eol",       successor:"13"},
+              "11":{ eol:"2023-10-01", eos:"2023-10-01", status:"eol",       successor:"13"},
+              "10":{ eol:"2022-10-01", eos:"2022-10-01", status:"eol",       successor:"12"},
+              "9": { eol:"2021-04-01", eos:"2021-04-01", status:"eol",       successor:"12"},
+            },
+            advisory:"https://endoflife.date/android"
+          },
+          "Google Pixel":{
+            hint:"e.g. Pixel 9, 8, 7",
+            examples:["Pixel 9","Pixel 8","Pixel 7","Pixel 6","Pixel 5","Pixel 4"],
+            versions:{
+              "Pixel 9":{ eol:"2031-08-01", eos:"2031-08-01", status:"supported", successor:"N/A"},
+              "Pixel 8":{ eol:"2031-10-01", eos:"2031-10-01", status:"supported", successor:"9"},
+              "Pixel 7":{ eol:"2026-10-01", eos:"2026-10-01", status:"supported", successor:"8"},
+              "Pixel 6":{ eol:"2025-10-01", eos:"2025-10-01", status:"warning",   successor:"7"},
+              "Pixel 5":{ eol:"2023-10-01", eos:"2023-10-01", status:"eol",       successor:"7"},
+              "Pixel 4":{ eol:"2022-10-01", eos:"2022-10-01", status:"eol",       successor:"6"},
+            },
+            advisory:"https://support.google.com/nexus/answer/4457705"
+          }
+        }
+      }
+    }
+  }
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  STATE
+// ──────────────────────────────────────────────────────────────────────────────
+var currentCat = "network";
+var history = [];
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  UI HELPERS
+// ──────────────────────────────────────────────────────────────────────────────
+function selectCat(cat, el) {
+  currentCat = cat;
+  document.querySelectorAll('.cat-tab').forEach(function(t){ t.classList.remove('active'); });
+  el.classList.add('active');
+  populateVendors();
+  document.getElementById('resultArea').innerHTML = '';
+}
+
+function populateVendors() {
+  var vs = document.getElementById('vendorSelect');
+  var ms = document.getElementById('modelSelect');
+  var data = CATALOG[currentCat];
+  vs.innerHTML = '<option value="">Select vendor…</option>';
+  ms.innerHTML = '<option value="">Select product…</option>';
+  document.getElementById('versionInput').value = '';
+  document.getElementById('verHint').textContent = '';
+  document.getElementById('quickRow').innerHTML = '<span class="qlabel">Quick:</span>';
+  Object.keys(data.vendors).forEach(function(v){
+    vs.innerHTML += '<option value="'+v+'">'+v+'</option>';
+  });
+}
+
+function updateModels() {
+  var vs = document.getElementById('vendorSelect').value;
+  var ms = document.getElementById('modelSelect');
+  ms.innerHTML = '<option value="">Select product…</option>';
+  document.getElementById('versionInput').value = '';
+  document.getElementById('verHint').textContent = '';
+  document.getElementById('quickRow').innerHTML = '<span class="qlabel">Quick:</span>';
+  if (!vs) return;
+  var models = CATALOG[currentCat].vendors[vs].models;
+  Object.keys(models).forEach(function(m){
+    ms.innerHTML += '<option value="'+m+'">'+m+'</option>';
+  });
+}
+
+function updateVersionHint() {
+  var vs = document.getElementById('vendorSelect').value;
+  var ms = document.getElementById('modelSelect').value;
+  if (!vs || !ms) return;
+  var model = CATALOG[currentCat].vendors[vs].models[ms];
+  document.getElementById('verHint').textContent = model.hint ? '('+model.hint+')' : '';
+  document.getElementById('versionInput').placeholder = model.examples[0] || '';
+  // Quick chips
+  var row = document.getElementById('quickRow');
+  row.innerHTML = '<span class="qlabel">Quick:</span>';
+  model.examples.forEach(function(ex){
+    var c = document.createElement('span');
+    c.className = 'qchip'; c.textContent = ex;
+    c.onclick = function(){ document.getElementById('versionInput').value = ex; doCheck(); };
+    row.appendChild(c);
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  LOOKUP
+// ──────────────────────────────────────────────────────────────────────────────
+function getBranchKey(version, versionMap) {
+  // Try exact match first
+  if (versionMap[version]) return version;
+  // Try major.minor match
+  var parts = version.split('.');
+  var majorMinor = parts.slice(0, 2).join('.');
+  if (versionMap[majorMinor]) return majorMinor;
+  // Try major only
+  var major = parts[0];
+  if (versionMap[major]) return major;
+  // Try case-insensitive substring
+  var vLower = version.toLowerCase();
+  for (var k in versionMap) {
+    if (vLower.indexOf(k.toLowerCase()) === 0 || k.toLowerCase().indexOf(vLower) === 0) return k;
+  }
+  return null;
+}
+
+function daysBetween(d1, d2) {
+  return Math.round((new Date(d2) - new Date(d1)) / 86400000);
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  var dt = new Date(d);
+  return dt.toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
+}
+
+function computeStatus(rec) {
+  var eolDate = new Date(rec.eol);
+  var eosDate = new Date(rec.eos);
+  if (rec.status === 'eol' || eolDate <= TODAY) return 'eol';
+  var daysToEol = daysBetween(TODAY, rec.eol);
+  if (daysToEol < 365 || rec.status === 'warning') return 'warning';
+  return 'supported';
+}
+
+async function doCheck() {
+  var vendor = document.getElementById('vendorSelect').value;
+  var model  = document.getElementById('modelSelect').value;
+  var version = document.getElementById('versionInput').value.trim();
+
+  if (!vendor || !model || !version) {
+    shake(document.querySelector('.search-card'));
+    return;
+  }
+
+  document.getElementById('checkBtn').disabled = true;
+  var ra = document.getElementById('resultArea');
+  ra.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div><div class="spinner-text">Checking EOL database…</div></div>';
+
+  // Try local DB first
+  var modelData = CATALOG[currentCat].vendors[vendor].models[model];
+  var key = getBranchKey(version, modelData.versions);
+  var rec = key ? modelData.versions[key] : null;
+
+  var result;
+  if (rec) {
+    result = buildLocalResult(vendor, model, version, key, rec, modelData);
+  } else {
+    // Live, SOURCED lookup from endoflife.date (replaces prior model-from-memory guess)
+    ra.querySelector('.spinner-text') && (ra.querySelector('.spinner-text').textContent='Checking live endoflife.date…');
+    result = await checkEndoflife(vendor, model, version, currentCat);
+  }
+
+  ra.innerHTML = '';
+  ra.appendChild(result);
+  addHistory(vendor, model, version, result.dataset.status);
+  document.getElementById('checkBtn').disabled = false;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  BUILD LOCAL RESULT
+// ──────────────────────────────────────────────────────────────────────────────
+function buildLocalResult(vendor, model, version, key, rec, modelData) {
+  var status = computeStatus(rec);
+  var daysToEol = daysBetween(TODAY, rec.eol);
+  var eolPast = daysToEol < 0;
+
+  var div = document.createElement('div');
+  div.dataset.status = status;
+
+  var iconMap = {eol:'💀', warning:'⚠️', supported:'✅'};
+  var labelMap = {eol:'END OF LIFE', warning:'APPROACHING EOL', supported:'SUPPORTED'};
+  var badgeClass = {eol:'badge-eol', warning:'badge-warning', supported:'badge-supported'};
+  var dateClass = {eol:'eol-date', warning:'warn-date', supported:'good-date'};
+
+  var countdownHtml = '';
+  if (status === 'eol') {
+    countdownHtml = '<span class="countdown-pill cp-red">⚠ '+Math.abs(daysToEol)+' days past EOL</span>';
+  } else if (status === 'warning') {
+    countdownHtml = '<span class="countdown-pill cp-orange">⏳ '+daysToEol+' days to EOL</span>';
+  } else {
+    countdownHtml = '<span class="countdown-pill cp-green">✓ '+daysToEol+' days remaining</span>';
+  }
+
+  var riskText = {
+    eol: '<strong style="color:var(--red)">⚠ Critical Risk:</strong> This version has reached End-of-Life and is no longer receiving security patches. Any CVEs discovered after '+formatDate(rec.eol)+' will remain permanently unpatched. This device is a high-priority upgrade target and may violate compliance frameworks (PCI-DSS, HIPAA, SOC2, NIST).',
+    warning: '<strong style="color:var(--orange)">⚠ Elevated Risk:</strong> This version is approaching End-of-Life. Mainstream support may have already ended. Plan your upgrade path now — after '+formatDate(rec.eol)+' this version will no longer receive security updates.',
+    supported: '<strong style="color:var(--green)">✓ Supported:</strong> This version is within its active support window and continues to receive security patches, bug fixes, and vendor support until '+formatDate(rec.eol)+'.'
+  };
+
+  var chips = '';
+  if (status === 'eol') {
+    chips = '<span class="action-chip chip-red">🔴 Upgrade Immediately</span><span class="action-chip chip-red">No Security Patches</span><span class="action-chip chip-cyan">Successor: '+rec.successor+'</span>';
+  } else if (status === 'warning') {
+    chips = '<span class="action-chip chip-orange">⚠ Plan Upgrade</span><span class="action-chip chip-cyan">Target: '+rec.successor+'</span>';
+  } else {
+    chips = '<span class="action-chip chip-green">✓ Current</span><span class="action-chip chip-cyan">Successor when EOL: '+rec.successor+'</span>';
+  }
+
+  div.innerHTML = '<div class="result-card '+status+'">'
+    +'<div class="rc-header">'
+      +'<div class="rc-status-icon '+status+'">'+iconMap[status]+'</div>'
+      +'<div class="rc-main">'
+        +'<div class="rc-device">'+vendor+' — '+model+'</div>'
+        +'<div class="rc-version">Version: '+version+(key !== version ? ' (branch: '+key+')' : '')+countdownHtml+'</div>'
+        +'<div class="rc-status-badge '+badgeClass[status]+'"><span class="badge-dot"></span>'+labelMap[status]+'</div>'
+      +'</div>'
+    +'</div>'
+    +'<div class="rc-body">'
+      +'<div class="rc-grid">'
+        +'<div class="rc-cell"><div class="rc-cell-label">End of Engineering / Mainstream</div><div class="rc-cell-val '+dateClass[status]+'">'+formatDate(rec.eol)+'</div></div>'
+        +'<div class="rc-cell"><div class="rc-cell-label">End of Support / EOSL</div><div class="rc-cell-val '+dateClass[status]+'">'+formatDate(rec.eos)+'</div></div>'
+        +'<div class="rc-cell"><div class="rc-cell-label">Recommended Successor</div><div class="rc-cell-val">'+rec.successor+'</div></div>'
+      +'</div>'
+      +'<div class="rc-section-title">Security Assessment</div>'
+      +'<div class="risk-box '+status+'">'+riskText[status]+'</div>'
+      +'<div class="action-chips">'+chips+'</div>'
+      +'<div class="rc-section-title">References</div>'
+      +'<div class="rc-refs">'
+        +'<a class="rc-ref" href="'+modelData.advisory+'" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Official Advisory</a>'
+        +'<a class="rc-ref" href="https://endoflife.date" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>endoflife.date</a>'
+        +'<a class="rc-ref" href="https://nvd.nist.gov/vuln/search?query='+encodeURIComponent(vendor+' '+model)+'&results_type=overview" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>NVD CVE Search</a>'
+      +'</div>'
+    +'</div>'
+  +'</div>';
+
+  return div;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  LIVE SOURCED LOOKUP — endoflife.date (CORS-enabled public API)
+// ──────────────────────────────────────────────────────────────────────────────
+// Map common vendor/model inputs to endoflife.date product slugs. Falls back to a
+// normalized slug from the model name if not explicitly mapped.
+var EOL_SLUGS = {
+  'windows':'windows','windows server':'windows-server','windows-server':'windows-server',
+  'ubuntu':'ubuntu','red hat':'rhel','rhel':'rhel','red hat enterprise linux':'rhel',
+  'debian':'debian','centos':'centos','fedora':'fedora','suse':'sles','sles':'sles',
+  'amazon linux':'amazon-linux','oracle linux':'oracle-linux','alpine':'alpine','rocky':'rocky-linux','almalinux':'almalinux',
+  'macos':'macos','mac os':'macos','os x':'macos','ios':'ios','ipados':'ipados','iphone':'ios','ipad':'ipados',
+  'android':'android','pixel':'android',
+  'fortios':'fortios','fortigate':'fortios','fortinet':'fortios',
+  'pan-os':'pan-os','panos':'pan-os','palo alto':'pan-os',
+  'esxi':'esxi','vsphere':'vmware-vsphere','vmware':'esxi','vcenter':'vmware-vcenter',
+  'exchange':'exchange','sharepoint':'sharepoint','sql server':'mssqlserver','mssql':'mssqlserver',
+  'nginx':'nginx','apache':'apache','httpd':'apache','tomcat':'tomcat','php':'php','python':'python',
+  'node':'nodejs','nodejs':'nodejs','java':'java','openjdk':'java','mysql':'mysql','postgresql':'postgresql','postgres':'postgresql',
+  'mongodb':'mongodb','redis':'redis','elasticsearch':'elasticsearch','kubernetes':'kubernetes','docker':'docker-engine',
+  'iosxe':'ios-xe','ios xe':'ios-xe','ios-xe':'ios-xe','nxos':'nx-os','nx-os':'nx-os',
+  'sonicos':'sonicwall','sonicwall':'sonicwall','junos':'junos','juniper':'junos','citrix':'citrix-adc','netscaler':'citrix-adc'
+};
+function eolSlug(vendor, model){
+  var v=(vendor||'').toLowerCase().trim(), m=(model||'').toLowerCase().trim();
+  if(EOL_SLUGS[m]) return EOL_SLUGS[m];
+  if(EOL_SLUGS[v]) return EOL_SLUGS[v];
+  // try combined tokens
+  var combos=[m, v, (v+' '+m).trim(), (m+' '+v).trim()];
+  for(var i=0;i<combos.length;i++){ if(EOL_SLUGS[combos[i]]) return EOL_SLUGS[combos[i]]; }
+  // last resort: normalized model slug (endoflife.date uses lowercase-hyphen slugs)
+  return m.replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+}
+function matchCycle(cycles, version){
+  version=(version||'').trim();
+  // exact cycle, then version starts with cycle (e.g. 22.04.3 -> 22.04), then major
+  var c=cycles.find(function(x){ return String(x.cycle)===version; });
+  if(c) return c;
+  c=cycles.find(function(x){ return version.indexOf(String(x.cycle)+'.')===0 || version.indexOf(String(x.cycle))===0; });
+  if(c) return c;
+  var maj=version.split('.')[0];
+  return cycles.find(function(x){ return String(x.cycle)===maj || String(x.cycle).split('.')[0]===maj; }) || null;
+}
+async function checkEndoflife(vendor, model, version, category){
+  var slug=eolSlug(vendor, model);
+  try{
+    var ctrl=new AbortController(); var to=setTimeout(function(){ctrl.abort();},12000);
+    var r=await fetch('https://endoflife.date/api/'+encodeURIComponent(slug)+'.json',{signal:ctrl.signal});
+    clearTimeout(to);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var cycles=await r.json();
+    if(!Array.isArray(cycles)||!cycles.length) throw new Error('no cycles');
+    var c=matchCycle(cycles, version);
+    if(!c) return unknownResult(vendor, model, version, slug, cycles);
+    // eol may be a date string, true (eol, no date), or false (still supported)
+    var eol=c.eol, eolDate=null, status='supported', days=null;
+    if(eol===true){ status='eol'; }
+    else if(eol && eol!==false){ eolDate=eol; var d=new Date(eol); days=Math.round((d-new Date())/86400000);
+      status = days<0 ? 'eol' : (days<=365 ? 'warning' : 'supported'); }
+    else { status='supported'; }
+    // successor = the newest cycle above this one
+    var idx=cycles.indexOf(c); var successor = idx>0 ? ('Upgrade to '+cycles[0].cycle+' (latest'+(cycles[0].latest?': '+cycles[0].latest:'')+')') : 'On the latest cycle';
+    var eosDate = c.extendedSupport && c.extendedSupport!==true ? c.extendedSupport : (c.support && c.support!==true && c.support!==false ? null : null);
+    var d = {
+      status:status,
+      eol_date: eolDate || (eol===true?'past EOL (no date published)':'unknown'),
+      eos_date: (c.extendedSupport && c.extendedSupport!==true) ? c.extendedSupport : 'unknown',
+      successor: successor,
+      days_remaining: days,
+      summary: 'Cycle '+c.cycle+(c.latest?(' (latest release '+c.latest+')'):'')+' — '+(status==='eol'?'past end-of-life; no further security updates.':status==='warning'?('support ends in '+days+' days.'):'currently supported.'),
+      risk: status==='eol' ? 'Unsupported: no security patches will be issued. Any new vulnerability is permanent until replaced.' : status==='warning' ? 'Support ends within 12 months — plan and budget replacement/upgrade now.' : 'Supported — keep current with vendor updates.',
+      action: status==='eol' ? 'Prioritize replacement/upgrade. Isolate or add compensating controls if it must remain.' : status==='warning' ? 'Schedule the upgrade before EOL; budget lead time now.' : 'No EOL action required at this time.',
+      advisory_url: 'https://endoflife.date/'+slug,
+      confidence: 'high',
+      source: 'endoflife.date (live)'
+    };
+    var card=buildClaudeResult(vendor, model, version, d);
+    tagSource(card, 'endoflife.date · live, sourced');
+    return card;
+  }catch(e){
+    return unknownResult(vendor, model, version, slug, null, e);
+  }
+}
+function unknownResult(vendor, model, version, slug, cycles, err){
+  var d={ status:'unknown',
+    eol_date:'unknown', eos_date:'unknown',
+    successor:'—',
+    days_remaining:null,
+    summary: cycles ? ('This product is on endoflife.date but version "'+version+'" did not match a known release cycle. Verify the exact version.') : ('No match in the local database or endoflife.date for this product/version.'),
+    risk:'EOL status could not be confirmed from a source. Do not assume supported — verify manually before relying on it.',
+    action:'Check the vendor\u2019s lifecycle page or endoflife.date directly and confirm the exact version.',
+    advisory_url:'https://endoflife.date/'+(slug||''),
+    confidence:'low', source:'unverified' };
+  var card=buildClaudeResult(vendor, model, version, d);
+  tagSource(card, 'not found — verify manually (no sourced EOL match)');
+  return card;
+}
+function tagSource(card, text){
+  try{
+    var tag=document.createElement('div');
+    tag.style.cssText='margin-top:10px;font-size:11px;color:#7a8b7e;font-family:monospace;border-top:1px solid rgba(255,255,255,.08);padding-top:8px';
+    tag.innerHTML='◈ Source: '+text;
+    card.appendChild(tag);
+  }catch(e){}
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  CLAUDE API FALLBACK
+// ──────────────────────────────────────────────────────────────────────────────
+async function askClaude(vendor, model, version, category) {
+  var prompt = "You are an expert IT security analyst specializing in device lifecycle management. A user wants to know if this device/software is End-of-Life (EOL):\n\nCategory: "+category+"\nVendor: "+vendor+"\nProduct/Model: "+model+"\nVersion: "+version+"\nToday's date: 2026-06-06\n\nProvide a structured JSON response only (no markdown, no backticks) with these exact fields:\n{\n  \"status\": \"eol\" | \"warning\" | \"supported\" | \"unknown\",\n  \"eol_date\": \"YYYY-MM-DD or unknown\",\n  \"eos_date\": \"YYYY-MM-DD or unknown\",\n  \"successor\": \"recommended upgrade path\",\n  \"days_remaining\": number or null,\n  \"summary\": \"2-3 sentence EOL status summary\",\n  \"risk\": \"specific security risk description\",\n  \"action\": \"recommended immediate action\",\n  \"advisory_url\": \"official vendor EOL page URL\",\n  \"confidence\": \"high\" | \"medium\" | \"low\"\n}\n\nStatus definitions:\n- eol: past end of life, no more patches\n- warning: within 12 months of EOL or past mainstream but still in extended support\n- supported: actively supported\n- unknown: cannot determine\n\nBe accurate. Use your knowledge of official vendor EOL policies.";
+
+  try {
+    var resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-20250514",
+        max_tokens:1000,
+        messages:[{role:"user",content:prompt}]
+      })
+    });
+    var data = await resp.json();
+    var raw = data.content.map(function(b){return b.text||''}).join('');
+    var clean = raw.replace(/```json|```/g,'').trim();
+    var parsed = JSON.parse(clean);
+    return buildClaudeResult(vendor, model, version, parsed);
+  } catch(e) {
+    return buildErrorResult(vendor, model, version);
+  }
+}
+
+function buildClaudeResult(vendor, model, version, d) {
+  var status = d.status || 'unknown';
+  var div = document.createElement('div');
+  div.dataset.status = status;
+
+  var iconMap = {eol:'💀', warning:'⚠️', supported:'✅', unknown:'❓'};
+  var labelMap = {eol:'END OF LIFE', warning:'APPROACHING EOL', supported:'SUPPORTED', unknown:'UNKNOWN'};
+  var badgeClass = {eol:'badge-eol', warning:'badge-warning', supported:'badge-supported', unknown:'badge-unknown'};
+  var cardClass = {eol:'eol', warning:'warning', supported:'supported', unknown:'unknown'};
+
+  var daysHtml = '';
+  if (d.days_remaining !== null && d.days_remaining !== undefined) {
+    if (status === 'eol') daysHtml = '<span class="countdown-pill cp-red">⚠ '+Math.abs(d.days_remaining)+' days past EOL</span>';
+    else if (status === 'warning') daysHtml = '<span class="countdown-pill cp-orange">⏳ '+d.days_remaining+' days to EOL</span>';
+    else if (status === 'supported') daysHtml = '<span class="countdown-pill cp-green">✓ '+d.days_remaining+' days remaining</span>';
+  }
+
+  var dateClass = {eol:'eol-date', warning:'warn-date', supported:'good-date', unknown:''};
+
+  div.innerHTML = '<div class="result-card '+cardClass[status]+'">'
+    +'<div class="rc-header">'
+      +'<div class="rc-status-icon '+cardClass[status]+'">'+iconMap[status]+'</div>'
+      +'<div class="rc-main">'
+        +'<div class="rc-device">'+vendor+' — '+model+'</div>'
+        +'<div class="rc-version">Version: '+version+daysHtml+'</div>'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+          +'<div class="rc-status-badge '+badgeClass[status]+'"><span class="badge-dot"></span>'+labelMap[status]+'</div>'
+          +'<span style="font-size:10px;color:var(--muted);font-family:var(--mono)">AI • '+( d.confidence||'medium')+' confidence</span>'
+        +'</div>'
+      +'</div>'
+    +'</div>'
+    +'<div class="rc-body">'
+      +'<div class="rc-grid">'
+        +'<div class="rc-cell"><div class="rc-cell-label">End of Life Date</div><div class="rc-cell-val '+dateClass[status]+'">'+(d.eol_date||'Unknown')+'</div></div>'
+        +'<div class="rc-cell"><div class="rc-cell-label">End of Support</div><div class="rc-cell-val '+dateClass[status]+'">'+(d.eos_date||'Unknown')+'</div></div>'
+        +'<div class="rc-cell"><div class="rc-cell-label">Successor / Upgrade</div><div class="rc-cell-val">'+(d.successor||'—')+'</div></div>'
+      +'</div>'
+      +'<div class="rc-section-title">Summary</div>'
+      +'<div class="rc-desc">'+(d.summary||'')+'</div>'
+      +'<div class="risk-box '+cardClass[status]+'">'+(d.risk||'')+'</div>'
+      +'<div class="action-chips">'
+        +(status==='eol'?'<span class="action-chip chip-red">🔴 Upgrade Immediately</span>':'')
+        +(status==='warning'?'<span class="action-chip chip-orange">⚠ Plan Upgrade</span>':'')
+        +(status==='supported'?'<span class="action-chip chip-green">✓ Current</span>':'')
+        +(d.successor?'<span class="action-chip chip-cyan">Target: '+d.successor+'</span>':'')
+      +'</div>'
+      +(d.action?'<div class="rc-desc" style="margin-top:8px;background:var(--s2);padding:10px 13px;border-radius:8px;border:1px solid var(--b1)"><strong style="color:var(--muted2)">Action: </strong>'+d.action+'</div>':'')
+      +'<div style="margin-top:14px" class="rc-refs">'
+        +(d.advisory_url?'<a class="rc-ref" href="'+d.advisory_url+'" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Official Advisory</a>':'')
+        +'<a class="rc-ref" href="https://endoflife.date" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>endoflife.date</a>'
+      +'</div>'
+    +'</div>'
+  +'</div>';
+
+  return div;
+}
+
+function buildErrorResult(vendor, model, version) {
+  var div = document.createElement('div');
+  div.dataset.status = 'unknown';
+  div.innerHTML = '<div class="result-card unknown">'
+    +'<div class="rc-header">'
+      +'<div class="rc-status-icon unknown">❓</div>'
+      +'<div class="rc-main">'
+        +'<div class="rc-device">'+vendor+' — '+model+'</div>'
+        +'<div class="rc-version">Version: '+version+'</div>'
+        +'<div class="rc-status-badge badge-unknown"><span class="badge-dot"></span>LOOKUP FAILED</div>'
+      +'</div>'
+    +'</div>'
+    +'<div class="rc-body"><div class="rc-desc">Could not determine EOL status. Try a slightly different version format, or check the official vendor EOL page directly.</div>'
+    +'<div class="rc-refs"><a class="rc-ref" href="https://endoflife.date" target="_blank">endoflife.date</a></div>'
+    +'</div></div>';
+  return div;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  HISTORY
+// ──────────────────────────────────────────────────────────────────────────────
+function addHistory(vendor, model, version, status) {
+  history.unshift({vendor, model, version, status});
+  if (history.length > 8) history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  var sec = document.getElementById('historySection');
+  var list = document.getElementById('historyList');
+  if (history.length === 0) { sec.style.display='none'; return; }
+  sec.style.display='block';
+  var badgeMap = {
+    eol:'<span class="hi-badge" style="background:var(--red-g);color:var(--red);border:1px solid rgba(255,55,55,.2)">EOL</span>',
+    warning:'<span class="hi-badge" style="background:var(--orange-g);color:var(--orange);border:1px solid rgba(255,129,48,.2)">EXPIRING</span>',
+    supported:'<span class="hi-badge" style="background:var(--green-g);color:var(--green);border:1px solid rgba(31,218,139,.2)">OK</span>',
+    unknown:'<span class="hi-badge" style="background:var(--s3);color:var(--muted2)">?</span>',
+  };
+  list.innerHTML = history.map(function(h){
+    return '<div class="history-item" onclick="replayHistory(\''+h.vendor+'\',\''+h.model+'\',\''+h.version+'\')"> <div><div class="hi-device">'+h.vendor+' '+h.model+'</div><div class="hi-version">'+h.version+'</div></div>'+(badgeMap[h.status]||badgeMap.unknown)+'</div>';
+  }).join('');
+}
+
+function replayHistory(vendor, model, version) {
+  // Find which cat
+  for (var cat in CATALOG) {
+    var vendors = CATALOG[cat].vendors;
+    if (vendors[vendor] && vendors[vendor].models[model]) {
+      // switch to cat
+      currentCat = cat;
+      document.querySelectorAll('.cat-tab').forEach(function(t){ t.classList.remove('active'); });
+      document.querySelector('[data-cat="'+cat+'"]').classList.add('active');
+      populateVendors();
+      document.getElementById('vendorSelect').value = vendor;
+      updateModels();
+      document.getElementById('modelSelect').value = model;
+      updateVersionHint();
+      document.getElementById('versionInput').value = version;
+      doCheck();
+      return;
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+//  UTILS
+// ──────────────────────────────────────────────────────────────────────────────
+function shake(el) {
+  el.style.animation='none';
+  el.offsetHeight;
+  el.style.animation='shake .4s ease';
+  setTimeout(function(){ el.style.animation=''; }, 400);
+}
+var style = document.createElement('style');
+style.textContent='@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}';
+document.head.appendChild(style);
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+populateVendors();
+</script>
+</body>
+</html>

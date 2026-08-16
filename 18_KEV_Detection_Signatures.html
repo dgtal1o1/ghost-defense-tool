@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>KEV Detection Signatures</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060810;--s1:#0d1020;--s2:#141728;--s3:#1c2035;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);
+  --text:#e8eaf6;--muted:#6b7094;--muted2:#8b90b8;
+  --red:#ff4d4d;--red-s:rgba(255,77,77,0.12);
+  --orange:#ff8c42;--orange-s:rgba(255,140,66,0.12);
+  --yellow:#ffd166;--yellow-s:rgba(255,209,102,0.10);
+  --green:#06d6a0;--green-s:rgba(6,214,160,0.10);
+  --blue:#4cc9f0;--blue-s:rgba(76,201,240,0.10);
+  --purple:#b48eff;--purple-s:rgba(180,142,255,0.12);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html{background:var(--bg)}
+body{font-family:var(--sans);color:var(--text);min-height:100vh}
+
+/* TOPBAR */
+.topbar{
+  background:var(--s1);border-bottom:1px solid var(--border);
+  padding:14px 20px;display:flex;align-items:center;
+  justify-content:space-between;position:sticky;top:0;z-index:100;
+}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{
+  width:32px;height:32px;border-radius:8px;
+  background:var(--purple-s);border:1px solid rgba(180,142,255,0.25);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.logo-icon svg{width:16px;height:16px;stroke:var(--purple)}
+.logo-text{font-size:15px;font-weight:500;letter-spacing:-0.01em}
+.logo-sub{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:1px}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.kev-count{font-family:var(--mono);font-size:11px;color:var(--muted);
+  background:var(--s2);border:1px solid var(--border2);padding:4px 10px;border-radius:6px}
+
+/* SEARCH BAR */
+.search-bar{
+  background:var(--s1);border-bottom:1px solid var(--border);
+  padding:12px 20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+}
+.search-input{
+  flex:1;min-width:200px;background:var(--s2);border:1px solid var(--border2);
+  border-radius:8px;color:var(--text);font-family:var(--mono);font-size:13px;
+  padding:9px 14px;outline:none;transition:border-color 0.15s;
+}
+.search-input::placeholder{color:var(--muted)}
+.search-input:focus{border-color:rgba(180,142,255,0.4)}
+.format-tabs{display:flex;gap:6px;flex-shrink:0}
+.fmt-btn{
+  font-size:11px;font-family:var(--mono);padding:6px 12px;border-radius:6px;
+  border:1px solid var(--border2);background:transparent;color:var(--muted2);
+  cursor:pointer;transition:all 0.12s;white-space:nowrap;
+}
+.fmt-btn.active{background:var(--purple-s);border-color:rgba(180,142,255,0.3);color:var(--purple)}
+.fmt-btn:active{opacity:0.7}
+
+/* LAYOUT */
+.layout{display:flex;height:calc(100vh - 108px)}
+
+/* LEFT PANEL */
+.left-panel{
+  width:340px;flex-shrink:0;border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;background:var(--bg);
+}
+.panel-header{
+  padding:10px 14px;border-bottom:1px solid var(--border);
+  font-size:10px;text-transform:uppercase;letter-spacing:0.12em;
+  color:var(--muted);font-family:var(--mono);background:var(--s1);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.vuln-list{overflow-y:auto;flex:1}
+.vuln-item{
+  padding:11px 14px;border-bottom:1px solid var(--border);
+  cursor:pointer;transition:background 0.1s;
+}
+.vuln-item:hover{background:var(--s2)}
+.vuln-item.selected{background:var(--s2);border-left:2px solid var(--purple)}
+.vcve{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--purple);margin-bottom:3px}
+.vname{font-size:11px;color:var(--muted2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px}
+.vtags{display:flex;gap:5px;flex-wrap:wrap}
+.pill{font-size:9px;font-family:var(--mono);padding:2px 6px;border-radius:3px;display:inline-block}
+.pill-sigma{background:rgba(76,201,240,0.1);color:var(--blue);border:1px solid rgba(76,201,240,0.2)}
+.pill-snort{background:rgba(255,140,66,0.1);color:var(--orange);border:1px solid rgba(255,140,66,0.2)}
+.pill-yara{background:rgba(6,214,160,0.1);color:var(--green);border:1px solid rgba(6,214,160,0.2)}
+.pill-overdue{background:var(--red-s);color:var(--red);border:1px solid rgba(255,77,77,0.2)}
+.pill-ransomware{background:var(--orange-s);color:var(--orange);border:1px solid rgba(255,140,66,0.2)}
+
+/* RIGHT PANEL */
+.right-panel{flex:1;overflow-y:auto;background:var(--bg)}
+
+.empty-state{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;text-align:center;color:var(--muted);padding:40px;
+}
+.empty-state svg{width:48px;height:48px;opacity:0.15;margin-bottom:16px;stroke:var(--purple)}
+.empty-state h3{font-size:15px;font-weight:400;margin-bottom:8px;color:var(--muted2)}
+.empty-state p{font-size:13px;line-height:1.6;max-width:320px}
+
+/* DETAIL */
+.detail-wrap{padding:24px}
+.detail-header{margin-bottom:20px}
+.detail-cve{font-family:var(--mono);font-size:26px;font-weight:500;color:var(--purple);letter-spacing:-0.02em;margin-bottom:4px}
+.detail-name{font-size:14px;color:var(--text);font-weight:300;line-height:1.4;margin-bottom:12px}
+.detail-badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+
+/* SIG FORMAT TABS in detail */
+.sig-tabs{display:flex;gap:0;margin-bottom:0;border-bottom:1px solid var(--border)}
+.sig-tab{
+  font-size:12px;font-family:var(--mono);padding:9px 18px;
+  border:none;background:transparent;color:var(--muted2);cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s;
+}
+.sig-tab.active{color:var(--purple);border-bottom-color:var(--purple)}
+.sig-tab:hover:not(.active){color:var(--text)}
+
+.sig-block{
+  background:var(--s1);border:1px solid var(--border);border-top:none;
+  border-radius:0 0 10px 10px;overflow:hidden;
+}
+.sig-toolbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 14px;border-bottom:1px solid var(--border);background:var(--s2);
+}
+.sig-label{font-size:10px;color:var(--muted);font-family:var(--mono);letter-spacing:0.08em;text-transform:uppercase}
+.copy-btn{
+  font-size:11px;font-family:var(--sans);padding:4px 12px;border-radius:5px;
+  border:1px solid var(--border2);background:transparent;color:var(--muted2);
+  cursor:pointer;transition:all 0.12s;
+}
+.copy-btn:hover{color:var(--text);border-color:var(--border2)}
+.copy-btn.copied{color:var(--green);border-color:rgba(6,214,160,0.3)}
+.sig-code{
+  padding:16px;font-family:var(--mono);font-size:12px;line-height:1.7;
+  color:#c5c8e8;white-space:pre;overflow-x:auto;max-height:420px;overflow-y:auto;
+}
+/* syntax highlight */
+.k{color:#b48eff}   /* keyword/key */
+.v{color:#06d6a0}   /* value/string */
+.c{color:#4a5080;font-style:italic}  /* comment */
+.r{color:#ff4d4d}   /* rule name */
+.f{color:#ffd166}   /* field */
+.n{color:#4cc9f0}   /* number */
+
+.section-title{
+  font-size:10px;text-transform:uppercase;letter-spacing:0.12em;
+  color:var(--muted);font-family:var(--mono);margin:20px 0 10px;
+  padding-bottom:6px;border-bottom:1px solid var(--border);
+}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}
+.meta-cell{background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.meta-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px}
+.meta-val{font-size:12px;font-family:var(--mono);color:var(--text);word-break:break-word;line-height:1.4}
+
+.note-box{
+  background:var(--s2);border:1px solid var(--border);border-left:3px solid var(--purple);
+  border-radius:0 8px 8px 0;padding:12px 14px;font-size:12px;
+  color:var(--muted2);line-height:1.6;margin-bottom:16px;
+}
+
+/* LOADING */
+.loading-overlay{
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:999;gap:16px;
+}
+.loading-bar-wrap{width:240px;height:3px;background:var(--s2);border-radius:2px;overflow:hidden}
+.loading-bar{height:100%;background:var(--purple);border-radius:2px;width:0;transition:width 0.4s ease}
+.loading-text{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+/* MOBILE */
+@media(max-width:700px){
+  .layout{flex-direction:column;height:auto}
+  .left-panel{width:100%;border-right:none;border-bottom:1px solid var(--border);max-height:50vh}
+  .right-panel{min-height:60vh}
+  .meta-grid{grid-template-columns:1fr}
+  .sig-code{font-size:11px}
+  .format-tabs{display:none}
+}
+
+/* scrollbar */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadOverlay">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+    <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+    <span style="font-size:15px;font-weight:500">KEV Detection Signatures</span>
+  </div>
+  <div class="loading-bar-wrap"><div class="loading-bar" id="loadBar"></div></div>
+  <div class="loading-text" id="loadMsg">Fetching CISA KEV catalog…</div>
+</div>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">KEV Detection Signatures</div>
+      <div class="logo-sub">Sigma · Snort/Suricata · YARA</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="kev-count" id="kevCount">Loading…</span>
+  </div>
+</div>
+
+<div class="search-bar">
+  <input class="search-input" id="searchInput" type="search" placeholder="Search CVE, vendor, product, keyword…" oninput="filterList()">
+  <div class="format-tabs">
+    <button class="fmt-btn active" onclick="setFormatFilter('all',this)">All Formats</button>
+    <button class="fmt-btn" onclick="setFormatFilter('sigma',this)">Sigma</button>
+    <button class="fmt-btn" onclick="setFormatFilter('snort',this)">Snort</button>
+    <button class="fmt-btn" onclick="setFormatFilter('yara',this)">YARA</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="left-panel">
+    <div class="panel-header">
+      <span>KEV Entries</span>
+      <span id="listCount">—</span>
+    </div>
+    <div class="vuln-list" id="vulnList"></div>
+  </div>
+  <div class="right-panel" id="rightPanel">
+    <div class="empty-state" id="emptyState">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+      <h3>Select a KEV entry</h3>
+      <p>Click any vulnerability on the left to generate Sigma, Snort/Suricata, and YARA detection signatures.</p>
+    </div>
+    <div id="detailView" style="display:none" class="detail-wrap"></div>
+  </div>
+</div>
+
+<script>
+var KEV = [];
+var filtered = [];
+var selectedID = null;
+var formatFilter = 'all';
+var activeSigTab = 'sigma';
+
+var KEV_URL = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
+// CISA official GitHub mirror — CORS open, no Akamai block
+var GITHUB_KEV_1 = 'https://raw.githubusercontent.com/cisagov/kev-data/main/data/known_exploited_vulnerabilities.json';
+var GITHUB_KEV_2 = 'https://raw.githubusercontent.com/EugenMayer/cisa-known-exploited-mirror/main/known_exploited_vulnerabilities.json';
+var PROXIES = [
+  GITHUB_KEV_1,
+  GITHUB_KEV_2,
+  'https://corsproxy.io/?' + encodeURIComponent(KEV_URL),
+  'https://api.allorigins.win/raw?url=' + encodeURIComponent(KEV_URL),
+  'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(KEV_URL),
+  'https://thingproxy.freeboard.io/fetch/' + KEV_URL
+];
+
+function setProgress(pct, msg) {
+  document.getElementById('loadBar').style.width = pct + '%';
+  document.getElementById('loadMsg').textContent = msg;
+}
+
+function fetchWithTimeout(url, ms) {
+  return new Promise(function(resolve, reject) {
+    var done = false;
+    var timer = setTimeout(function() {
+      if (!done) { done = true; reject(new Error('timeout')); }
+    }, ms);
+    fetch(url).then(function(r) {
+      if (!done) { done = true; clearTimeout(timer); resolve(r); }
+    }).catch(function(e) {
+      if (!done) { done = true; clearTimeout(timer); reject(e); }
+    });
+  });
+}
+
+async function fetchKEV() {
+  setProgress(10, 'Connecting to CISA…');
+  try {
+    var r = await fetchWithTimeout(KEV_URL, 5000);
+    if (r.ok) {
+      setProgress(55, 'Parsing catalog…');
+      return await r.json();
+    }
+  } catch(e) {}
+  for (var i = 0; i < PROXIES.length; i++) {
+    try {
+      setProgress(15 + i * 15, 'Proxy ' + (i+1) + '/' + PROXIES.length + '…');
+      var r2 = await fetchWithTimeout(PROXIES[i], 12000);
+      if (!r2.ok) continue;
+      var txt = await r2.text();
+      var parsed = JSON.parse(txt);
+      if (parsed.contents) parsed = JSON.parse(parsed.contents);
+      if (parsed && parsed.vulnerabilities) return parsed;
+    } catch(e) {}
+  }
+  throw new Error('All sources failed.');
+}
+
+async function init() {
+  try {
+    var data = await fetchKEV();
+    KEV = (data.vulnerabilities || []).slice().reverse();
+    document.getElementById('kevCount').textContent = KEV.length.toLocaleString() + ' KEV entries';
+    setProgress(100, 'Ready');
+    setTimeout(function() { document.getElementById('loadOverlay').style.display = 'none'; }, 300);
+    filtered = KEV.slice();
+    renderList();
+  } catch(e) {
+    document.getElementById('loadBar').style.background = 'var(--red)';
+    document.getElementById('loadBar').style.width = '100%';
+    document.getElementById('loadMsg').innerHTML = 'Failed to load. <span onclick="location.reload()" style="color:var(--blue);cursor:pointer;text-decoration:underline">Retry</span>';
+  }
+}
+
+// ─── SIGNATURE GENERATION ENGINE ──────────────────────────────────────────────
+
+function slugify(s) {
+  return (s || '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
+}
+
+function escYara(s) {
+  return (s || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+// Map common vendor/product keywords to detection logic
+function getDetectionHints(v) {
+  var vendor = (v.vendorProject || '').toLowerCase();
+  var product = (v.product || '').toLowerCase();
+  var name = (v.vulnerabilityName || '').toLowerCase();
+  var desc = (v.shortDescription || '').toLowerCase();
+  var cve = v.cveID;
+
+  var hints = {
+    proto: 'http',
+    ports: '80,443,8080,8443',
+    sigType: 'generic',
+    httpPaths: [],
+    httpHeaders: [],
+    httpMethods: [],
+    cmdPatterns: [],
+    regKeys: [],
+    filePatterns: [],
+    processNames: [],
+    eventIDs: [],
+    networkPatterns: [],
+    yara_strings: [],
+    description: v.shortDescription || ('Exploitation of ' + cve + ' in ' + v.vendorProject + ' ' + v.product)
+  };
+
+  // ── Log4Shell ──
+  if (cve === 'CVE-2021-44228' || cve === 'CVE-2021-45046') {
+    hints.httpHeaders = ['X-Api-Version', 'User-Agent', 'X-Forwarded-For', 'Referer'];
+    hints.yara_strings = ['${jndi:ldap://', '${jndi:rmi://', '${jndi:dns://', '${${lower:j}ndi:', '${${::-j}${::-n}${::-d}${::-i}:'];
+    hints.cmdPatterns = ['jndi:', '${', 'ldap://', 'rmi://'];
+    hints.sigType = 'log4shell';
+  }
+  // ── ProxyLogon/ProxyShell (Exchange) ──
+  else if (vendor.includes('microsoft') && product.includes('exchange')) {
+    hints.httpPaths = ['/autodiscover/', '/ews/', '/ecp/', '/owa/', '/mapi/'];
+    hints.eventIDs = ['4625', '4648', '4672', '1042', '1043'];
+    hints.processNames = ['w3wp.exe', 'cmd.exe', 'powershell.exe'];
+    hints.sigType = 'exchange';
+  }
+  // ── F5 BIG-IP ──
+  else if (vendor.includes('f5') || product.includes('big-ip')) {
+    hints.httpPaths = ['/mgmt/tm/util/bash', '/hsqldb', '/tmui/login.jsp', '/tmui/tmui/login/'];
+    hints.httpMethods = ['POST'];
+    hints.sigType = 'f5';
+    hints.ports = '443,8443,8080';
+  }
+  // ── Citrix ──
+  else if (vendor.includes('citrix')) {
+    hints.httpPaths = ['/vpn/../vpns/', '/+CSCOT+/', '/gwtest/formssso'];
+    hints.sigType = 'citrix';
+    hints.ports = '443,8443';
+  }
+  // ── Apache (Log4j, Struts, etc.) ──
+  else if (vendor.includes('apache')) {
+    hints.httpPaths = ['/.action', '/.do', '/struts/', '/admin.action'];
+    hints.yara_strings = ['%{', 'OGNL', 'redirect:', 'action:'];
+    hints.sigType = 'apache';
+  }
+  // ── Fortinet ──
+  else if (vendor.includes('fortinet') || product.includes('fortigate') || product.includes('fortios')) {
+    hints.httpPaths = ['/remote/fgt_lang', '/remote/login', '/api/v2/cmdb/'];
+    hints.sigType = 'fortinet';
+    hints.ports = '443,8443,10443';
+  }
+  // ── Pulse/Ivanti VPN ──
+  else if (vendor.includes('ivanti') || vendor.includes('pulse')) {
+    hints.httpPaths = ['/dana-na/', '/dana/html5acc/', '/api/v1/totp/'];
+    hints.sigType = 'ivanti';
+    hints.ports = '443,4433';
+  }
+  // ── VMware ──
+  else if (vendor.includes('vmware')) {
+    hints.httpPaths = ['/ui/', '/guestInfo', '/sdk', '/folder'];
+    hints.processNames = ['vmware-hostd', 'python.exe', 'perl.exe'];
+    hints.eventIDs = ['4688'];
+    hints.sigType = 'vmware';
+    hints.ports = '443,902,9443';
+  }
+  // ── Confluence/Atlassian ──
+  else if (vendor.includes('atlassian') || product.includes('confluence') || product.includes('jira')) {
+    hints.httpPaths = ['/confluence/', '/_contentbody', '/setup/setupadministrator.action'];
+    hints.yara_strings = ['OGNL', 'com.atlassian', 'confluence'];
+    hints.sigType = 'atlassian';
+  }
+  // ── PrintNightmare / Windows Spooler ──
+  else if (name.includes('print') || desc.includes('spooler')) {
+    hints.proto = 'smb';
+    hints.ports = '445';
+    hints.eventIDs = ['4688', '7045', '316'];
+    hints.processNames = ['spoolsv.exe', 'rundll32.exe'];
+    hints.regKeys = ['HKLM\\SYSTEM\\CurrentControlSet\\Control\\Print\\Printers'];
+    hints.sigType = 'spooler';
+  }
+  // ── Zerologon / Active Directory ──
+  else if (name.includes('netlogon') || name.includes('zerologon')) {
+    hints.proto = 'dcerpc';
+    hints.ports = '135,445';
+    hints.eventIDs = ['4742', '4624', '4625'];
+    hints.sigType = 'netlogon';
+  }
+  // ── SMB/EternalBlue ──
+  else if (name.includes('smb') || desc.includes('smb') || desc.includes('eternalblue')) {
+    hints.proto = 'smb';
+    hints.ports = '445,139';
+    hints.sigType = 'smb';
+  }
+  // ── RDP ──
+  else if (name.includes('rdp') || desc.includes('remote desktop') || product.includes('rdp')) {
+    hints.proto = 'tcp';
+    hints.ports = '3389';
+    hints.eventIDs = ['4624', '4625', '1149'];
+    hints.sigType = 'rdp';
+  }
+  // ── Generic web ──
+  else if (desc.includes('sql injection') || name.includes('sql')) {
+    hints.httpPaths = ["' OR '1'='1", "UNION SELECT", "; DROP TABLE"];
+    hints.sigType = 'sqli';
+  }
+  else if (desc.includes('command injection') || name.includes('rce') || name.includes('remote code')) {
+    hints.httpPaths = ['/cgi-bin/', '/.cgi', '/exec', '/cmd'];
+    hints.cmdPatterns = ['whoami', 'id;', '/bin/sh', 'cmd.exe'];
+    hints.sigType = 'rce';
+  }
+
+  // Generic yara strings from CVE id and vendor
+  if (hints.yara_strings.length === 0) {
+    hints.yara_strings = [cve, v.vendorProject, v.product].filter(Boolean);
+  }
+
+  return hints;
+}
+
+function genSigma(v) {
+  var h = getDetectionHints(v);
+  var cve = v.cveID;
+  var slug = slugify(cve + '_' + v.vendorProject + '_' + v.product);
+  var today = new Date().toISOString().split('T')[0];
+  var tags = ['attack.initial_access', 'attack.exploitation', 'cve.' + cve.toLowerCase().replace('-','_')];
+
+  var out = '';
+  out += '<span class="c"># Sigma Detection Rule — ' + cve + '\n';
+  out += '# Ghost Defense — Auto-generated from CISA KEV\n';
+  out += '# Validate and tune before production deployment\n\n</span>';
+
+  if (h.sigType === 'log4shell') {
+    out += '<span class="k">title</span>: <span class="v">Log4Shell JNDI Injection Attempt (' + cve + ')</span>\n';
+    out += '<span class="k">id</span>: <span class="v">' + slug + '</span>\n';
+    out += '<span class="k">status</span>: <span class="v">experimental</span>\n';
+    out += '<span class="k">description</span>: <span class="v">Detects JNDI injection strings in HTTP headers indicative of Log4Shell exploitation</span>\n';
+    out += '<span class="k">references</span>:\n  - <span class="v">https://nvd.nist.gov/vuln/detail/' + cve + '</span>\n';
+    out += '<span class="k">author</span>: <span class="v">Ghost Defense</span>\n';
+    out += '<span class="k">date</span>: <span class="v">' + today + '</span>\n';
+    out += '<span class="k">tags</span>:\n';
+    tags.forEach(function(t) { out += '  - <span class="v">' + t + '</span>\n'; });
+    out += '<span class="k">logsource</span>:\n  <span class="f">category</span>: <span class="v">webserver</span>\n';
+    out += '<span class="k">detection</span>:\n';
+    out += '  <span class="f">keywords</span>:\n';
+    out += "    - <span class=\"v\">'${jndi:'</span>\n";
+    out += "    - <span class=\"v\">'${${lower:j}ndi:'</span>\n";
+    out += "    - <span class=\"v\">'${${::-j}${::-n}${::-d}${::-i}:'</span>\n";
+    out += "    - <span class=\"v\">'jndi:ldap://'</span>\n";
+    out += "    - <span class=\"v\">'jndi:rmi://'</span>\n";
+    out += '  <span class="f">condition</span>: <span class="v">keywords</span>\n';
+  } else if (h.sigType === 'exchange') {
+    out += '<span class="k">title</span>: <span class="v">Suspicious Microsoft Exchange Access (' + cve + ')</span>\n';
+    out += '<span class="k">id</span>: <span class="v">' + slug + '</span>\n';
+    out += '<span class="k">status</span>: <span class="v">experimental</span>\n';
+    out += '<span class="k">description</span>: <span class="v">Detects suspicious process spawning from Exchange IIS worker indicative of ProxyLogon/ProxyShell exploitation</span>\n';
+    out += '<span class="k">references</span>:\n  - <span class="v">https://nvd.nist.gov/vuln/detail/' + cve + '</span>\n';
+    out += '<span class="k">author</span>: <span class="v">Ghost Defense</span>\n';
+    out += '<span class="k">date</span>: <span class="v">' + today + '</span>\n';
+    out += '<span class="k">tags</span>:\n';
+    tags.forEach(function(t) { out += '  - <span class="v">' + t + '</span>\n'; });
+    out += '<span class="k">logsource</span>:\n  <span class="f">category</span>: <span class="v">process_creation</span>\n  <span class="f">product</span>: <span class="v">windows</span>\n';
+    out += '<span class="k">detection</span>:\n';
+    out += '  <span class="f">selection</span>:\n';
+    out += '    <span class="f">ParentImage|endswith</span>: <span class="v">\'\\w3wp.exe\'</span>\n';
+    out += '    <span class="f">Image|endswith</span>:\n      - <span class="v">\'\\cmd.exe\'</span>\n      - <span class="v">\'\\powershell.exe\'</span>\n      - <span class="v">\'\\cscript.exe\'</span>\n      - <span class="v">\'\\wscript.exe\'</span>\n';
+    out += '  <span class="f">condition</span>: <span class="v">selection</span>\n';
+  } else if (h.sigType === 'spooler') {
+    out += '<span class="k">title</span>: <span class="v">Suspicious Print Spooler Activity (' + cve + ')</span>\n';
+    out += '<span class="k">id</span>: <span class="v">' + slug + '</span>\n';
+    out += '<span class="k">status</span>: <span class="v">experimental</span>\n';
+    out += '<span class="k">description</span>: <span class="v">Detects DLL load by spoolsv.exe from non-standard paths indicative of PrintNightmare exploitation</span>\n';
+    out += '<span class="k">references</span>:\n  - <span class="v">https://nvd.nist.gov/vuln/detail/' + cve + '</span>\n';
+    out += '<span class="k">author</span>: <span class="v">Ghost Defense</span>\n';
+    out += '<span class="k">date</span>: <span class="v">' + today + '</span>\n';
+    out += '<span class="k">tags</span>:\n';
+    tags.forEach(function(t) { out += '  - <span class="v">' + t + '</span>\n'; });
+    out += '<span class="k">logsource</span>:\n  <span class="f">category</span>: <span class="v">image_load</span>\n  <span class="f">product</span>: <span class="v">windows</span>\n';
+    out += '<span class="k">detection</span>:\n';
+    out += '  <span class="f">selection</span>:\n';
+    out += '    <span class="f">Image|endswith</span>: <span class="v">\'\\spoolsv.exe\'</span>\n';
+    out += '    <span class="f">ImageLoaded|contains</span>:\n      - <span class="v">\'\\spool\\drivers\\\'</span>\n      - <span class="v">\'C:\\Windows\\Temp\'</span>\n      - <span class="v">\'\\AppData\\\'</span>\n';
+    out += '  <span class="f">condition</span>: <span class="v">selection</span>\n';
+  } else {
+    // Generic web/network rule
+    out += '<span class="k">title</span>: <span class="v">Exploitation Attempt — ' + escHtml(v.vulnerabilityName || cve) + '</span>\n';
+    out += '<span class="k">id</span>: <span class="v">' + slug + '</span>\n';
+    out += '<span class="k">status</span>: <span class="v">experimental</span>\n';
+    out += '<span class="k">description</span>: <span class="v">' + escHtml(h.description.substring(0, 200)) + '</span>\n';
+    out += '<span class="k">references</span>:\n  - <span class="v">https://nvd.nist.gov/vuln/detail/' + cve + '</span>\n';
+    out += '<span class="k">author</span>: <span class="v">Ghost Defense</span>\n';
+    out += '<span class="k">date</span>: <span class="v">' + today + '</span>\n';
+    out += '<span class="k">tags</span>:\n';
+    tags.forEach(function(t) { out += '  - <span class="v">' + t + '</span>\n'; });
+    if (h.eventIDs.length > 0) {
+      out += '<span class="k">logsource</span>:\n  <span class="f">product</span>: <span class="v">windows</span>\n  <span class="f">service</span>: <span class="v">security</span>\n';
+      out += '<span class="k">detection</span>:\n';
+      out += '  <span class="f">selection</span>:\n';
+      out += '    <span class="f">EventID</span>:\n';
+      h.eventIDs.forEach(function(id) { out += '      - <span class="n">' + id + '</span>\n'; });
+      if (h.processNames.length > 0) {
+        out += '    <span class="f">ProcessName|endswith</span>:\n';
+        h.processNames.forEach(function(p) { out += "      - <span class=\"v\">'\\" + p + "'</span>\n"; });
+      }
+      out += '  <span class="f">condition</span>: <span class="v">selection</span>\n';
+    } else {
+      out += '<span class="k">logsource</span>:\n  <span class="f">category</span>: <span class="v">webserver</span>\n';
+      out += '<span class="k">detection</span>:\n';
+      out += '  <span class="f">keywords</span>:\n';
+      var kws = (h.httpPaths.concat(h.cmdPatterns)).slice(0, 6);
+      if (kws.length === 0) kws = [cve, v.vendorProject];
+      kws.forEach(function(k) { out += "    - <span class=\"v\">'" + escHtml(k) + "'</span>\n"; });
+      out += '  <span class="f">condition</span>: <span class="v">keywords</span>\n';
+    }
+  }
+
+  out += '<span class="k">falsepositives</span>:\n  - <span class="v">Security scanning tools</span>\n  - <span class="v">Penetration testing activity</span>\n';
+  out += '<span class="k">level</span>: <span class="v">high</span>\n';
+  return out;
+}
+
+function genSnort(v) {
+  var h = getDetectionHints(v);
+  var cve = v.cveID;
+  var sid = Math.abs(cve.replace('CVE-', '').replace('-', '') | 0) % 9000000 + 1000000;
+  var today = new Date().toISOString().split('T')[0];
+
+  var out = '';
+  out += '<span class="c"># Snort/Suricata Rules — ' + cve + '\n';
+  out += '# Ghost Defense — Validate before deployment\n';
+  out += '# Generated: ' + today + '\n\n</span>';
+
+  if (h.sigType === 'log4shell') {
+    out += '<span class="c"># Rule 1: Raw JNDI in HTTP headers</span>\n';
+    out += '<span class="k">alert</span> <span class="v">http</span> <span class="f">$EXTERNAL_NET</span> any <span class="k">-></span> <span class="f">$HTTP_SERVERS</span> any (\n';
+    out += '  <span class="f">msg</span>:"<span class="v">GHOST2210 ' + cve + ' Log4Shell JNDI Injection</span>";\n';
+    out += '  <span class="f">flow</span>:established,to_server;\n';
+    out += '  <span class="f">content</span>:"<span class="v">${jndi:</span>"; <span class="f">nocase</span>; <span class="f">http_header</span>;\n';
+    out += '  <span class="f">pcre</span>:"<span class="v">/\\$\\{[jJ][nN][dD][iI]:/</span>";\n';
+    out += '  <span class="f">classtype</span>:web-application-attack;\n';
+    out += '  <span class="f">sid</span>:<span class="n">' + sid + '</span>; <span class="f">rev</span>:<span class="n">1</span>;\n)\n\n';
+    out += '<span class="c"># Rule 2: Obfuscated variant</span>\n';
+    out += '<span class="k">alert</span> <span class="v">http</span> <span class="f">$EXTERNAL_NET</span> any <span class="k">-></span> <span class="f">$HTTP_SERVERS</span> any (\n';
+    out += '  <span class="f">msg</span>:"<span class="v">GHOST2210 ' + cve + ' Log4Shell Obfuscated</span>";\n';
+    out += '  <span class="f">flow</span>:established,to_server;\n';
+    out += '  <span class="f">pcre</span>:"<span class="v">/\\$\\{.*lower.*j.*n.*d.*i/i</span>"; <span class="f">http_header</span>;\n';
+    out += '  <span class="f">classtype</span>:web-application-attack;\n';
+    out += '  <span class="f">sid</span>:<span class="n">' + (sid+1) + '</span>; <span class="f">rev</span>:<span class="n">1</span>;\n)\n';
+  } else if (h.sigType === 'smb') {
+    out += '<span class="k">alert</span> <span class="v">tcp</span> <span class="f">$EXTERNAL_NET</span> any <span class="k">-></span> <span class="f">$HOME_NET</span> [445,139] (\n';
+    out += '  <span class="f">msg</span>:"<span class="v">GHOST2210 ' + cve + ' SMB Exploit Attempt</span>";\n';
+    out += '  <span class="f">flow</span>:established,to_server;\n';
+    out += '  <span class="f">content</span>:"<span class="v">|FF|SMB</span>"; <span class="f">depth</span>:5; <span class="f">offset</span>:4;\n';
+    out += '  <span class="f">content</span>:"<span class="v">|00 2F 00|</span>"; <span class="f">distance</span>:0;\n';
+    out += '  <span class="f">classtype</span>:attempted-admin;\n';
+    out += '  <span class="f">sid</span>:<span class="n">' + sid + '</span>; <span class="f">rev</span>:<span class="n">1</span>;\n)\n';
+  } else if (h.sigType === 'rdp') {
+    out += '<span class="k">alert</span> <span class="v">tcp</span> <span class="f">$EXTERNAL_NET</span> any <span class="k">-></span> <span class="f">$HOME_NET</span> 3389 (\n';
+    out += '  <span class="f">msg</span>:"<span class="v">GHOST2210 ' + cve + ' RDP Exploit Attempt</span>";\n';
+    out += '  <span class="f">flow</span>:established,to_server;\n';
+    out += '  <span class="f">dsize</span>:>100;\n';
+    out += '  <span class="f">content</span>:"<span class="v">|03 00|</span>"; <span class="f">depth</span>:2;\n';
+    out += '  <span class="f">pcre</span>:"<span class="v">/\\x03\\x00[\\x00-\\xff]{2}\\x0e\\xe0/</span>";\n';
+    out += '  <span class="f">threshold</span>:type both,track by_src,count 10,seconds 60;\n';
+    out += '  <span class="f">classtype</span>:attempted-recon;\n';
+    out += '  <span class="f">sid</span>:<span class="n">' + sid + '</span>; <span class="f">rev</span>:<span class="n">1</span>;\n)\n';
+  } else {
+    // Generic HTTP rule(s)
+    var ports = h.ports;
+    var proto = h.proto === 'http' ? 'http' : 'tcp';
+    var paths = h.httpPaths.slice(0, 3);
+    if (paths.length === 0) paths = ['/'];
+
+    paths.forEach(function(path, idx) {
+      out += '<span class="c"># Rule ' + (idx+1) + ': ' + escHtml(path) + '</span>\n';
+      out += '<span class="k">alert</span> <span class="v">' + proto + '</span> <span class="f">$EXTERNAL_NET</span> any <span class="k">-></span> <span class="f">$HTTP_SERVERS</span> [' + ports + '] (\n';
+      out += '  <span class="f">msg</span>:"<span class="v">GHOST2210 ' + cve + ' ' + escHtml(v.vendorProject) + ' Exploit Attempt</span>";\n';
+      out += '  <span class="f">flow</span>:established,to_server;\n';
+      if (h.httpMethods.length > 0) {
+        out += '  <span class="f">content</span>:"<span class="v">' + h.httpMethods[0] + '</span>"; <span class="f">http_method</span>;\n';
+      }
+      out += '  <span class="f">content</span>:"<span class="v">' + escHtml(path) + '</span>"; <span class="f">http_uri</span>; <span class="f">nocase</span>;\n';
+      out += '  <span class="f">classtype</span>:web-application-attack;\n';
+      out += '  <span class="f">sid</span>:<span class="n">' + (sid + idx) + '</span>; <span class="f">rev</span>:<span class="n">1</span>;\n)\n\n';
+    });
+    if (paths.length === 0 || h.cmdPatterns.length > 0) {
+      out += '<span class="c"># Command injection pattern</span>\n';
+      out += '<span class="k">alert</span> <span class="v">http</span> <span class="f">$EXTERNAL_NET</span> any <span class="k">-></span> <span class="f">$HTTP_SERVERS</span> [' + ports + '] (\n';
+      out += '  <span class="f">msg</span>:"<span class="v">GHOST2210 ' + cve + ' Command Injection</span>";\n';
+      out += '  <span class="f">flow</span>:established,to_server;\n';
+      out += '  <span class="f">pcre</span>:"<span class="v">/(' + ['whoami','id;','\\/bin\\/sh','cmd\\.exe','powershell'].join('|') + ')/i</span>"; <span class="f">http_client_body</span>;\n';
+      out += '  <span class="f">classtype</span>:web-application-attack;\n';
+      out += '  <span class="f">sid</span>:<span class="n">' + (sid + 99) + '</span>; <span class="f">rev</span>:<span class="n">1</span>;\n)\n';
+    }
+  }
+  return out;
+}
+
+function genYara(v) {
+  var h = getDetectionHints(v);
+  var cve = v.cveID;
+  var ruleName = 'GHOST2210_' + cve.replace(/-/g, '_') + '_' + slugify(v.vendorProject).toUpperCase();
+  var today = new Date().toISOString().split('T')[0];
+
+  var out = '';
+  out += '<span class="c">/*\n';
+  out += ' * YARA Rule — ' + cve + '\n';
+  out += ' * Ghost Defense — Generated ' + today + '\n';
+  out += ' * Vendor: ' + (v.vendorProject || '—') + ' | Product: ' + (v.product || '—') + '\n';
+  out += ' * Tune string offsets before production use\n';
+  out += ' */</span>\n\n';
+
+  if (h.sigType === 'log4shell') {
+    out += '<span class="k">import</span> <span class="v">"pe"</span>\n\n';
+    out += '<span class="r">rule</span> <span class="f">' + ruleName + '</span> {\n';
+    out += '  <span class="k">meta</span>:\n';
+    out += '    <span class="f">description</span> = <span class="v">"Detects Log4Shell JNDI injection payloads"</span>\n';
+    out += '    <span class="f">cve</span>        = <span class="v">"' + cve + '"</span>\n';
+    out += '    <span class="f">author</span>     = <span class="v">"Ghost Defense"</span>\n';
+    out += '    <span class="f">date</span>       = <span class="v">"' + today + '"</span>\n';
+    out += '    <span class="f">severity</span>   = <span class="v">"CRITICAL"</span>\n';
+    out += '  <span class="k">strings</span>:\n';
+    out += '    <span class="f">$jndi1</span>  = <span class="v">"${jndi:ldap://"</span> <span class="k">nocase</span>\n';
+    out += '    <span class="f">$jndi2</span>  = <span class="v">"${jndi:rmi://"</span> <span class="k">nocase</span>\n';
+    out += '    <span class="f">$jndi3</span>  = <span class="v">"${jndi:dns://"</span> <span class="k">nocase</span>\n';
+    out += '    <span class="f">$obf1</span>   = <span class="v">/\\$\\{.*lower.*j.*ndi/i</span>\n';
+    out += '    <span class="f">$obf2</span>   = <span class="v">"${${::-j}${::-n}${::-d}${::-i}"</span>\n';
+    out += '  <span class="k">condition</span>:\n';
+    out += '    any of them\n}\n\n';
+    out += '<span class="r">rule</span> <span class="f">' + ruleName + '_Exploit_Class</span> {\n';
+    out += '  <span class="k">meta</span>:\n';
+    out += '    <span class="f">description</span> = <span class="v">"Detects Log4Shell exploit Java class payload"</span>\n';
+    out += '    <span class="f">cve</span>        = <span class="v">"' + cve + '"</span>\n';
+    out += '    <span class="f">author</span>     = <span class="v">"Ghost Defense"</span>\n';
+    out += '  <span class="k">strings</span>:\n';
+    out += '    <span class="f">$java</span>   = <span class="v">{ CA FE BA BE }</span>\n';
+    out += '    <span class="f">$exec1</span>  = <span class="v">"java/lang/Runtime"</span>\n';
+    out += '    <span class="f">$exec2</span>  = <span class="v">"exec"</span>\n';
+    out += '    <span class="f">$ldap</span>   = <span class="v">"javax/naming/ldap"</span>\n';
+    out += '  <span class="k">condition</span>:\n';
+    out += '    $java at 0 and all of ($exec*) and $ldap\n}\n';
+  } else {
+    // Generic rule
+    var strings = h.yara_strings.filter(function(s){ return s && s.length > 3; }).slice(0, 8);
+
+    out += '<span class="r">rule</span> <span class="f">' + ruleName + '</span> {\n';
+    out += '  <span class="k">meta</span>:\n';
+    out += '    <span class="f">description</span> = <span class="v">"Detects exploitation artifacts related to ' + escYara(v.vulnerabilityName || cve) + '"</span>\n';
+    out += '    <span class="f">cve</span>        = <span class="v">"' + cve + '"</span>\n';
+    out += '    <span class="f">vendor</span>     = <span class="v">"' + escYara(v.vendorProject) + '"</span>\n';
+    out += '    <span class="f">product</span>    = <span class="v">"' + escYara(v.product) + '"</span>\n';
+    out += '    <span class="f">author</span>     = <span class="v">"Ghost Defense"</span>\n';
+    out += '    <span class="f">date</span>       = <span class="v">"' + today + '"</span>\n';
+    out += '    <span class="f">severity</span>   = <span class="v">' + (v.knownRansomwareCampaignUse === 'Known' ? '"CRITICAL"' : '"HIGH"') + '</span>\n';
+    out += '    <span class="f">kev_due</span>    = <span class="v">"' + (v.dueDate || 'N/A') + '"</span>\n';
+    out += '  <span class="k">strings</span>:\n';
+
+    strings.forEach(function(s, i) {
+      var varName = '$s' + (i+1);
+      // Use hex for short or special strings, text otherwise
+      out += '    <span class="f">' + varName + '</span>  = <span class="v">"' + escYara(s) + '"</span> <span class="k">nocase</span> <span class="k">wide</span> <span class="k">ascii</span>\n';
+    });
+
+    if (h.httpPaths.length > 0) {
+      h.httpPaths.slice(0, 3).forEach(function(p, i) {
+        out += '    <span class="f">$path' + (i+1) + '</span> = <span class="v">"' + escYara(p) + '"</span> <span class="k">nocase</span>\n';
+      });
+    }
+
+    if (h.cmdPatterns.length > 0) {
+      out += '    <span class="f">$cmd1</span>  = <span class="v">"cmd.exe"</span> <span class="k">nocase</span>\n';
+      out += '    <span class="f">$cmd2</span>  = <span class="v">"/bin/sh"</span>\n';
+      out += '    <span class="f">$cmd3</span>  = <span class="v">"powershell"</span> <span class="k">nocase</span>\n';
+    }
+
+    out += '  <span class="k">condition</span>:\n';
+    if (strings.length >= 2) {
+      out += '    <span class="n">2</span> of them\n';
+    } else {
+      out += '    any of them\n';
+    }
+    out += '}\n';
+
+    // Bonus: memory scan rule for in-memory detection
+    out += '\n<span class="c">/* Memory/process scan variant */</span>\n';
+    out += '<span class="r">rule</span> <span class="f">' + ruleName + '_Memory</span> {\n';
+    out += '  <span class="k">meta</span>:\n';
+    out += '    <span class="f">description</span> = <span class="v">"Memory scan for ' + cve + ' exploitation artifacts"</span>\n';
+    out += '    <span class="f">author</span>     = <span class="v">"Ghost Defense"</span>\n';
+    out += '  <span class="k">strings</span>:\n';
+    out += '    <span class="f">$cve</span>   = <span class="v">"' + cve + '"</span>\n';
+    if (h.processNames.length > 0) {
+      h.processNames.slice(0, 2).forEach(function(p, i) {
+        out += '    <span class="f">$proc' + (i+1) + '</span> = <span class="v">"' + escYara(p) + '"</span> <span class="k">nocase</span>\n';
+      });
+    } else {
+      out += '    <span class="f">$vendor</span> = <span class="v">"' + escYara(v.vendorProject) + '"</span> <span class="k">nocase</span> <span class="k">wide</span>\n';
+    }
+    out += '  <span class="k">condition</span>:\n';
+    out += '    any of them\n}\n';
+  }
+  return out;
+}
+
+// ─── UI ────────────────────────────────────────────────────────────────────────
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function setFormatFilter(f, btn) {
+  formatFilter = f;
+  document.querySelectorAll('.fmt-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+}
+
+function filterList() {
+  var q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+  filtered = KEV.filter(function(v) {
+    if (!q) return true;
+    return (v.cveID && v.cveID.toLowerCase().includes(q)) ||
+           (v.vendorProject && v.vendorProject.toLowerCase().includes(q)) ||
+           (v.product && v.product.toLowerCase().includes(q)) ||
+           (v.vulnerabilityName && v.vulnerabilityName.toLowerCase().includes(q)) ||
+           (v.shortDescription && v.shortDescription.toLowerCase().includes(q));
+  });
+  document.getElementById('listCount').textContent = filtered.length.toLocaleString();
+  renderList();
+}
+
+function renderList() {
+  var list = document.getElementById('vulnList');
+  document.getElementById('listCount').textContent = filtered.length.toLocaleString();
+  if (filtered.length === 0) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;font-size:13px;color:var(--muted)">No results</div>';
+    return;
+  }
+  var show = filtered.slice(0, 400);
+  var html = '';
+  var today = new Date();
+  show.forEach(function(v) {
+    var isOver = v.dueDate && new Date(v.dueDate) < today;
+    var isRansomware = v.knownRansomwareCampaignUse === 'Known';
+    html += '<div class="vuln-item' + (selectedID === v.cveID ? ' selected' : '') + '" onclick="selectVuln(\'' + v.cveID + '\')" data-cveid="' + v.cveID + '">';
+    html += '<div class="vcve">' + v.cveID + '</div>';
+    html += '<div class="vname">' + escHtml(v.vendorProject) + ' — ' + escHtml(v.product) + '</div>';
+    html += '<div class="vtags">';
+    html += '<span class="pill pill-sigma">Sigma</span>';
+    html += '<span class="pill pill-snort">Snort</span>';
+    html += '<span class="pill pill-yara">YARA</span>';
+    if (isOver) html += '<span class="pill pill-overdue">OVERDUE</span>';
+    if (isRansomware) html += '<span class="pill pill-ransomware">RANSOMWARE</span>';
+    html += '</div></div>';
+  });
+  if (filtered.length > 400) {
+    html += '<div style="padding:10px 14px;font-size:11px;color:var(--muted);font-family:var(--mono)">Showing 400 of ' + filtered.length + ' — refine search</div>';
+  }
+  list.innerHTML = html;
+}
+
+function selectVuln(cveID) {
+  var v = KEV.find(function(x){ return x.cveID === cveID; });
+  if (!v) return;
+  selectedID = cveID;
+
+  document.querySelectorAll('.vuln-item').forEach(function(el){ el.classList.remove('selected'); });
+  var el = document.querySelector('[data-cveid="' + cveID + '"]');
+  if (el) { el.classList.add('selected'); el.scrollIntoView({block:'nearest'}); }
+
+  document.getElementById('emptyState').style.display = 'none';
+  var dv = document.getElementById('detailView');
+  dv.style.display = 'block';
+
+  var today = new Date();
+  var isOver = v.dueDate && new Date(v.dueDate) < today;
+  var isRansomware = v.knownRansomwareCampaignUse === 'Known';
+
+  var html = '';
+  html += '<div class="detail-header">';
+  html += '<div class="detail-cve">' + escHtml(cveID) + '</div>';
+  html += '<div class="detail-name">' + escHtml(v.vulnerabilityName || '') + '</div>';
+  html += '<div class="detail-badges">';
+  if (isOver) html += '<span class="pill pill-overdue" style="font-size:11px;padding:3px 9px">OVERDUE</span>';
+  if (isRansomware) html += '<span class="pill pill-ransomware" style="font-size:11px;padding:3px 9px">RANSOMWARE</span>';
+  html += '<span class="pill pill-sigma" style="font-size:11px;padding:3px 9px">Sigma</span>';
+  html += '<span class="pill pill-snort" style="font-size:11px;padding:3px 9px">Snort/Suricata</span>';
+  html += '<span class="pill pill-yara" style="font-size:11px;padding:3px 9px">YARA</span>';
+  html += '</div></div>';
+
+  html += '<div class="meta-grid">';
+  html += metaCell('Vendor', v.vendorProject);
+  html += metaCell('Product', v.product);
+  html += metaCell('Date Added', v.dateAdded);
+  html += metaCell('Due Date', v.dueDate || '—');
+  html += '</div>';
+
+  html += '<div class="note-box">⚠ These signatures are auto-generated from KEV metadata. Review detection logic, tune thresholds, and test in a non-production environment before deployment.</div>';
+
+  // Sig tabs
+  html += '<div class="sig-tabs">';
+  ['sigma','snort','yara'].forEach(function(fmt) {
+    html += '<button class="sig-tab' + (fmt === activeSigTab ? ' active' : '') + '" onclick="switchSigTab(\'' + fmt + '\',\'' + cveID + '\')">' +
+      (fmt === 'sigma' ? 'Sigma' : fmt === 'snort' ? 'Snort / Suricata' : 'YARA') + '</button>';
+  });
+  html += '</div>';
+  html += '<div class="sig-block">';
+  html += '<div class="sig-toolbar">';
+  html += '<span class="sig-label" id="sigLabel">' + activeSigTab.toUpperCase() + ' DETECTION RULE</span>';
+  html += '<button class="copy-btn" id="copyBtn" onclick="copySig(\'' + cveID + '\')">Copy</button>';
+  html += '</div>';
+  html += '<div class="sig-code" id="sigCode"></div>';
+  html += '</div>';
+
+  dv.innerHTML = html;
+  renderSig(v, activeSigTab);
+}
+
+function switchSigTab(fmt, cveID) {
+  activeSigTab = fmt;
+  document.querySelectorAll('.sig-tab').forEach(function(t){ t.classList.remove('active'); });
+  event.target.classList.add('active');
+  document.getElementById('sigLabel').textContent = fmt.toUpperCase() + ' DETECTION RULE';
+  var v = KEV.find(function(x){ return x.cveID === cveID; });
+  if (v) renderSig(v, fmt);
+}
+
+function renderSig(v, fmt) {
+  var el = document.getElementById('sigCode');
+  if (!el) return;
+  if (fmt === 'sigma') el.innerHTML = genSigma(v);
+  else if (fmt === 'snort') el.innerHTML = genSnort(v);
+  else el.innerHTML = genYara(v);
+}
+
+function copySig(cveID) {
+  var el = document.getElementById('sigCode');
+  var btn = document.getElementById('copyBtn');
+  if (!el) return;
+  var text = el.innerText || el.textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(function() {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(function(){ btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+}
+
+function metaCell(label, val) {
+  return '<div class="meta-cell"><div class="meta-label">' + escHtml(label) + '</div><div class="meta-val">' + escHtml(val || '—') + '</div></div>';
+}
+
+init();
+</script>
+</body>
+</html>

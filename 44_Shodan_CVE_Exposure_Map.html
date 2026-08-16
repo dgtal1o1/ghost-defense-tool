@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHODAN CVE EXPOSURE MAP // Ghost Defense</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css"/>
+<style>
+  :root{
+    --bg:#000000;--panel:#050f05;--panel-2:#091209;
+    --line:rgba(0,255,65,.10);--line-2:rgba(0,255,65,.18);
+    --grn:#00ff41;--grn-dim:#00cc33;--cyan:#00d4ff;--cyan-dim:#0090b3;
+    --txt:#c8e6cc;--mut:#5f7a63;--mut-2:#3f5443;
+    --red:#ff3333;--amber:#ffcc00;--yellow:#ffe14d;--purple:#c77dff;
+    --mono:'IBM Plex Mono','Share Tech Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(900px 500px at 80% -10%,rgba(0,255,65,.05),transparent 60%),var(--bg);
+    color:var(--txt);font-family:var(--mono);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased;min-height:100vh;padding:16px}
+  a{color:var(--cyan);text-decoration:none}a:hover{color:var(--grn)}
+  header.cmd{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border:1px solid var(--line-2);
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));padding:12px 16px;border-radius:4px}
+  .ghost{width:42px;height:42px;flex:none;border:1px solid var(--grn);border-radius:3px;display:grid;place-items:center;
+    background:rgba(0,255,65,.05);box-shadow:0 0 18px rgba(0,255,65,.15) inset;font-size:22px}
+  .titles h1{font-size:15.5px;margin:0;letter-spacing:2px;color:var(--grn);font-weight:700;text-shadow:0 0 14px rgba(0,255,65,.35)}
+  .titles .sub{font-size:10.5px;color:var(--mut);letter-spacing:1.5px;margin-top:2px}
+  .titles .sub b{color:var(--grn-dim)}
+  .spacer{flex:1}
+  .btn{font-family:var(--mono);font-size:11px;letter-spacing:1.2px;cursor:pointer;background:transparent;color:var(--grn);
+    border:1px solid var(--grn-dim);padding:8px 13px;border-radius:3px;transition:.15s;text-transform:uppercase;white-space:nowrap}
+  .btn:hover{background:rgba(0,255,65,.12);box-shadow:0 0 12px rgba(0,255,65,.25)}
+  .btn.cy{color:var(--cyan);border-color:var(--cyan-dim)}.btn.cy:hover{background:rgba(0,212,255,.1)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:14px;border:1px solid var(--line);
+    background:var(--panel);border-radius:4px;padding:13px 15px}
+  .fld{display:flex;flex-direction:column;gap:5px}
+  .fld label{font-size:9.5px;color:var(--mut);letter-spacing:1px;text-transform:uppercase}
+  .fld input{font-family:var(--mono);font-size:12.5px;background:#030703;color:var(--txt);border:1px solid var(--line-2);
+    border-radius:3px;padding:8px 10px}
+  .fld input:focus{outline:none;border-color:var(--grn-dim)}
+  #cve{min-width:190px}
+  .scope{min-width:150px}
+  .banner{margin-top:12px;border:1px solid var(--line-2);border-left:3px solid var(--cyan);background:rgba(0,212,255,.05);
+    border-radius:4px;padding:9px 13px;font-size:10.5px;color:var(--mut);line-height:1.6}
+  .banner b{color:var(--cyan)}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .stat{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:9px 14px;min-width:110px}
+  .stat .n{font-size:20px;color:var(--grn);font-weight:700;text-shadow:0 0 10px rgba(0,255,65,.3)}
+  .stat .l{font-size:9px;color:var(--mut);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+  #map{height:520px;margin-top:12px;border:1px solid var(--line-2);border-radius:4px;background:#020402}
+  .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#071007;color:var(--txt);border:1px solid var(--grn-dim);
+    font-family:var(--mono);font-size:11px;border-radius:3px}
+  .leaflet-popup-content{margin:9px 11px}
+  .leaflet-popup-content b{color:var(--grn)}
+  .leaflet-container{background:#020402}
+  .pop-row{margin:2px 0}.pop-k{color:var(--mut)}
+  .status{margin-top:10px;font-size:11px;color:var(--mut);min-height:16px}
+  .status .warn{color:var(--amber)}.status .err{color:var(--red)}.status .ok{color:var(--grn)}
+  .foot{margin-top:16px;border-top:1px solid var(--line);padding-top:10px;font-size:9.5px;color:var(--mut-2);line-height:1.6}
+  .foot b{color:var(--grn-dim)}
+  .adv{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .toggle{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--mut);cursor:pointer;user-select:none}
+  .toggle input{accent-color:var(--grn)}
+  .presets{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:10px}
+  .presets .pl{font-size:9px;color:var(--mut);letter-spacing:1px;text-transform:uppercase}
+  .chip{font-family:var(--mono);font-size:10px;letter-spacing:.5px;cursor:pointer;background:transparent;color:var(--cyan);
+    border:1px solid var(--cyan-dim);padding:5px 10px;border-radius:12px;transition:.15s}
+  .chip:hover{background:rgba(0,212,255,.12);color:var(--grn);border-color:var(--grn-dim)}
+  .chip.dev{color:var(--grn);border-color:var(--grn-dim)}
+  .chip.dev:hover{background:rgba(0,255,65,.12)}
+  #sectorPanel{margin-top:12px;border:1px solid var(--line-2);background:var(--panel);border-radius:4px;padding:14px}
+  .sc-head{font-size:12px;color:var(--grn);letter-spacing:1px;margin-bottom:12px;font-weight:700}
+  .sc-head span{display:block;font-size:9px;color:var(--mut);letter-spacing:.5px;font-weight:400;margin-top:3px;text-transform:none}
+  .sc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px}
+  .sc-card{background:#030703;border:1.5px solid var(--line-2);border-radius:6px;padding:14px 12px;cursor:pointer;
+    text-align:left;font-family:var(--mono);transition:.15s;display:flex;flex-direction:column;gap:5px}
+  .sc-card:hover{transform:translateY(-2px)}
+  .sc-card.on{background:#061006}
+  .sc-ic{font-size:22px;line-height:1}
+  .sc-n{font-size:30px;font-weight:800;line-height:1;text-shadow:0 0 12px currentColor}
+  .sc-name{font-size:10.5px;color:var(--txt);line-height:1.3;min-height:26px}
+  .sc-bar{height:6px;background:#0a140a;border-radius:4px;overflow:hidden;margin-top:2px}
+  .sc-bar span{display:block;height:100%;border-radius:4px}
+  .sc-pct{font-size:9px;color:var(--mut)}
+  .sc-note{font-size:9.5px;color:var(--mut-2);line-height:1.6;margin-top:12px;padding-top:9px;border-top:1px solid var(--line)}
+  #kevPanel{margin-top:12px;border:1px solid var(--line-2);background:var(--panel);border-radius:4px;padding:14px}
+  .kev-ctl{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--mut)}
+  .kev-ctl input{font-family:var(--mono);background:#030703;color:var(--txt);border:1px solid var(--line-2);border-radius:3px;padding:4px 6px}
+  .kev-scope{font-size:10px}.kev-scope b{color:var(--cyan)}
+  .kev-note{font-size:9.5px;color:var(--mut-2);line-height:1.6;margin:10px 0;padding:8px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .kev-prog{font-size:10.5px;color:var(--cyan);min-height:15px;margin:8px 0}
+  .kev-hrow,.kev-row{display:grid;grid-template-columns:80px 54px 140px 1fr 100px 96px;gap:10px;align-items:center;padding:5px 6px;font-size:10.5px}
+  .kev-cvss{font-weight:700;font-size:12px;text-align:center}
+  .kev-hrow{color:var(--mut);font-size:9px;letter-spacing:1px;border-bottom:1px solid var(--line-2)}
+  .kev-row{border-bottom:1px solid var(--line);cursor:pointer}
+  .kev-row:hover{background:rgba(0,255,65,.05)}
+  .kev-row.hot{background:rgba(255,51,51,.05)}
+  .kev-cnt{font-weight:700;font-size:13px;text-align:right}
+  .kev-cve{color:var(--cyan)}
+  .kev-vp{color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .kev-ransom{font-size:8px;color:var(--red);border:1px solid var(--red);border-radius:3px;padding:1px 5px;justify-self:start}
+  .kev-added{color:var(--mut-2);font-size:9.5px;text-align:right}
+  #rollupPanel{margin-top:12px;border:1px solid var(--grn-dim);background:var(--panel);border-radius:4px;padding:14px}
+  .roll-stats{display:flex;gap:11px;flex-wrap:wrap;margin-bottom:14px}
+  .rs{flex:1;min-width:130px;border:1px solid var(--line-2);background:#030703;border-radius:5px;padding:11px 13px}
+  .rs-n{font-size:24px;font-weight:800;color:var(--grn);text-shadow:0 0 10px rgba(0,255,65,.3)}
+  .rs-l{font-size:9px;color:var(--mut);letter-spacing:.5px;text-transform:uppercase;margin-top:3px}
+  .roll-sub{font-size:10px;color:var(--grn);letter-spacing:1px;margin:14px 0 6px;font-weight:700}
+  #hostList{margin-top:12px;border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:10px 12px}
+  .hl-head{font-size:11px;color:var(--grn);letter-spacing:1px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .hl-exp{margin-left:auto;background:transparent;border:1px solid var(--cyan-dim);color:var(--cyan);border-radius:4px;font-size:9.5px;
+    padding:3px 10px;cursor:pointer;font-family:var(--mono);letter-spacing:.5px}
+  .hl-exp:hover{background:rgba(0,212,255,.1)}
+  .hl-exp+.hl-exp{margin-left:0}
+  .hl-body{max-height:320px;overflow-y:auto}
+  .hl-colhead{display:grid;grid-template-columns:16px 120px 1fr 150px 140px 76px;gap:9px;font-size:8.5px;color:var(--mut);letter-spacing:1px;padding:4px 3px;border-bottom:1px solid var(--line-2)}
+  .hl-row{display:grid;grid-template-columns:16px 120px 1fr 150px 140px 76px;gap:9px;align-items:center;padding:5px 3px;border-bottom:1px solid var(--line);font-size:10.5px}
+  .hl-dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .hl-ip{color:var(--cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hl-host{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt)}
+  .hl-org{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hl-port{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hl-seen{color:var(--mut-2);text-align:right}
+  .hl-govtog{font-size:9.5px;color:var(--mut);display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:auto}
+  .hl-govtog input{accent-color:var(--grn)}
+</style>
+</head>
+<body>
+<header class="cmd">
+  <div class="ghost">&#128123;</div>
+  <div class="titles">
+    <h1>SHODAN CVE EXPOSURE MAP</h1>
+    <div class="sub"><b>G</b>rounded <b>H</b>andling <b>O</b>f <b>S</b>ourced <b>T</b>hreat-intel &nbsp;&middot;&nbsp; TOOL 44 &nbsp;&middot;&nbsp; DEFEND ALWAYS</div>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn cy" id="cfgBtn" title="Requires the Ghost Worker with SHODAN_API_KEY set server-side">&#9881; SOURCE</button>
+  <button class="btn" id="kevBtn" onclick="document.getElementById('kevFile').click()" title="Import CISA KEV CSV and rank its CVEs by your exposure">&#128203; IMPORT KEV</button>
+  <input type="file" id="kevFile" accept=".csv" style="display:none" onchange="importKev(this.files[0])">
+</header>
+
+<div class="controls">
+  <div class="fld"><label>CVE ID</label><input type="text" id="cve" placeholder="CVE-2024-3400" spellcheck="false"></div>
+  <div class="fld"><label>Query mode</label>
+    <select id="qmode" style="font-family:var(--mono);font-size:12px;background:#030703;color:var(--txt);border:1px solid var(--line-2);border-radius:3px;padding:8px 10px">
+      <option value="vuln">vuln: (Shodan CVE tag)</option>
+      <option value="product">product/keyword (fallback)</option>
+    </select>
+  </div>
+  <div class="fld" id="prodFld" style="display:none"><label>Product / keyword</label><input type="text" id="prod" class="scope" placeholder='e.g. "Cisco ASA"' spellcheck="false"></div>
+  <div class="fld"><label>Scope filter (optional)</label><input type="text" id="scope" class="scope" placeholder="e.g. hostname:.gov  country:US  net:1.2.3.0/24" spellcheck="false"></div>
+  <button class="btn" id="queryBtn" onclick="runQuery(false)">&#128269; MAP EXPOSURE</button>
+  <button class="btn cy" id="fullBtn" onclick="runQuery(true)" title="Pull the full result set (uses more Shodan credits)">&#8681; PULL FULL EXPOSURE</button>
+  <label class="toggle" title="Show counts without plotting individual hosts (cheaper: uses the count endpoint)"><input type="checkbox" id="countOnly"> COUNT ONLY</label>
+</div>
+
+<div class="presets">
+  <span class="pl">TARGET PRESETS:</span>
+  <button class="chip dev" onclick="setDevice('cpe:&quot;cpe:2.3:a:microsoft:sharepoint_server&quot;','SharePoint')">SharePoint</button>
+  <button class="chip dev" onclick="setDevice('product:&quot;Cisco ASA&quot;','Cisco ASA')">Cisco ASA</button>
+  <button class="chip dev" onclick="setDevice('product:&quot;Fortinet&quot;','Fortinet')">Fortinet</button>
+  <button class="chip dev" onclick="setDevice('product:&quot;PAN-OS&quot;','PAN-OS')">PAN-OS</button>
+  <button class="chip dev" onclick="setDevice('http.html:&quot;welcome.cgi?p=logo&quot;','Ivanti / Pulse Connect Secure')">Ivanti CS</button>
+  <button class="chip dev" onclick="setDevice('title:&quot;citrix gateway&quot;','Citrix Gateway')">Citrix GW</button>
+  <button class="chip dev" onclick="setDevice('http.title:&quot;Outlook Web App&quot;','Exchange OWA')">Exchange OWA</button>
+  <button class="chip dev" onclick="setDevice('product:&quot;MikroTik RouterOS&quot;','MikroTik')">MikroTik</button>
+</div>
+
+<div class="presets">
+  <span class="pl">SCOPE PRESETS:</span>
+  <button class="chip" onclick="setScope('hostname:.gov')" title="US .gov covers federal AND SLTT since the 2021 DotGov program">US GOV .gov (FED+SLTT)</button>
+  <button class="chip" onclick="setScope('hostname:.gov country:US')" title="Adds US geolocation to filter out international .gov.xx">US .gov + US geo</button>
+  <button class="chip" onclick="setScope('hostname:.mil')">US .mil</button>
+  <button class="chip" onclick="setScope('hostname:.us country:US')" title="Legacy SLTT domains not on .gov (broader — .us is not gov-only)">SLTT (.us broad)</button>
+  <button class="chip" onclick="setScope('country:US')">US (ALL)</button>
+  <button class="chip" onclick="setScope('')">CLEAR / GLOBAL</button>
+</div>
+
+<div class="banner">
+  <b>Defensive situational awareness.</b> This maps internet-exposed hosts that Shodan observes as matching a CVE. It is the same attack-surface picture an adversary already has &mdash; use it to gauge exposure scale, track your own ASN/org, or assess sector risk. Narrow with the scope filter (<b>org:</b>, <b>asn:</b>, <b>net:</b>, <b>country:</b>) to focus on assets you defend. Query runs through your Ghost Worker; your Shodan key stays server-side and never reaches this page.
+</div>
+
+<div class="stats" id="stats" style="display:none">
+  <div class="stat"><div class="n" id="stTotal">0</div><div class="l">Total Exposed</div></div>
+  <div class="stat"><div class="n" id="stPlotted">0</div><div class="l">Plotted</div></div>
+  <div class="stat"><div class="n" id="stCountries">0</div><div class="l">Countries</div></div>
+  <div class="stat"><div class="n" id="stOrgs">0</div><div class="l">Top Orgs</div></div>
+</div>
+
+<div class="status" id="status"></div>
+<div id="kevPanel" style="display:none"></div>
+<div id="rollupPanel" style="display:none"></div>
+<div id="sectorPanel" style="display:none"></div>
+<div id="hostList" style="display:none"></div>
+<div id="mapToggleRow" style="display:none;margin-top:12px">
+  <button class="btn cy" id="mapToggleBtn" onclick="toggleMap()">&#128506; SHOW MAP</button>
+  <span style="font-size:9.5px;color:var(--mut-2);margin-left:8px">Geographic view is optional &mdash; sector exposure above is the primary picture.</span>
+</div>
+<div id="map" style="display:none"></div>
+
+<div class="foot">
+  <b>GHOST &mdash; Grounded Handling Of Sourced Threat-intel.</b> Source: Shodan (<span id="srcDate">host observations, timestamped per record</span>). A host appearing here means Shodan observed a banner consistent with the CVE at scan time &mdash; it is an <b>indicator of exposure, not confirmation of exploitability or compromise</b>; verify before acting. Absence from the map means Shodan has not observed it, not that it is safe. For defensive and authorized use only. DEFEND ALWAYS.
+</div>
+
+<!-- SOURCE config (hidden) -->
+<div id="cfgPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#071007;border:1px solid var(--grn-dim);border-radius:5px;max-width:520px;width:100%;padding:18px 20px">
+    <div style="color:var(--grn);font-weight:700;letter-spacing:1px;margin-bottom:10px">&#9881; SOURCE &mdash; GHOST WORKER</div>
+    <label style="font-size:10px;color:var(--mut);letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:5px">Worker URL</label>
+    <input type="text" id="workerUrl" spellcheck="false" style="width:100%;font-family:var(--mono);font-size:12px;background:#030703;color:var(--txt);border:1px solid var(--line-2);border-radius:3px;padding:8px 10px;margin-bottom:10px" placeholder="https://ghost-exploit-proxy.<sub>.workers.dev">
+    <div style="font-size:10px;color:var(--mut);line-height:1.7">Shodan does not allow direct browser calls, and an API key must never sit in client code. This tool routes through your Ghost Worker, which holds <b style="color:var(--grn-dim)">SHODAN_API_KEY</b> as an encrypted Cloudflare secret. Deploy the updated Worker, add the secret, and set the URL here (stored locally in your browser only).</div>
+    <div style="margin-top:12px;text-align:right"><button class="btn" onclick="saveWorker()">SAVE</button></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<script>
+var map, cluster;
+function initMap(){
+  map = L.map('map',{worldCopyJump:true,minZoom:2}).setView([25,10],2);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+    attribution:'&copy; OpenStreetMap &copy; CARTO', subdomains:'abcd', maxZoom:19
+  }).addTo(map);
+  cluster = L.markerClusterGroup({chunkedLoading:true, maxClusterRadius:45});
+  map.addLayer(cluster);
+}
+function worker(){ try{ return localStorage.getItem('ghost2210_exploit_proxy'); }catch(e){ return null; } }
+
+// ── GOV EXPOSURE ROLLUP: high-value KEV × sector, aggregated ───────────────────
+var ROLLUP={};
+async function runRollup(){
+  if(!worker()){ setStatus('err','Set your Ghost Worker first (\u2699 SOURCE).'); return; }
+  var scanned=KEV_ROWS.filter(function(r){return r.done && r.count>0;});
+  scanned.sort(function(a,b){ return (b.count||0)-(a.count||0); });
+  if(!scanned.length){ setStatus('warn','No exposed CVEs yet \u2014 run SCAN EXPOSURE first.'); return; }
+  var N=Math.max(1,Math.min(scanned.length, parseInt(document.getElementById('rollN').value)||10));
+  var top=scanned.slice(0,N);
+  if(!confirm('Build the government exposure rollup for the top '+N+' exposed high-value KEV CVEs?\n\nThis pulls host data for each (\u2248 '+N+' Shodan query credits) and classifies them by critical-infrastructure sector.')) return;
+  var scope=document.getElementById('scope').value.trim();
+  var scopeLabel = scope || 'GLOBAL (no scope)';
+  ROLLUP={ scope:scopeLabel, when:new Date().toISOString().slice(0,16).replace('T',' '),
+    sectors:{}, cveContrib:[], totalHosts:0, ransomHosts:0, cvesUsed:0 };
+  SECTORS.forEach(function(s){ ROLLUP.sectors[s.id]=0; });
+  document.getElementById('rollBtn').disabled=true;
+  for(var i=0;i<top.length;i++){
+    var row=top[i];
+    var q='vuln:'+row.cve+(scope?(' '+scope):'');
+    var url=shodanURL('/shodan/host/search',{query:q, page:1, minify:'true'});
+    var contrib={cve:row.cve, vendor:row.vendor, product:row.product, cvss:row.cvss, ransom:row.ransom, total:row.count, sampled:0, sectors:{}};
+    try{
+      var ctrl=new AbortController(); var to=setTimeout(function(){ctrl.abort();},20000);
+      var r=await fetch(url,{signal:ctrl.signal}); clearTimeout(to);
+      var j=await r.json();
+      (j.matches||[]).forEach(function(m){
+        var sec=classifySector(m);
+        ROLLUP.sectors[sec.id]=(ROLLUP.sectors[sec.id]||0)+1;
+        contrib.sectors[sec.id]=(contrib.sectors[sec.id]||0)+1;
+        contrib.sampled++; ROLLUP.totalHosts++;
+        if(row.ransom) ROLLUP.ransomHosts++;
+      });
+    }catch(e){}
+    ROLLUP.cveContrib.push(contrib); ROLLUP.cvesUsed++;
+    document.getElementById('kevProg').textContent='Rollup: pulled '+(i+1)+' / '+top.length+' CVEs \u00b7 '+ROLLUP.totalHosts+' hosts classified\u2026';
+    renderRollup();
+    await new Promise(function(res){setTimeout(res,700);});
+  }
+  document.getElementById('rollBtn').disabled=false;
+  document.getElementById('kevProg').textContent='Rollup complete \u2014 top '+N+' high-value KEV, sampled host exposure by sector.';
+  renderRollup();
+}
+function renderRollup(){
+  var w=document.getElementById('rollupPanel'); if(!w) return;
+  var totalCounted = ROLLUP.cveContrib.reduce(function(a,c){return a+(c.total||0);},0);
+  var maxSec=1; SECTORS.forEach(function(s){ if(ROLLUP.sectors[s.id]>maxSec) maxSec=ROLLUP.sectors[s.id]; });
+  var cards=SECTORS.map(function(s){
+    var n=ROLLUP.sectors[s.id]||0; if(!n) return '';
+    var pct=ROLLUP.totalHosts?Math.round(n/ROLLUP.totalHosts*100):0;
+    var intensity=(0.2+0.8*(n/maxSec)).toFixed(2);
+    return '<div class="sc-card" style="border-color:'+s.color+';cursor:default">'
+      +'<div class="sc-ic" style="color:'+s.color+'">'+(SECTOR_ICONS[s.id]||'')+'</div>'
+      +'<div class="sc-n" style="color:'+s.color+';opacity:'+intensity+'">'+n.toLocaleString()+'</div>'
+      +'<div class="sc-name">'+esc(s.name)+'</div>'
+      +'<div class="sc-bar"><span style="width:'+pct+'%;background:'+s.color+'"></span></div>'
+      +'<div class="sc-pct">'+pct+'% of sampled</div></div>';
+  }).join('');
+  var contribRows=ROLLUP.cveContrib.slice().sort(function(a,b){return (b.total||0)-(a.total||0);}).map(function(c){
+    return '<div class="kev-row" onclick="mapKev(\''+c.cve+'\')">'
+      +'<span class="kev-cnt" style="color:var(--red)">'+(c.total||0).toLocaleString()+'</span>'
+      +'<span class="kev-cvss" style="color:'+(c.cvss>=9?'var(--red)':c.cvss>=7?'var(--amber)':'var(--mut-2)')+'">'+(c.cvss==null?'\u2014':c.cvss.toFixed(1))+'</span>'
+      +'<span class="kev-cve">'+esc(c.cve)+'</span>'
+      +'<span class="kev-vp">'+esc((c.vendor||'')+(c.product?(' \u00b7 '+c.product):''))+'</span>'
+      +(c.ransom?'<span class="kev-ransom">RANSOMWARE</span>':'<span></span>')
+      +'<span class="kev-added">'+c.sampled+' sampled</span></div>';
+  }).join('');
+  w.innerHTML=
+    '<div class="sc-head">GOVERNMENT EXPOSURE ROLLUP <span>high-value KEV \u00d7 critical-infrastructure sector \u00b7 scope: '+esc(ROLLUP.scope)+'</span></div>'
+    +'<div class="roll-stats">'
+      +'<div class="rs"><div class="rs-n">'+totalCounted.toLocaleString()+'</div><div class="rs-l">Total exposed hosts (Shodan count)</div></div>'
+      +'<div class="rs"><div class="rs-n">'+ROLLUP.cvesUsed+'</div><div class="rs-l">High-value KEV CVEs</div></div>'
+      +'<div class="rs"><div class="rs-n">'+ROLLUP.totalHosts.toLocaleString()+'</div><div class="rs-l">Hosts sampled &amp; classified</div></div>'
+      +'<div class="rs"><div class="rs-n" style="color:var(--red)">'+ROLLUP.ransomHosts.toLocaleString()+'</div><div class="rs-l">Ransomware-linked (sampled)</div></div>'
+    +'</div>'
+    +'<div class="sc-grid">'+cards+'</div>'
+    +'<div class="roll-sub">TOP KEV DRIVING THE EXPOSURE</div>'
+    +'<div class="kev-hrow"><span>EXPOSED</span><span>CVSS</span><span>CVE</span><span>VENDOR / PRODUCT</span><span></span><span>SAMPLE</span></div>'+contribRows
+    +'<div class="sc-note">Sector totals are from a <b>sampled</b> page of hosts per CVE (up to ~100 each), classified from Shodan-observed signals \u2014 proportions are indicative, not a full census. \u201CTotal exposed hosts\u201D is Shodan\u2019s full count; \u201Csampled\u201D is what was pulled and sector-classified. Exposure \u2260 exploitability; verify before acting. Reads Shodan\u2019s index (no scanning).</div>'
+    +'<div style="margin-top:10px"><button class="btn" onclick="exportBriefing()">&#128196; EXPORT BRIEFING (print / PDF)</button> <button class="hl-exp" onclick="exportRollupCsv()">\u2b07 CSV</button></div>';
+  w.style.display='block';
+}
+function exportRollupCsv(){
+  if(!ROLLUP.cveContrib||!ROLLUP.cveContrib.length){ return; }
+  var out=[['cve','cvss','vendor','product','ransomware','total_exposed','sampled'].concat(SECTORS.map(function(s){return s.name;})).join(',')];
+  ROLLUP.cveContrib.forEach(function(c){
+    var row=[c.cve,(c.cvss==null?'':c.cvss),'"'+(c.vendor||'')+'"','"'+(c.product||'')+'"',(c.ransom?'yes':'no'),c.total,c.sampled];
+    SECTORS.forEach(function(s){ row.push(c.sectors[s.id]||0); });
+    out.push(row.join(','));
+  });
+  var blob=new Blob([out.join('\n')],{type:'text/csv'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='gov-exposure-rollup-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+}
+function exportBriefing(){
+  if(!ROLLUP.cveContrib||!ROLLUP.cveContrib.length){ setStatus('warn','Build the rollup first.'); return; }
+  var secRows=SECTORS.filter(function(s){return ROLLUP.sectors[s.id]>0;}).sort(function(a,b){return ROLLUP.sectors[b.id]-ROLLUP.sectors[a.id];})
+    .map(function(s){ var n=ROLLUP.sectors[s.id]; var pct=ROLLUP.totalHosts?Math.round(n/ROLLUP.totalHosts*100):0;
+      return '<tr><td>'+esc(s.name)+'</td><td style="text-align:right">'+n.toLocaleString()+'</td><td style="text-align:right">'+pct+'%</td></tr>'; }).join('');
+  var cveRows=ROLLUP.cveContrib.slice().sort(function(a,b){return (b.total||0)-(a.total||0);})
+    .map(function(c){ return '<tr><td>'+esc(c.cve)+'</td><td>'+(c.cvss==null?'—':c.cvss.toFixed(1))+'</td><td>'+esc((c.vendor||'')+(c.product?(' '+c.product):''))+'</td><td>'+(c.ransom?'YES':'—')+'</td><td style="text-align:right">'+(c.total||0).toLocaleString()+'</td></tr>'; }).join('');
+  var totalCounted=ROLLUP.cveContrib.reduce(function(a,c){return a+(c.total||0);},0);
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Government Exposure Briefing</title>'
+    +'<style>body{font-family:Segoe UI,Arial,sans-serif;color:#111;margin:32px;font-size:12px}h1{color:#0B7A34;margin:0}h2{color:#0B7A34;border-bottom:1px solid #cbe} .sub{color:#555;margin:2px 0 14px}table{border-collapse:collapse;width:100%;margin:8px 0 18px}th,td{border:1px solid #ccc;padding:5px 8px;text-align:left}th{background:#0B7A34;color:#fff}.stat{display:inline-block;border:1px solid #ccc;border-radius:6px;padding:8px 14px;margin:4px 8px 4px 0}.stat b{font-size:20px;color:#0B7A34;display:block}.note{font-size:10px;color:#555;border-top:1px solid #ccc;padding-top:8px;margin-top:16px}</style></head><body>'
+    +'<h1>GHOST DEFENSE — Government Exposure Briefing</h1>'
+    +'<div class="sub">High-value KEV × critical-infrastructure sector · Scope: '+esc(ROLLUP.scope)+' · Generated '+esc(ROLLUP.when)+' UTC</div>'
+    +'<div><span class="stat"><b>'+totalCounted.toLocaleString()+'</b>Total exposed hosts (Shodan)</span>'
+    +'<span class="stat"><b>'+ROLLUP.cvesUsed+'</b>High-value KEV CVEs</span>'
+    +'<span class="stat"><b>'+ROLLUP.totalHosts.toLocaleString()+'</b>Hosts sampled &amp; classified</span>'
+    +'<span class="stat"><b style="color:#b00">'+ROLLUP.ransomHosts.toLocaleString()+'</b>Ransomware-linked (sampled)</span></div>'
+    +'<h2>Exposure by Critical-Infrastructure Sector</h2><table><tr><th>Sector</th><th style="text-align:right">Sampled hosts</th><th style="text-align:right">Share</th></tr>'+secRows+'</table>'
+    +'<h2>Top KEV Driving the Exposure</h2><table><tr><th>CVE</th><th>CVSS</th><th>Vendor / Product</th><th>Ransomware</th><th style="text-align:right">Total exposed</th></tr>'+cveRows+'</table>'
+    +'<div class="note"><b>GHOST — Grounded Handling Of Sourced Threat-intel.</b> KEV = CISA Known Exploited Vulnerabilities (actively exploited). Exposure from Shodan\'s index (no scanning). Sector totals are from a sampled page of hosts per CVE and are indicative, not a full census; "Total exposed" is Shodan\'s full count. Exposure ≠ exploitability — verify patch state before acting. Aligns with CISA BOD 26-04 (KEV Status × Asset Exposure). For defensive and authorized use. DEFEND ALWAYS.</div>'
+    +'<script>window.onload=function(){setTimeout(function(){window.print();},300);}<\/script></body></html>';
+  var w=window.open('','_blank');
+  if(w){ w.document.write(html); w.document.close(); }
+  else { var blob=new Blob([html],{type:'text/html'}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='gov-exposure-briefing.html'; a.click(); }
+}
+
+// ── KEV CSV IMPORT → EXPOSURE RANKING (KEV Status × Asset Exposure) ────────────
+var KEV_ROWS=[];
+var KEV_SCAN_STOP=false, KEV_SCANNING=false;
+function csvSplit(line){
+  var out=[], cur='', q=false;
+  for(var i=0;i<line.length;i++){ var c=line[i];
+    if(c==='"'){ if(q&&line[i+1]==='"'){cur+='"';i++;} else q=!q; }
+    else if(c===','&&!q){ out.push(cur); cur=''; }
+    else cur+=c;
+  }
+  out.push(cur); return out;
+}
+function importKev(file){
+  if(!file) return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    try{
+      var lines=rd.result.split(/\r?\n/).filter(function(l){return l.trim();});
+      var hdr=csvSplit(lines[0]).map(function(h){return h.trim().toLowerCase();});
+      var ci={ cve:hdr.indexOf('cveid'), vendor:hdr.indexOf('vendorproject'), product:hdr.indexOf('product'),
+        added:hdr.indexOf('dateadded'), ransom:hdr.indexOf('knownransomwarecampaignuse') };
+      if(ci.cve<0){ setStatus('err','That CSV has no cveID column \u2014 is it the CISA KEV catalog CSV?'); return; }
+      KEV_ROWS=[];
+      for(var i=1;i<lines.length;i++){
+        var f=csvSplit(lines[i]); var cve=(f[ci.cve]||'').trim().toUpperCase();
+        if(!/^CVE-\d{4}-\d{4,}$/.test(cve)) continue;
+        KEV_ROWS.push({ cve:cve, vendor:(f[ci.vendor]||'').trim(), product:(f[ci.product]||'').trim(),
+          added:(f[ci.added]||'').trim(), ransom:(function(v){v=(v||'').trim();return /known/i.test(v)&&!/unknown/i.test(v);})(f[ci.ransom]), count:null, done:false });
+      }
+      renderKevPanel();
+      setStatus('ok','Imported '+KEV_ROWS.length+' KEV CVEs. Filter to the highest-rated (enrich CVSS + set Min CVSS, or Ransomware-only), then SCAN EXPOSURE.');
+      setTimeout(function(){
+        var rc=document.getElementById('kevRansom'), mc=document.getElementById('kevMinCvss');
+        if(rc) rc.addEventListener('change',updateKevFiltCount);
+        if(mc) mc.addEventListener('change',updateKevFiltCount);
+        updateKevFiltCount();
+      },0);
+    }catch(e){ setStatus('err','Could not parse KEV CSV: '+esc(e.message)); }
+  };
+  rd.readAsText(file);
+}
+function renderKevPanel(){
+  var w=document.getElementById('kevPanel'); if(!w) return;
+  var scoped=document.getElementById('scope').value.trim();
+  var cap=KEV_ROWS.length;
+  w.innerHTML=
+    '<div class="sc-head">CISA KEV \u00d7 EXPOSURE <span>'+KEV_ROWS.length+' actively-exploited CVEs imported \u00b7 rank by how exposed you are in scope</span></div>'
+    +'<div class="kev-ctl">'
+      +'<label><input type="checkbox" id="kevRansom"> Ransomware-linked only</label>'
+      +'<label>Min CVSS <select id="kevMinCvss" style="font-family:var(--mono);background:#030703;color:var(--txt);border:1px solid var(--line-2);border-radius:3px;padding:3px 5px"><option value="0">All</option><option value="9">Critical 9.0+</option><option value="7">High 7.0+</option><option value="4">Medium 4.0+</option></select></label>'
+      +'<button class="hl-exp" onclick="enrichKevCvss()" title="Pull CVSS from NVD for imported KEV CVEs (needed to filter by rating)">&#9878; ENRICH CVSS (NVD)</button>'
+      +'<span id="kevFiltCount" class="kev-scope"></span>'
+    +'</div>'
+    +'<div class="kev-ctl">'
+      +'<label>Scan first <input type="number" id="kevCap" value="'+Math.min(100,cap)+'" min="1" max="'+cap+'" style="width:70px"> of filtered</label>'
+      +'<span class="kev-scope">scope: <b>'+(scoped?esc(scoped):'GLOBAL (no scope)')+'</b></span>'
+      +'<button class="btn" id="kevScanBtn" onclick="scanKev()">\u26A1 SCAN EXPOSURE</button>'
+      +'<button class="btn cy" id="kevStopBtn" onclick="KEV_SCAN_STOP=true" style="display:none">\u25A0 STOP</button>'
+      +'<button class="hl-exp" onclick="exportKev()">\u2b07 EXPORT</button>'
+    +'</div>'
+    +'<div class="kev-note">Each CVE uses one Shodan query credit (count endpoint). Scanning all of KEV is heavy \u2014 start capped. A count of 0 may mean no exposure <i>or</i> that Shodan has no vuln: fingerprint for that CVE \u2014 not proof of safety. Ransomware-linked KEVs are flagged.</div>'
+    +'<div id="kevProg" class="kev-prog"></div>'
+    +'<div class="kev-ctl" style="margin-top:6px">'
+      +'<span class="pl" style="color:var(--grn)">GOV EXPOSURE ROLLUP:</span>'
+      +'<label>top <input type="number" id="rollN" value="10" min="1" max="50" style="width:56px"> exposed CVEs</label>'
+      +'<button class="btn" id="rollBtn" onclick="runRollup()">&#127919; BUILD ROLLUP</button>'
+      +'<span class="kev-scope">aggregates sector exposure across the top exposed high-value KEV \u00b7 pulls hosts (\u2248 N credits)</span>'
+    +'</div>'
+    +'<div id="kevTable"></div>';
+  w.style.display='block';
+  var rp=document.getElementById('rollupPanel'); if(rp) rp.style.display='none';
+}
+function kevFiltered(){
+  var ransomOnly=document.getElementById('kevRansom') && document.getElementById('kevRansom').checked;
+  var minc=parseFloat((document.getElementById('kevMinCvss')||{}).value||'0');
+  return KEV_ROWS.filter(function(r){
+    if(ransomOnly && !r.ransom) return false;
+    if(minc>0){ if(r.cvss==null) return false; if(r.cvss<minc) return false; }
+    return true;
+  });
+}
+function updateKevFiltCount(){
+  var el=document.getElementById('kevFiltCount'); if(!el) return;
+  var minc=parseFloat((document.getElementById('kevMinCvss')||{}).value||'0');
+  var enr=KEV_ROWS.filter(function(r){return r.cvss!=null;}).length;
+  el.innerHTML=kevFiltered().length+' match filter'+(minc>0&&enr<KEV_ROWS.length?' <span style="color:var(--amber)">(enrich CVSS first — '+enr+'/'+KEV_ROWS.length+' have scores)</span>':'');
+}
+async function enrichKevCvss(){
+  if(!worker()){ setStatus('err','Set your Ghost Worker first (\u2699 SOURCE).'); return; }
+  var need=KEV_ROWS.filter(function(r){return r.cvss==null && !r.cvssTried;});
+  if(!need.length){ setStatus('ok','CVSS already enriched for all imported KEV CVEs.'); return; }
+  setStatus('', 'Enriching CVSS from NVD for '+need.length+' KEV CVEs\u2026');
+  for(var i=0;i<need.length;i++){
+    var row=need[i]; row.cvssTried=true;
+    var url=shodanURL ? null : null;
+    var nvd=worker().replace(/\/+$/,'')+'?url='+encodeURIComponent('https://services.nvd.nist.gov/rest/json/cves/2.0?cveId='+row.cve);
+    try{
+      var ctrl=new AbortController(); var to=setTimeout(function(){ctrl.abort();},15000);
+      var r=await fetch(nvd,{signal:ctrl.signal}); clearTimeout(to);
+      var j=await r.json();
+      var v=(j.vulnerabilities||[])[0];
+      if(v&&v.cve&&v.cve.metrics){ var m=v.cve.metrics; var pick=(m.cvssMetricV31||m.cvssMetricV30||m.cvssMetricV2||[])[0];
+        if(pick&&pick.cvssData&&pick.cvssData.baseScore!=null) row.cvss=pick.cvssData.baseScore; }
+    }catch(e){}
+    if((i+1)%5===0){ updateKevFiltCount(); renderKevTable(); setStatus('','Enriching CVSS from NVD\u2026 '+(i+1)+'/'+need.length); }
+    await new Promise(function(res){setTimeout(res,850);});
+  }
+  updateKevFiltCount(); renderKevTable();
+  setStatus('ok','CVSS enrichment done. Set a Min CVSS to scan only the highest-rated KEV CVEs.');
+}
+async function scanKev(){
+  if(KEV_SCANNING) return;
+  if(!worker()){ setStatus('err','Set your Ghost Worker first (\u2699 SOURCE).'); return; }
+  var pool=kevFiltered();
+  if(!pool.length){ setStatus('warn','No KEV CVEs match the current filter'+(document.getElementById('kevMinCvss').value>'0'?' — enrich CVSS first, or lower Min CVSS.':'.')); return; }
+  var cap=Math.max(1,Math.min(pool.length, parseInt(document.getElementById('kevCap').value)||100));
+  var scope=document.getElementById('scope').value.trim();
+  KEV_SCAN_STOP=false; KEV_SCANNING=true;
+  document.getElementById('kevScanBtn').style.display='none';
+  document.getElementById('kevStopBtn').style.display='inline-block';
+  var list=pool.slice(0,cap);
+  for(var i=0;i<list.length;i++){
+    if(KEV_SCAN_STOP) break;
+    var row=list[i];
+    var q='vuln:'+row.cve+(scope?(' '+scope):'');
+    var url=shodanURL('/shodan/host/count',{query:q});
+    try{
+      var ctrl=new AbortController(); var to=setTimeout(function(){ctrl.abort();},15000);
+      var r=await fetch(url,{signal:ctrl.signal}); clearTimeout(to);
+      var j=await r.json();
+      row.count=(j&&typeof j.total==='number')? j.total : 0;
+    }catch(e){ row.count=null; }
+    row.done=true;
+    document.getElementById('kevProg').textContent='Scanned '+(i+1)+' / '+list.length+(KEV_SCAN_STOP?' (stopping\u2026)':'')+'  \u00b7  '+row.cve+' \u2192 '+(row.count==null?'error':row.count.toLocaleString());
+    if((i+1)%5===0||i===list.length-1) renderKevTable();
+    await new Promise(function(res){setTimeout(res,800);});
+  }
+  renderKevTable();
+  document.getElementById('kevScanBtn').style.display='inline-block';
+  document.getElementById('kevStopBtn').style.display='none';
+  KEV_SCANNING=false;
+  document.getElementById('kevProg').textContent='Done \u2014 ranked by exposure in scope. Click a CVE to map it by sector.';
+}
+function renderKevTable(){
+  var scanned=KEV_ROWS.filter(function(r){return r.done;});
+  scanned.sort(function(a,b){ return (b.count||0)-(a.count||0); });
+  var rows=scanned.slice(0,300).map(function(r){
+    var sevCol = r.cvss==null?'var(--mut-2)':(r.cvss>=9?'var(--red)':r.cvss>=7?'var(--amber)':'var(--mut)');
+    return '<div class="kev-row'+(r.count>0?' hot':'')+'" onclick="mapKev(\''+r.cve+'\')">'
+      +'<span class="kev-cnt" style="color:'+(r.count>0?'var(--red)':'var(--mut-2)')+'">'+(r.count==null?'\u2014':r.count.toLocaleString())+'</span>'
+      +'<span class="kev-cvss" style="color:'+sevCol+'">'+(r.cvss==null?'\u2014':r.cvss.toFixed(1))+'</span>'
+      +'<span class="kev-cve">'+esc(r.cve)+'</span>'
+      +'<span class="kev-vp">'+esc((r.vendor||'')+(r.product?(' \u00b7 '+r.product):''))+'</span>'
+      +(r.ransom?'<span class="kev-ransom">RANSOMWARE</span>':'<span></span>')
+      +'<span class="kev-added">'+esc(r.added)+'</span></div>';
+  }).join('');
+  document.getElementById('kevTable').innerHTML=
+    '<div class="kev-hrow"><span>EXPOSED</span><span>CVSS</span><span>CVE</span><span>VENDOR / PRODUCT</span><span></span><span>KEV ADDED</span></div>'+rows;
+}
+function mapKev(cve){
+  document.getElementById('qmode').value='vuln';
+  document.getElementById('prodFld').style.display='none';
+  document.getElementById('cve').value=cve;
+  runQuery(false);
+  var sp=document.getElementById('sectorPanel'); if(sp) window.scrollTo({top:sp.offsetTop-20,behavior:'smooth'});
+}
+function exportKev(){
+  var scanned=KEV_ROWS.filter(function(r){return r.done;});
+  if(!scanned.length){ setStatus('warn','Nothing scanned yet.'); return; }
+  scanned.sort(function(a,b){ return (b.count||0)-(a.count||0); });
+  var scope=document.getElementById('scope').value.trim()||'global';
+  var out=[['cve','exposed_in_scope','cvss','vendor','product','kev_added','ransomware','scope'].join(',')];
+  scanned.forEach(function(r){ out.push([r.cve,(r.count==null?'':r.count),(r.cvss==null?'':r.cvss),'"'+(r.vendor||'').replace(/"/g,"'")+'"','"'+(r.product||'').replace(/"/g,"'")+'"',r.added,(r.ransom?'yes':'no'),'"'+scope.replace(/"/g,"'")+'"'].join(',')); });
+  var blob=new Blob([out.join('\n')],{type:'text/csv'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='kev-exposure-'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+}
+
+// ── CISA CRITICAL-INFRASTRUCTURE SECTOR CLASSIFIER ────────────────────────────
+// Each host is classified ONLY from an observable Shodan signal (port / product /
+// tag / hostname). The triggering signal is recorded. No signal -> "Unclassified"
+// (never guessed). Classification is an INFERENCE, not an authoritative assignment.
+var ICS_PORTS = {502:'Modbus',20000:'DNP3',102:'S7comm',47808:'BACnet',44818:'EtherNet/IP',2404:'IEC-104',1911:'Niagara Fox',4911:'Niagara Fox',789:'Red Lion',9600:'OMRON FINS',2455:'CoDeSys',20547:'ProConOS',1962:'PCWorx',5006:'MELSEC',5007:'MELSEC'};
+var ICS_KW = /modbus|scada|\bplc\b|\bhmi\b|\brtu\b|\bs7\b|codesys|niagara|tridium|moxa|schneider|rockwell|allen-bradley|siemens|wago|beckhoff|\bsel\b|schweitzer/i;
+var MED_PORTS = {104:'DICOM',11112:'DICOM',2575:'HL7',2762:'DICOM-TLS'};
+var MED_KW = /dicom|\bhl7\b|healthcare|medical|radiology|\bpacs\b|ge healthcare|philips|hologic|carestream/i;
+var FIN_KW = /\bbank\b|banco|credit union|financial|capital one|fintech|\bnacha\b|swift|payment gateway/i;
+var COMM_KW = /telecom|comcast|verizon|at&t|centurylink|lumen|charter|t-mobile|isp\b|broadband|cellular/i;
+// government-by-org (for hosts without a .gov hostname — e.g. appliances behind a carrier)
+var GOV_ORG = /\bcity of\b|\bcounty of\b|\btown of\b|\bvillage of\b|\btownship of\b|\bstate of\b|\bcommonwealth of\b|\buniversity\b|\bcollege\b|\bschool district\b|\bcommunity college\b|\bmunicipal|\bdepartment of\b|\bpublic (works|schools?|utilit|library|health)\b|\bcourt(house)?\b|\bsheriff\b|\bpolice dep|\bfire dep/i;
+// carriers / hosting — these OWN the IP but do NOT indicate the host is theirs; never a sector by themselves
+var CARRIER = /equinix|at&t|verizon|lumen|comcast|cogent|level ?3|centurylink|charter|zayo|hurricane electric|digitalocean|amazon|\baws\b|google|microsoft|azure|cloudflare|akamai|\bovh\b|hetzner|linode|godaddy|rackspace/i;
+
+var SECTORS = [
+  {id:'gov',   name:'Government Facilities',            color:'#00d4ff'},
+  {id:'dib',   name:'Defense Industrial Base',          color:'#c77dff'},
+  {id:'ics',   name:'Energy · Water · Mfg (ICS/OT)',    color:'#ff3333'},
+  {id:'health',name:'Healthcare & Public Health',       color:'#ff9d00'},
+  {id:'comms', name:'Communications / IT',              color:'#00ff41'},
+  {id:'fin',   name:'Financial Services',               color:'#ffe14d'},
+  {id:'other', name:'Unclassified',                     color:'#5f7a63'}
+];
+function sectorMeta(id){ return SECTORS.find(function(s){return s.id===id;})||SECTORS[SECTORS.length-1]; }
+
+function classifySector(m){
+  var host=(m.hostnames&&m.hostnames[0])||''; var tags=m.tags||[]; var port=+m.port;
+  var prod=(m.product||''); var org=(m.org||''); var data=(m.data||'');
+  var hay=(prod+' '+org+' '+data);
+  // 1) OPERATIONAL critical-infrastructure signals FIRST — these are specific and observable,
+  //    and they matter MORE than a generic .gov hostname (a .gov water utility is ICS, not an office).
+  if(ICS_PORTS[port]) return {id:'ics', signal:'port '+port+' ('+ICS_PORTS[port]+')'};
+  if(tags.indexOf('ics')>-1||tags.indexOf('scada')>-1) return {id:'ics', signal:'Shodan tag: ics/scada'};
+  if(MED_PORTS[port]) return {id:'health', signal:'port '+port+' ('+MED_PORTS[port]+')'};
+  if(tags.indexOf('medical')>-1) return {id:'health', signal:'Shodan tag: medical'};
+  if(ICS_KW.test(hay)) return {id:'ics', signal:'ICS/OT vendor in product/banner'};
+  if(MED_KW.test(hay)) return {id:'health', signal:'healthcare product/banner'};
+  // 2) Government / defense by hostname — only if no operational CI signal above
+  if(/\.mil$/i.test(host)) return {id:'dib', signal:'hostname '+host+' (.mil)'};
+  if(/(^|\.)gov($|\.)/i.test(host)) return {id:'gov', signal:'hostname '+host+' (.gov)'};
+  // 2b) Government by ORG name (for appliances without a .gov hostname) — but NOT carriers
+  if(!CARRIER.test(org) && GOV_ORG.test(org)) return {id:'gov', signal:'org \u201C'+org+'\u201D indicates a government / public entity'};
+  // 3) no supportable signal — do NOT guess (honest Unclassified beats a wrong tag)
+  return {id:'other', signal:'no sector-identifying signal observed'};
+}
+function saveWorker(){
+  var v=document.getElementById('workerUrl').value.trim();
+  if(v){
+    v=v.replace(/\s+/g,'');                       // strip stray spaces
+    if(!/^https?:\/\//i.test(v)) v='https://'+v;  // auto-add scheme
+    v=v.replace(/\/+$/,'');                        // strip trailing slashes
+    try{ localStorage.setItem('ghost2210_exploit_proxy',v);}catch(e){}
+    document.getElementById('workerUrl').value=v;
+    setStatus('ok','Worker saved: '+v);
+  } else {
+    setStatus('warn','No URL entered. Paste your Worker URL (e.g. https://ghost-exploit-proxy.dgtal.workers.dev).');
+    return;
+  }
+  document.getElementById('cfgPanel').style.display='none';
+}
+document.getElementById('cfgBtn').onclick=function(){ document.getElementById('workerUrl').value=worker()||''; document.getElementById('cfgPanel').style.display='flex'; };
+
+function setStatus(cls,msg){ document.getElementById('status').innerHTML='<span class="'+(cls||'')+'">'+msg+'</span>'; }
+function setScope(v){ document.getElementById('scope').value=v; }
+function setDevice(query,label){
+  document.getElementById('qmode').value='product';
+  document.getElementById('prodFld').style.display='flex';
+  document.getElementById('prod').value=query;
+  setStatus('', 'Loaded confirmed Shodan query for <b style="color:var(--grn)">'+label+'</b>. This finds hosts running the product \u2014 exposure candidates, not confirmed-vulnerable. Add a scope (e.g. FEDERAL .gov) and MAP EXPOSURE, then verify version/patch state.');
+}
+document.getElementById('qmode').addEventListener('change',function(){
+  var prod=this.value==='product';
+  document.getElementById('prodFld').style.display=prod?'flex':'none';
+  if(prod) setStatus('', 'Product/keyword mode: finds devices running the affected product even when Shodan has no vuln: fingerprint (e.g. older CVEs). Results are exposure candidates \u2014 confirm the vulnerable version before acting.');
+  else setStatus('', 'vuln: mode uses Shodan\u2019s own CVE detection. If a CVE returns 0, Shodan may not have a fingerprint for it \u2014 switch to product/keyword mode.');
+});
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+function buildQuery(){
+  var mode=document.getElementById('qmode').value;
+  var scope=document.getElementById('scope').value.trim();
+  if(mode==='product'){
+    var prod=document.getElementById('prod').value.trim();
+    if(!prod){ setStatus('err','Product mode: enter an affected product/keyword, e.g. "Cisco ASA".'); return null; }
+    var cveP=document.getElementById('cve').value.trim().toUpperCase();
+    var label=(/^CVE-\d{4}-\d{4,}$/.test(cveP)? cveP+' · ' : '')+prod;
+    var term=/:/.test(prod)? prod : ('product:'+ (/\s/.test(prod)&&!/"/.test(prod)? '"'+prod+'"' : prod));
+    return { cve:label, q:term+(scope?(' '+scope):''), mode:'product' };
+  }
+  var cve=document.getElementById('cve').value.trim().toUpperCase();
+  if(!/^CVE-\d{4}-\d{4,}$/.test(cve)){ setStatus('err','Enter a valid CVE ID, e.g. CVE-2024-3400.'); return null; }
+  return { cve:cve, q:'vuln:'+cve+(scope?(' '+scope):''), mode:'vuln' };
+}
+
+function shodanURL(path, params){
+  var w=worker(); if(!w) return null;
+  var base='https://api.shodan.io'+path+'?'+Object.keys(params).map(function(k){return k+'='+encodeURIComponent(params[k]);}).join('&');
+  return w.replace(/\/+$/,'')+'?url='+encodeURIComponent(base);
+}
+
+async function runQuery(full){
+  var qy=buildQuery(); if(!qy) return;
+  if(!worker()){ setStatus('err','No Ghost Worker set. Open &#9881; SOURCE and set your Worker URL (with SHODAN_API_KEY as a secret).'); document.getElementById('cfgPanel').style.display='flex'; return; }
+  cluster.clearLayers();
+  document.getElementById('queryBtn').disabled=true; document.getElementById('fullBtn').disabled=true;
+
+  // COUNT ONLY -> use the /host/count endpoint (cheaper, no host plotting)
+  if(document.getElementById('countOnly').checked){
+    await runCount(qy); reEnable(); return;
+  }
+
+  var pages = full ? 5 : 1;   // capped sample = 1 page (~100), full = up to 5 pages
+  var all=[], total=0, page=1, hitErr=null;
+  setStatus('', 'Querying Shodan for '+esc(qy.cve)+'&hellip;');
+  for(page=1; page<=pages; page++){
+    var url=shodanURL('/shodan/host/search',{query:qy.q, page:page, minify:'true'});
+    var got=null, lastErr=null;
+    for(var attempt=1; attempt<=2 && !got; attempt++){   // one retry on transient failure
+      try{
+        var ctrl=new AbortController(); var to=setTimeout(function(){ctrl.abort();},25000);
+        var r=await fetch(url,{signal:ctrl.signal}); clearTimeout(to);
+        if(!r.ok){ lastErr='HTTP '+r.status; if(r.status>=500 && attempt<2){ await new Promise(function(res){setTimeout(res,1200);}); continue; } break; }
+        var j=await r.json();
+        if(j.error){ lastErr=j.error; break; }
+        got=j;
+      }catch(e){ lastErr=String(e&&e.message||e); if(attempt<2){ await new Promise(function(res){setTimeout(res,1200);}); } }
+    }
+    if(!got){ hitErr=lastErr; break; }   // keep everything fetched so far; report honestly
+    total=got.total||total;
+    (got.matches||[]).forEach(function(m){ all.push(m); });
+    setStatus('', 'Fetched '+all.length+' of '+total+' exposed hosts (page '+page+')&hellip;');
+    if(!got.matches || got.matches.length<100) break;   // no more pages
+    await new Promise(function(res){setTimeout(res,700);});   // gentler pacing between pages
+  }
+  plot(all, total, qy.cve, hitErr, full);
+  reEnable();
+}
+
+async function runCount(qy){
+  var url=shodanURL('/shodan/host/count',{query:qy.q, facets:'country:12'});
+  setStatus('', 'Counting exposure for '+esc(qy.cve)+'&hellip;');
+  try{
+    var r=await fetch(url); if(!r.ok){ setStatus('err','Count failed: HTTP '+r.status); return; }
+    var j=await r.json();
+    if(j.error){ setStatus('err','Shodan: '+esc(j.error)); return; }
+    document.getElementById('stats').style.display='flex';
+    document.getElementById('stTotal').textContent=(j.total||0).toLocaleString();
+    document.getElementById('stPlotted').textContent='0';
+    var countries=(j.facets&&j.facets.country)||[];
+    document.getElementById('stCountries').textContent=countries.length;
+    document.getElementById('stOrgs').textContent='&mdash;';
+    // plot country facet counts as circles at country centroids (approx via first host? -> just list)
+    var list=countries.map(function(c){return c.value+': '+c.count.toLocaleString();}).join(' · ');
+    setStatus('ok','COUNT ONLY &mdash; '+(j.total||0).toLocaleString()+' exposed hosts. Top countries: '+esc(list));
+  }catch(e){ setStatus('err','Count error: '+esc(e.message)); }
+}
+
+var SECTOR_MARKERS = {}; // id -> [markers] (for map filtering)
+var ALL_HOSTS=[];   // classified host records for the list
+var SECTOR_FILTER=null;
+function plot(matches, total, cve, err, full){
+  matches = matches || [];
+  document.getElementById('stats').style.display='flex';
+  document.getElementById('stTotal').textContent=(total||0).toLocaleString();
+  // explicit empty-result state — so "0 hosts" renders clearly instead of a blank screen
+  if(!matches.length){
+    document.getElementById('stPlotted').textContent='0';
+    document.getElementById('stCountries').textContent='0';
+    document.getElementById('stOrgs').textContent='0';
+    var sp=document.getElementById('sectorPanel');
+    sp.style.display='block';
+    sp.innerHTML='<div class="sc-head">NO HOSTS RETURNED <span>query ran successfully \u2014 Shodan returned '+(err?'an error':'no host records')+' for this scope</span></div>'
+      +'<div class="sc-note" style="border-top:none">'
+      +(err
+        ? 'Shodan error: <b style="color:var(--red)">'+esc(err)+'</b>. '
+        : 'Shodan reports <b>'+(total||0).toLocaleString()+'</b> total for this query but returned <b>0 host records</b> to plot. ')
+      +'This usually means one of: (1) the scope is too tight \u2014 try removing <b>country:US</b> or the whole scope; (2) Shodan has no host detail for this fingerprint in-scope; or (3) your Shodan key can COUNT but not SEARCH (streaming-tier keys return 0 host records) \u2014 in which case COUNT ONLY works but the map/sector view needs a search-entitled key.'
+      +'<br><br>Query used: <code style="color:var(--cyan)">'+esc((document.getElementById('qmode').value==='product'?document.getElementById('prod').value:('vuln:'+cve))+' '+document.getElementById('scope').value)+'</code></div>';
+    document.getElementById('hostList').style.display='none';
+    document.getElementById('kevProg')&&0;
+    document.getElementById('mapToggleRow').style.display='none';
+    setStatus(err?'err':'warn', err? ('Shodan: '+esc(err)) : ((total||0).toLocaleString()+' total reported, but 0 host records returned \u2014 see panel below.'));
+    return;
+  }
+  var plotted=0; var countries={}, orgs={}, sectorCount={};
+  SECTOR_MARKERS={}; ALL_HOSTS=[]; SECTORS.forEach(function(s){SECTOR_MARKERS[s.id]=[];sectorCount[s.id]=0;});
+  matches.forEach(function(m){
+    var loc=m.location||{};
+    var lat=loc.latitude, lon=loc.longitude;
+    var sec=classifySector(m);
+    sectorCount[sec.id]=(sectorCount[sec.id]||0)+1;
+    if(loc.country_name) countries[loc.country_name]=1;
+    if(m.org) orgs[m.org]=(orgs[m.org]||0)+1;
+    var hns=m.hostnames||[]; var govhn=hns.filter(function(h){return /(^|\.)gov($|\.)/i.test(h)||/\.mil$/i.test(h);})[0];
+    ALL_HOSTS.push({ip:m.ip_str||'', host:(govhn||hns[0]||''), allHosts:hns, org:m.org||'', port:m.port||'', product:m.product||'',
+      loc:(loc.city?loc.city+', ':'')+(loc.country_name||''), seen:(m.timestamp?String(m.timestamp).slice(0,10):''),
+      sector:sec.id, signal:sec.signal});
+    if(lat==null||lon==null) return;
+    plotted++;
+    var meta=sectorMeta(sec.id);
+    var pop='<b>'+esc(m.ip_str||'host')+'</b>'
+      +'<div class="pop-row"><span class="pop-k">sector </span><span style="color:'+meta.color+'">'+esc(meta.name)+'</span></div>'
+      +'<div class="pop-row"><span class="pop-k">org </span>'+esc(m.org||'—')+'</div>'
+      +'<div class="pop-row"><span class="pop-k">port </span>'+esc(m.port||'—')+' '+esc((m.product||''))+'</div>';
+    var mk=L.circleMarker([lat,lon],{radius:5,color:meta.color,weight:1,fillColor:meta.color,fillOpacity:.6});
+    mk.bindPopup(pop);
+    SECTOR_MARKERS[sec.id].push(mk);
+    cluster.addLayer(mk);
+  });
+  document.getElementById('stPlotted').textContent=plotted.toLocaleString();
+  document.getElementById('stCountries').textContent=Object.keys(countries).length;
+  document.getElementById('stOrgs').textContent=Object.keys(orgs).length;
+  SECTOR_FILTER=null;
+  renderSectorCards(sectorCount, matches.length, cve);
+  renderHostList();
+  document.getElementById('mapToggleRow').style.display='block';
+  if(err){ setStatus('err','Shodan: '+esc(err)+(matches.length?(' — showing '+matches.length+' fetched before error.'):'')); }
+  else {
+    var capNote = (!full && total>matches.length) ? ' (capped sample — PULL FULL EXPOSURE for more)' : '';
+    setStatus('ok',(total||0).toLocaleString()+' total exposed for '+esc(cve)+'; classified '+matches.length+' fetched host(s) by sector'+capNote+'.');
+  }
+}
+
+var SECTOR_ICONS={gov:'\uD83C\uDFDB\uFE0F',dib:'\uD83D\uDEE1\uFE0F',ics:'\u26A1',health:'\uD83C\uDFE5',comms:'\uD83D\uDCE1',fin:'\uD83C\uDFE6',other:'\u2753'};
+function renderSectorCards(counts, totalFetched, cve){
+  var wrap=document.getElementById('sectorPanel'); if(!wrap) return;
+  var max=1; SECTORS.forEach(function(s){ if(counts[s.id]>max) max=counts[s.id]; });
+  var cards=SECTORS.map(function(s){
+    var n=counts[s.id]||0; if(!n) return '';
+    var pct=totalFetched?Math.round(n/totalFetched*100):0;
+    var intensity=(0.15+0.85*(n/max)).toFixed(2);
+    var active=SECTOR_FILTER===s.id;
+    return '<button class="sc-card'+(active?' on':'')+'" style="border-color:'+s.color+';box-shadow:'+(active?'0 0 16px '+s.color:'none')+'" onclick="filterSector(\''+s.id+'\')">'
+      +'<div class="sc-ic" style="color:'+s.color+'">'+(SECTOR_ICONS[s.id]||'')+'</div>'
+      +'<div class="sc-n" style="color:'+s.color+';opacity:'+intensity+'">'+n.toLocaleString()+'</div>'
+      +'<div class="sc-name">'+esc(s.name)+'</div>'
+      +'<div class="sc-bar"><span style="width:'+pct+'%;background:'+s.color+'"></span></div>'
+      +'<div class="sc-pct">'+pct+'% of classified</div>'
+      +'</button>';
+  }).join('');
+  wrap.innerHTML='<div class="sc-head">CRITICAL-INFRASTRUCTURE EXPOSURE &mdash; '+esc(cve)+'<span>inferred from Shodan-observed signals · click a sector to drill in</span></div>'
+    +'<div class="sc-grid">'+cards+'</div>'
+    +'<div class="sc-note">Sector is inferred from an observable signal (protocol port, product, Shodan tag, or hostname), shown per host below. It is an indicator for triage, not an authoritative assignment. \u201CUnclassified\u201D means no sector-identifying signal was observed \u2014 not that a host is out of scope or safe. Reads Shodan\u2019s index (no scanning); exposure \u2260 exploitability \u2014 verify before acting.</div>';
+  wrap.style.display='block';
+}
+
+var GOV_ONLY=false;
+function hostIsGov(h){
+  if(/(^|\.)gov($|\.)/i.test(h.host)||/\.mil$/i.test(h.host)) return true;
+  if(!CARRIER.test(h.org||'') && GOV_ORG.test(h.org||'')) return true;
+  return false;
+}
+function renderHostList(){
+  var wrap=document.getElementById('hostList'); if(!wrap) return;
+  var rows=ALL_HOSTS.filter(function(h){ return !SECTOR_FILTER || h.sector===SECTOR_FILTER; });
+  if(GOV_ONLY) rows=rows.filter(hostIsGov);
+  if(!rows.length){ wrap.style.display='none'; return; }
+  var meta=SECTOR_FILTER?sectorMeta(SECTOR_FILTER):null;
+  var head='<div class="hl-head">'+(meta?('<span style="color:'+meta.color+'">'+esc(meta.name)+'</span> hosts ('+rows.length+')'):('ALL HOSTS ('+rows.length+')'))
+    +'<label class="hl-govtog" title="Keep only hosts confirmed government by a .gov/.mil hostname OR a government org name (City of, University, Dept of). Carrier-hosted appliances without either are dropped."><input type="checkbox" '+(GOV_ONLY?'checked':'')+' onchange="GOV_ONLY=this.checked;renderHostList()"> government only</label>'
+    +'<button class="hl-exp" onclick="exportHosts()">&#8681; EXPORT CSV</button>'
+    +(SECTOR_FILTER?'<button class="hl-exp" onclick="filterSector(null)">&#10005; clear filter</button>':'')+'</div>';
+  var body=rows.slice(0,500).map(function(h){
+    var m=sectorMeta(h.sector);
+    var isGov=hostIsGov(h);
+    var idText = h.host ? esc(h.host) : (isGov ? esc(h.org) : '\u2014');
+    return '<div class="hl-row"><span class="hl-dot" style="background:'+m.color+'"></span>'
+      +'<span class="hl-ip">'+esc(h.ip||'\u2014')+'</span>'
+      +'<span class="hl-host">'+(isGov?('<b style="color:var(--grn)">'+idText+'</b>'):('<span style="color:var(--mut-2)">'+idText+'</span>'))+'</span>'
+      +'<span class="hl-org" title="network / hosting provider — not necessarily the host owner">'+esc(h.org||'—')+'</span>'
+      +'<span class="hl-port">'+esc(h.port)+(h.product?(' '+esc(h.product)):'')+'</span>'
+      +'<span class="hl-seen">'+esc(h.seen||'')+'</span></div>';
+  }).join('');
+  wrap.innerHTML=head
+    +'<div class="hl-colhead"><span></span><span>IP</span><span>IDENTITY (hostname / gov org)</span><span>NETWORK / CARRIER</span><span>PORT / PRODUCT</span><span>SEEN</span></div>'
+    +'<div class="hl-body">'+body+'</div>'+(rows.length>500?'<div class="sc-note">Showing first 500 of '+rows.length+' — export CSV for the full list.</div>':'')
+    +'<div class="sc-note" style="border-top:none">Green = identified as government (a <b style="color:var(--grn)">.gov/.mil</b> hostname, or an org like \u201CCity of\u2026\u201D / \u201CUniversity\u2026\u201D / \u201CDepartment of\u2026\u201D). A carrier in the org column (Equinix, AT&amp;T, etc.) is the <i>network provider</i>, not the owner \u2014 government appliances often sit behind a carrier with no .gov hostname, so those can\u2019t be confirmed government from Shodan alone and stay grey. \u201CGovernment only\u201D keeps the confirmed ones.</div>';
+  wrap.style.display='block';
+}
+
+function filterSector(id){
+  SECTOR_FILTER = (id==null? null : (SECTOR_FILTER===id? null : id));
+  // map
+  cluster.clearLayers();
+  SECTORS.forEach(function(s){ if(SECTOR_FILTER && s.id!==SECTOR_FILTER) return; (SECTOR_MARKERS[s.id]||[]).forEach(function(mk){ cluster.addLayer(mk); }); });
+  // cards + list
+  var counts={}; SECTORS.forEach(function(s){counts[s.id]=(SECTOR_MARKERS[s.id]||[]).length || ALL_HOSTS.filter(function(h){return h.sector===s.id;}).length;});
+  var tot=ALL_HOSTS.length;
+  renderSectorCards(counts, tot, document.getElementById('cve').value.trim().toUpperCase()||'exposure');
+  renderHostList();
+}
+
+function exportHosts(){
+  var rows=ALL_HOSTS.filter(function(h){ return !SECTOR_FILTER || h.sector===SECTOR_FILTER; });
+  if(GOV_ONLY) rows=rows.filter(hostIsGov);
+  if(!rows.length){ setStatus('warn','No hosts to export.'); return; }
+  var cve=document.getElementById('cve').value.trim().toUpperCase()||'query';
+  var out=[['cve','ip','hostname','government','org_carrier','port','product','location','last_seen','sector','sector_signal'].join(',')];
+  rows.forEach(function(h){
+    out.push([cve, h.ip, '"'+(h.host||'').replace(/"/g,"'")+'"', (hostIsGov(h)?'yes':'no'),
+      '"'+(h.org||'').replace(/"/g,"'")+'"', h.port, '"'+(h.product||'').replace(/"/g,"'")+'"',
+      '"'+(h.loc||'').replace(/"/g,"'")+'"', h.seen, sectorMeta(h.sector).name, '"'+(h.signal||'').replace(/"/g,"'")+'"'].join(','));
+  });
+  var blob=new Blob([out.join('\n')],{type:'text/csv'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='exposure-'+cve+(SECTOR_FILTER?('-'+SECTOR_FILTER):'')+(GOV_ONLY?'-govonly':'')+'-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+function toggleMap(){
+  var mp=document.getElementById('map'), btn=document.getElementById('mapToggleBtn');
+  if(mp.style.display==='none'){ mp.style.display='block'; btn.innerHTML='\uD83D\uDDFA HIDE MAP'; setTimeout(function(){ if(map) map.invalidateSize(); },50); }
+  else { mp.style.display='none'; btn.innerHTML='\uD83D\uDDFA SHOW MAP'; }
+}
+function reEnable(){ document.getElementById('queryBtn').disabled=false; document.getElementById('fullBtn').disabled=false; }
+
+// Cross-tool deep link: another Ghost Defense tool (e.g. Tool 40) can open this with ?cve=CVE-XXXX
+(function(){
+  try{
+    var p=new URLSearchParams(location.search); var cve=p.get('cve')||'';
+    if(cve && document.getElementById('cve')){ document.getElementById('cve').value=cve; window.__pivotCve=cve; }
+  }catch(e){}
+})();
+initMap();
+if(window.__pivotCve){
+  setStatus('', 'Pivoted from ICS Advisory Command for '+window.__pivotCve+'. Click MAP EXPOSURE to scan Shodan (requires Worker + SHODAN_API_KEY).');
+} else {
+  setStatus('', 'Enter a CVE and MAP EXPOSURE. Requires the Ghost Worker with SHODAN_API_KEY set (see &#9881; SOURCE).');
+}
+</script>
+</body>
+</html>

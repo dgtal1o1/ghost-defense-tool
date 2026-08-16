@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Real-Time Intrusion Detection — Ghost Defense</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#040609;--s1:#080d12;--s2:#0d1520;--s3:#131d2a;
+  --border:rgba(255,255,255,0.05);--border2:rgba(255,255,255,0.1);
+  --text:#e8f0f8;--muted:#4a6080;--muted2:#7090b0;
+  --green:#00ff88;--green-s:rgba(0,255,136,0.08);--green-b:rgba(0,255,136,0.25);
+  --red:#ff3355;--red-s:rgba(255,51,85,0.1);--red-b:rgba(255,51,85,0.3);
+  --orange:#ff8c00;--orange-s:rgba(255,140,0,0.1);--orange-b:rgba(255,140,0,0.28);
+  --yellow:#ffd700;--yellow-s:rgba(255,215,0,0.08);--yellow-b:rgba(255,215,0,0.25);
+  --blue:#00aaff;--blue-s:rgba(0,170,255,0.08);--blue-b:rgba(0,170,255,0.25);
+  --cyan:#00e5ff;--cyan-s:rgba(0,229,255,0.08);--cyan-b:rgba(0,229,255,0.25);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+html,body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100%;margin:0}
+body{display:flex;flex-direction:column;min-height:100vh}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:11px 20px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:200}
+.brand{display:flex;align-items:center;gap:9px}
+.brand-icon{width:28px;height:28px;background:var(--red-s);border:1px solid var(--red-b);
+  border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.brand-name{font-size:14px;font-weight:700;letter-spacing:.02em}
+.brand-sub{font-size:10px;color:var(--muted2);font-family:var(--mono)}
+.tb-sep{width:1px;height:24px;background:var(--border2);flex-shrink:0}
+
+/* STATUS BAR */
+.status-bar{display:flex;align-items:center;gap:14px;margin-left:auto;flex-wrap:wrap}
+.status-item{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px}
+.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-live{background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 1.5s ease infinite}
+.dot-idle{background:var(--muted)}
+.dot-alert{background:var(--red);box-shadow:0 0 8px var(--red);animation:pulse .6s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* CONTROL BUTTONS */
+.ctrl-btn{font-family:var(--mono);font-size:11px;padding:6px 14px;border-radius:5px;
+  cursor:pointer;border:1px solid;transition:all .15s;white-space:nowrap;font-weight:600}
+.btn-start{background:var(--green-s);color:var(--green);border-color:var(--green-b)}
+.btn-start:hover{background:rgba(0,255,136,.18)}
+.btn-stop{background:var(--red-s);color:var(--red);border-color:var(--red-b)}
+.btn-stop:hover{background:rgba(255,51,85,.18)}
+.btn-clear{background:var(--s2);color:var(--muted2);border-color:var(--border2)}
+.btn-clear:hover{color:var(--text)}
+.btn-upload{background:var(--blue-s);color:var(--blue);border-color:var(--blue-b)}
+.btn-upload:hover{background:rgba(0,170,255,.16)}
+
+/* MAIN LAYOUT */
+.main{display:grid;grid-template-columns:260px 1fr 300px;flex:1;overflow:hidden;height:calc(100vh - 52px)}
+
+/* LEFT — RULES PANEL */
+.rules-panel{border-right:1px solid var(--border);overflow-y:auto;background:var(--s1);display:flex;flex-direction:column}
+.panel-title{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted2);
+  font-family:var(--mono);padding:9px 12px;background:var(--s2);border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center}
+.rule-item{padding:7px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;cursor:pointer;transition:background .1s}
+.rule-item:hover{background:var(--s2)}
+.rule-toggle{width:14px;height:14px;border-radius:3px;border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;cursor:pointer;transition:all .12s}
+.rule-toggle.on{background:var(--green-s);border-color:var(--green-b);color:var(--green)}
+.rule-toggle.off{color:var(--muted)}
+.rule-name{font-size:11px;font-family:var(--mono);color:var(--muted2);flex:1;line-height:1.3}
+.rule-sev{font-size:9px;font-family:var(--mono);font-weight:700;padding:1px 5px;border-radius:3px}
+.sev-c{background:var(--red-s);color:var(--red);border:1px solid var(--red-b)}
+.sev-h{background:var(--orange-s);color:var(--orange);border:1px solid var(--orange-b)}
+.sev-m{background:var(--yellow-s);color:var(--yellow);border:1px solid var(--yellow-b)}
+.sev-l{background:var(--blue-s);color:var(--blue);border:1px solid var(--blue-b)}
+.rule-count{font-size:10px;font-family:var(--mono);color:var(--muted);min-width:14px;text-align:right}
+
+/* CENTER — LOG STREAM + ALERTS */
+.center-panel{display:flex;flex-direction:column;overflow:hidden}
+.center-top{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+
+/* LOG INPUT */
+.log-input-area{border-bottom:1px solid var(--border);background:var(--s1);padding:0;flex-shrink:0}
+.log-tabs{display:flex;border-bottom:1px solid var(--border)}
+.ltab{flex:1;padding:8px 6px;font-size:10px;font-family:var(--mono);color:var(--muted);
+  cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;
+  margin-bottom:-1px;transition:all .15s;text-align:center;text-transform:uppercase;letter-spacing:.07em}
+.ltab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+.ltab:hover:not(.active){color:var(--text)}
+.log-paste-area{width:100%;background:var(--bg);border:none;color:var(--green);
+  font-family:var(--mono);font-size:11px;padding:10px 14px;resize:none;outline:none;height:80px;line-height:1.6}
+.log-paste-area::placeholder{color:var(--muted)}
+.log-paste-controls{padding:6px 14px;display:flex;gap:6px;align-items:center;background:var(--s1);border-top:1px solid var(--border)}
+
+/* LIVE LOG STREAM */
+.log-stream{flex:1;overflow-y:auto;background:var(--bg);font-family:var(--mono);
+  font-size:11px;padding:8px 14px;line-height:1.7;min-height:0}
+.log-line{display:flex;gap:10px;align-items:flex-start;padding:1px 0;border-radius:2px}
+.log-line.flagged-c{background:rgba(255,51,85,0.06);border-left:2px solid var(--red);padding-left:6px}
+.log-line.flagged-h{background:rgba(255,140,0,0.05);border-left:2px solid var(--orange);padding-left:6px}
+.log-line.flagged-m{background:rgba(255,215,0,0.04);border-left:2px solid var(--yellow);padding-left:6px}
+.log-line.flagged-l{background:rgba(0,170,255,0.04);border-left:2px solid var(--blue);padding-left:6px}
+.log-ts{color:var(--muted);flex-shrink:0;font-size:10px;margin-top:1px}
+.log-text{color:var(--muted2);flex:1;word-break:break-all}
+.log-text .hl-red{color:var(--red);font-weight:700}
+.log-text .hl-orange{color:var(--orange);font-weight:700}
+.log-text .hl-yellow{color:var(--yellow)}
+.log-text .hl-green{color:var(--green)}
+.log-flag{font-size:9px;font-family:var(--mono);font-weight:700;padding:1px 5px;border-radius:3px;flex-shrink:0;margin-top:2px}
+.stream-empty{padding:24px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:12px}
+
+/* RIGHT — ALERT PANEL */
+.alert-panel{border-left:1px solid var(--border);overflow-y:auto;background:var(--s1);display:flex;flex-direction:column}
+.alert-counts{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid var(--border)}
+.ac-box{padding:8px 6px;text-align:center;border-right:1px solid var(--border)}
+.ac-box:last-child{border-right:none}
+.ac-num{font-family:var(--mono);font-size:20px;font-weight:700}
+.ac-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:2px}
+.alert-item{padding:10px 12px;border-bottom:1px solid var(--border);transition:background .1s;cursor:pointer}
+.alert-item:hover{background:var(--s2)}
+.alert-item.critical{border-left:3px solid var(--red)}
+.alert-item.high{border-left:3px solid var(--orange)}
+.alert-item.medium{border-left:3px solid var(--yellow)}
+.alert-item.low{border-left:3px solid var(--blue)}
+.ai-header{display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap}
+.ai-rule{font-size:11px;font-weight:700;color:var(--text);flex:1}
+.ai-time{font-size:10px;color:var(--muted);font-family:var(--mono);flex-shrink:0}
+.ai-detail{font-size:10px;color:var(--muted2);font-family:var(--mono);line-height:1.6;word-break:break-all}
+.ai-mitre{font-size:9px;font-family:var(--mono);padding:1px 6px;border-radius:3px;
+  background:var(--cyan-s);color:var(--cyan);border:1px solid var(--cyan-b);margin-top:4px;display:inline-block}
+.alert-empty{padding:20px 12px;font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;line-height:1.8}
+
+/* BOTTOM STATS */
+.bottom-stats{background:var(--s2);border-top:1px solid var(--border);padding:6px 20px;
+  display:flex;gap:20px;flex-wrap:wrap;flex-shrink:0}
+.bs-item{font-family:var(--mono);font-size:10px;color:var(--muted2);display:flex;gap:6px;align-items:center}
+.bs-val{color:var(--green);font-weight:700}
+
+/* DEMO LOG TICKER */
+.ticker-bar{background:rgba(0,255,136,0.04);border-top:1px solid var(--green-b);
+  padding:5px 20px;font-family:var(--mono);font-size:10px;color:rgba(0,255,136,0.5);
+  display:flex;gap:14px;flex-shrink:0}
+
+@media(max-width:900px){
+  .main{grid-template-columns:1fr;height:auto}
+  .rules-panel,.alert-panel{max-height:40vh}
+}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:2px}
+.ioc-group{margin-bottom:16px}
+.ioc-gh{display:flex;align-items:center;gap:8px;font-family:var(--mono,monospace);font-size:11px;color:var(--text,#e5e7eb);font-weight:700;letter-spacing:.5px;padding:6px 0;border-bottom:1px solid var(--border,rgba(255,255,255,.08));margin-bottom:4px}
+.ioc-gn{background:rgba(0,212,255,.15);color:var(--cyan,#00d4ff);border-radius:10px;padding:1px 8px;font-size:10px}
+.ioc-copy{margin-left:auto;background:transparent;border:1px solid var(--border2,rgba(255,255,255,.15));color:var(--muted2);border-radius:4px;font-size:9.5px;padding:2px 9px;cursor:pointer;font-family:var(--mono,monospace)}
+.ioc-copy:hover{color:var(--cyan,#00d4ff);border-color:var(--cyan,#00d4ff)}
+.ioc-row{display:flex;align-items:center;gap:9px;padding:4px 4px;font-family:var(--mono,monospace);font-size:11px;border-bottom:1px solid rgba(255,255,255,.04)}
+.ioc-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.ioc-val{flex:1;color:var(--text,#e5e7eb);word-break:break-all}
+.ioc-tag{font-size:8.5px;color:var(--red);border:1px solid rgba(255,77,77,.4);border-radius:3px;padding:0 4px;margin-left:4px}
+.ioc-cnt{color:var(--muted2);font-size:10px;flex:0 0 auto}
+.ioc-rule{color:var(--muted);font-size:9px;flex:0 0 auto;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ioc-modebar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border,rgba(255,255,255,.08))}
+.ioc-mode{background:transparent;border:1px solid var(--border2,rgba(255,255,255,.15));color:var(--muted2);border-radius:5px;font-size:10px;padding:4px 11px;cursor:pointer;font-family:var(--mono,monospace);letter-spacing:.4px}
+.ioc-mode.on{background:var(--cyan,#00d4ff);color:#04121a;border-color:var(--cyan,#00d4ff);font-weight:700}
+.ioc-mode:hover:not(.on){border-color:var(--cyan,#00d4ff);color:var(--cyan,#00d4ff)}
+.ioc-modehint{font-size:9px;color:var(--muted);font-family:var(--mono,monospace);flex:1;min-width:160px}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">🚨</div>
+    <div>
+      <div class="brand-name">Real-Time Intrusion Detection</div>
+      <div class="brand-sub">Ghost Defense · Tool 31 · MITRE ATT&CK Aligned</div>
+    </div>
+  </div>
+  <div class="tb-sep"></div>
+  <div class="status-bar">
+    <div class="status-item">
+      <span class="status-dot" id="engineDot" style="background:var(--muted)"></span>
+      <span id="engineStatus" style="color:var(--muted2)">IDLE</span>
+    </div>
+    <div class="status-item" style="color:var(--muted2)">
+      Lines: <span id="lineCount" style="color:var(--green)">0</span>
+    </div>
+    <div class="status-item" style="color:var(--muted2)">
+      Alerts: <span id="alertCountTop" style="color:var(--red)">0</span>
+    </div>
+    <button class="ctrl-btn btn-start" onclick="startLive()" title="Generates synthetic sample logs to demonstrate the detection engine. Not a live data source — load your own logs for real detection.">▶ SIMULATE STREAM</button>
+    <button class="ctrl-btn btn-stop"  onclick="stopLive()">■ STOP</button>
+    <button class="ctrl-btn btn-upload" onclick="document.getElementById('logFileIn').click()">📂 LOAD FILE</button>
+    <input type="file" id="logFileIn" style="display:none" accept=".log,.txt,.csv,.json" onchange="loadLogFile(this.files[0])">
+    <button class="ctrl-btn btn-clear"  onclick="clearAll()">✕ CLEAR</button>
+    <button class="ctrl-btn" style="background:var(--orange-s);color:var(--orange);border-color:var(--orange-b)" onclick="runDemo()">⚡ DEMO</button>
+    <button class="ctrl-btn" id="iocBtn" style="background:var(--cyan-s,rgba(0,212,255,.1));color:var(--cyan,#00d4ff);border-color:var(--cyan-b,rgba(0,212,255,.4))" onclick="showIOCs()">🎯 IOCs (0)</button>
+    <button class="ctrl-btn" style="background:var(--s2);color:var(--muted2);border-color:var(--border2)" onclick="exportAlerts()">📥 EXPORT</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT: RULES -->
+  <div class="rules-panel">
+    <div class="panel-title">
+      <span>Detection Rules</span>
+      <span id="activeRuleCount" style="color:var(--green)">0 active</span>
+    </div>
+    <div id="rulesList"></div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center-panel">
+    <div class="center-top">
+      <!-- Input area -->
+      <div class="log-input-area">
+        <div class="log-tabs">
+          <button class="ltab active" id="ltab-paste" onclick="switchInputTab('paste')">PASTE LOGS</button>
+          <button class="ltab" id="ltab-live"  onclick="switchInputTab('live')">SIMULATE</button>
+          <button class="ltab" id="ltab-file"  onclick="switchInputTab('file')">FILE WATCH</button>
+        </div>
+        <div id="inputPane-paste">
+          <textarea class="log-paste-area" id="logPaste"
+            placeholder="Paste log lines here — syslog, Windows Event Log, SSH, Apache, nginx, firewall, auditd…"></textarea>
+          <div class="log-paste-controls">
+            <button class="ctrl-btn btn-start" onclick="analyzePaste()">⚡ ANALYZE</button>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">or press Ctrl+Enter</span>
+          </div>
+        </div>
+        <div id="inputPane-live" style="display:none;padding:10px 14px;font-family:var(--mono);font-size:11px;color:var(--muted2);line-height:1.8">
+          <div style="margin-bottom:6px"><b style="color:var(--orange)">Simulation mode.</b> SIMULATE STREAM generates synthetic sample log lines to demonstrate how the detection rules fire. It does not connect to or pull from any real source.</div>
+          <div style="font-size:10px;color:var(--muted)">For real detection, use LOAD FILE or the PASTE tab with your own logs (syslog, auth.log, JSON, CSV). All processing is local — nothing leaves your browser.</div>
+        </div>
+        <div id="inputPane-file" style="display:none;padding:10px 14px;font-family:var(--mono);font-size:11px;color:var(--muted2);line-height:1.8">
+          <div style="margin-bottom:6px">Click LOAD FILE to upload a log file for analysis.</div>
+          <div style="font-size:10px;color:var(--muted)">Supports: .log .txt .csv .json — all processing is 100% local, no data leaves your browser.</div>
+        </div>
+      </div>
+
+      <!-- Simulated-data banner -->
+      <div id="simBanner" style="display:none;align-items:center;gap:10px;margin:0 0 8px;padding:9px 14px;border:1px solid var(--orange-b);background:var(--orange-s);border-radius:6px;font-family:var(--mono);font-size:11px;color:var(--orange);line-height:1.5">
+        <span style="font-size:15px">⚠</span>
+        <span><b>SIMULATED DATA</b> — these log lines are randomly generated to demonstrate the detection engine. This is <b>not</b> a live feed. For real detection, load your own logs (LOAD FILE) or paste them into the PASTE tab.</span>
+      </div>
+
+      <!-- Log stream -->
+      <div class="log-stream" id="logStream">
+        <div class="stream-empty">
+          Waiting for log data — load your own log file or paste logs for real detection · or SIMULATE STREAM for a demo<br>
+          <span style="font-size:10px;color:var(--muted)">All processing is 100% local · No data transmitted</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom stats -->
+    <div class="bottom-stats">
+      <div class="bs-item">Engine: <span class="bs-val" id="bsEngine">IDLE</span></div>
+      <div class="bs-item">Lines processed: <span class="bs-val" id="bsLines">0</span></div>
+      <div class="bs-item">Rules active: <span class="bs-val" id="bsRules">0</span></div>
+      <div class="bs-item">Events/sec: <span class="bs-val" id="bsEps">0</span></div>
+      <div class="bs-item">Last event: <span class="bs-val" id="bsLast">—</span></div>
+      <div class="bs-item" style="margin-left:auto">100% LOCAL · NO DATA TRANSMITTED</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: ALERTS -->
+  <div class="alert-panel">
+    <div class="panel-title">
+      <span>Live Alert Feed</span>
+      <span id="alertPanelCount" style="color:var(--red)">0 alerts</span>
+    </div>
+    <div class="alert-counts">
+      <div class="ac-box"><div class="ac-num" id="cntC" style="color:var(--red)">0</div><div class="ac-lbl">Critical</div></div>
+      <div class="ac-box"><div class="ac-num" id="cntH" style="color:var(--orange)">0</div><div class="ac-lbl">High</div></div>
+      <div class="ac-box"><div class="ac-num" id="cntM" style="color:var(--yellow)">0</div><div class="ac-lbl">Medium</div></div>
+      <div class="ac-box"><div class="ac-num" id="cntL" style="color:var(--blue)">0</div><div class="ac-lbl">Low</div></div>
+    </div>
+    <div id="alertFeed">
+      <div class="alert-empty">No alerts yet<br><span style="font-size:10px">Detections will appear here in real time</span></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+//  GHOST DEFENSE — REAL-TIME INTRUSION DETECTION ENGINE
+//  All rules based on publicly documented MITRE ATT&CK techniques
+//  and standard defensive log analysis patterns
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── DETECTION RULES ───────────────────────────────────────────────────────────
+var RULES = [
+  // ── Initial Access ──────────────────────────────────────────────────────────
+  { id:'brute_ssh',    sev:'critical', name:'SSH Brute Force',
+    mitre:'T1110.001', tactic:'Credential Access',
+    pattern:/failed password|authentication failure|invalid user/i,
+    description:'Multiple failed SSH authentication attempts detected',
+    threshold:3, window:60, hits:{} },
+
+  { id:'rdp_brute',    sev:'critical', name:'RDP Brute Force',
+    mitre:'T1110.001', tactic:'Credential Access',
+    pattern:/eventid.*4625|rdp.*failed|terminal.*server.*failed/i,
+    description:'Multiple failed RDP authentication attempts',
+    threshold:3, window:60, hits:{} },
+
+  { id:'pass_spray',   sev:'critical', name:'Password Spray',
+    mitre:'T1110.003', tactic:'Credential Access',
+    pattern:/multiple.*accounts.*failed|password.*spray|spraying/i,
+    description:'Password spray attack pattern detected across multiple accounts',
+    threshold:1, window:60, hits:{} },
+
+  // ── Execution ───────────────────────────────────────────────────────────────
+  { id:'powershell_enc', sev:'critical', name:'PowerShell Encoded Command',
+    mitre:'T1059.001', tactic:'Execution',
+    pattern:/powershell.*-enc|-encodedcommand|frombase64string.*powershell/i,
+    description:'Encoded PowerShell command — common malware/C2 delivery technique' },
+
+  { id:'cmd_exec',     sev:'high', name:'Suspicious CMD Execution',
+    mitre:'T1059.003', tactic:'Execution',
+    pattern:/cmd\.exe.*\/c.*net\s|cmd.*whoami|cmd.*ipconfig|cmd.*systeminfo/i,
+    description:'Suspicious command-line execution via cmd.exe' },
+
+  { id:'wscript',      sev:'high', name:'WScript/CScript Execution',
+    mitre:'T1059.005', tactic:'Execution',
+    pattern:/wscript\.exe|cscript\.exe|\.vbs|\.js.*wscript/i,
+    description:'Script interpreter execution — possible malware staging' },
+
+  { id:'mshta',        sev:'critical', name:'MSHTA LOLBin Abuse',
+    mitre:'T1218.005', tactic:'Defense Evasion',
+    pattern:/mshta\.exe|mshta.*http/i,
+    description:'MSHTA used to execute remote HTA — common malware delivery' },
+
+  // ── Persistence ─────────────────────────────────────────────────────────────
+  { id:'new_service',  sev:'high', name:'New Service Created',
+    mitre:'T1543.003', tactic:'Persistence',
+    pattern:/eventid.*7045|new service.*installed|sc.*create/i,
+    description:'New Windows service created — potential persistence mechanism' },
+
+  { id:'schtask',      sev:'high', name:'Scheduled Task Created',
+    mitre:'T1053.005', tactic:'Persistence',
+    pattern:/schtasks.*\/create|eventid.*4698|task.*registered/i,
+    description:'Scheduled task created — common persistence technique' },
+
+  { id:'registry_run', sev:'high', name:'Registry Run Key Modified',
+    mitre:'T1547.001', tactic:'Persistence',
+    pattern:/currentversion\\run|software.*microsoft.*windows.*run|reg.*add.*run/i,
+    description:'Registry run key modification — autorun persistence technique' },
+
+  { id:'startup_add',  sev:'medium', name:'Startup Folder Modified',
+    mitre:'T1547.001', tactic:'Persistence',
+    pattern:/startup.*\.lnk|appdata.*roaming.*microsoft.*windows.*start menu.*startup/i,
+    description:'File added to startup folder — persistence indicator' },
+
+  // ── Privilege Escalation ────────────────────────────────────────────────────
+  { id:'privesc',      sev:'critical', name:'Privilege Escalation Attempt',
+    mitre:'T1548', tactic:'Privilege Escalation',
+    pattern:/eventid.*4672|special.*privileges.*assigned|sudo.*failed|privilege.*escalat/i,
+    description:'Privilege escalation attempt or special privilege assignment detected' },
+
+  { id:'mimikatz',     sev:'critical', name:'Credential Dumping Tool',
+    mitre:'T1003.001', tactic:'Credential Access',
+    pattern:/mimikatz|sekurlsa|lsadump|wdigest|logonpasswords|hashdump|procdump.*lsass/i,
+    description:'Credential dumping tool signature detected — possible lateral movement prep' },
+
+  { id:'lsass_access', sev:'critical', name:'LSASS Memory Access',
+    mitre:'T1003.001', tactic:'Credential Access',
+    pattern:/lsass\.exe.*access|openprocess.*lsass|eventid.*10.*lsass/i,
+    description:'LSASS process access — credential theft attempt' },
+
+  // ── Defense Evasion ─────────────────────────────────────────────────────────
+  { id:'log_clear',    sev:'critical', name:'Event Log Cleared',
+    mitre:'T1070.001', tactic:'Defense Evasion',
+    pattern:/eventid.*1102|eventid.*104|audit.*log.*cleared|wevtutil.*cl/i,
+    description:'Windows event log cleared — active attacker covering tracks' },
+
+  { id:'av_disable',   sev:'critical', name:'AV/EDR Disabled',
+    mitre:'T1562.001', tactic:'Defense Evasion',
+    pattern:/windows defender.*disabled|real.?time.*protection.*disabled|av.*stop|antivirus.*disabled|tamper.*protection/i,
+    description:'Antivirus or endpoint protection disabled — active defense evasion' },
+
+  { id:'firewall_off', sev:'high', name:'Firewall Disabled',
+    mitre:'T1562.004', tactic:'Defense Evasion',
+    pattern:/netsh.*firewall.*off|firewall.*disabled|ufw.*disable|iptables.*flush/i,
+    description:'Host firewall disabled — common attacker technique post-compromise' },
+
+  // ── Lateral Movement ────────────────────────────────────────────────────────
+  { id:'psexec',       sev:'critical', name:'PsExec / Remote Execution',
+    mitre:'T1021.002', tactic:'Lateral Movement',
+    pattern:/psexec|\\\\.*\\admin\$|\\\\.*\\ipc\$.*create|eventid.*7045.*psexe/i,
+    description:'PsExec or SMB admin share remote execution detected' },
+
+  { id:'lateral_rdp',  sev:'high', name:'RDP Lateral Movement',
+    mitre:'T1021.001', tactic:'Lateral Movement',
+    pattern:/eventid.*4624.*logon.*type.*10|rdp.*new.*connection.*from.*internal/i,
+    description:'RDP connection from internal host — possible lateral movement' },
+
+  { id:'wmi_exec',     sev:'high', name:'WMI Remote Execution',
+    mitre:'T1047', tactic:'Lateral Movement',
+    pattern:/wmic.*\/node|winmgmt.*remote|wmiprvse.*spawned|eventid.*4688.*wmic/i,
+    description:'WMI remote execution — commonly used for lateral movement' },
+
+  // ── Collection & Exfiltration ───────────────────────────────────────────────
+  { id:'large_transfer', sev:'high', name:'Large Data Transfer',
+    mitre:'T1041', tactic:'Exfiltration',
+    pattern:/bytes.*sent.*[0-9]{7,}|transfer.*[0-9]{2,}mb|upload.*large|exfil/i,
+    description:'Unusually large data transfer detected — possible exfiltration' },
+
+  { id:'dns_exfil',    sev:'high', name:'Suspicious DNS Activity',
+    mitre:'T1048.003', tactic:'Exfiltration',
+    pattern:/dns.*query.*[a-z0-9]{30,}\.|nxdomain.*repeated|dns.*tunnel|txt.*record.*suspicious/i,
+    description:'Suspicious DNS query pattern — possible DNS tunneling/exfiltration' },
+
+  { id:'cloud_upload', sev:'medium', name:'Cloud Storage Upload',
+    mitre:'T1567.002', tactic:'Exfiltration',
+    pattern:/dropbox\.com|pastebin\.com|mega\.nz|wetransfer|file\.io.*upload/i,
+    description:'Connection to cloud storage service — possible data staging/exfiltration' },
+
+  // ── Command & Control ───────────────────────────────────────────────────────
+  { id:'c2_beacon',    sev:'critical', name:'C2 Beacon Pattern',
+    mitre:'T1071.001', tactic:'Command and Control',
+    pattern:/beacon|c2.*connect|cobalt.*strike|metasploit|meterpreter/i,
+    description:'Command and control beacon pattern or known C2 tool detected' },
+
+  { id:'tor_access',   sev:'high', name:'Tor Network Access',
+    mitre:'T1090.003', tactic:'Command and Control',
+    pattern:/\.onion|tor.*exit|torbrowser|orbot|tor2web/i,
+    description:'Tor network access detected — anonymization for C2 or exfiltration' },
+
+  { id:'susp_port',    sev:'high', name:'Suspicious Port Activity',
+    mitre:'T1571', tactic:'Command and Control',
+    pattern:/:4444\b|:1337\b|:31337\b|:8888\b|:9999\b|:6666\b|port.*4444|port.*1337/i,
+    description:'Connection on known malicious/suspicious port detected' },
+
+  // ── Impact ──────────────────────────────────────────────────────────────────
+  { id:'ransomware',   sev:'critical', name:'Ransomware Indicator',
+    mitre:'T1486', tactic:'Impact',
+    pattern:/\.encrypted|\.locked|ransom|your files.*encrypted|vssadmin.*delete.*shadows|bcdedit.*recoveryenabled.*no/i,
+    description:'Ransomware execution indicator — immediate response required' },
+
+  { id:'shadow_delete',sev:'critical', name:'Shadow Copy Deletion',
+    mitre:'T1490', tactic:'Impact',
+    pattern:/vssadmin.*delete|wmic.*shadowcopy.*delete|bcdedit.*no|wbadmin.*delete/i,
+    description:'Volume shadow copies deleted — ransomware pre-encryption step' },
+
+  { id:'disk_wipe',    sev:'critical', name:'Disk Wipe / Destruction',
+    mitre:'T1561', tactic:'Impact',
+    pattern:/format.*\/q|diskpart.*clean|dd.*\/dev\/sd|shred.*-z/i,
+    description:'Disk wipe or data destruction command detected' },
+
+  // ── Web Attacks ─────────────────────────────────────────────────────────────
+  { id:'sqli',         sev:'high', name:'SQL Injection Attempt',
+    mitre:'T1190', tactic:'Initial Access',
+    pattern:/union.*select|or.*1=1|' or '|--.*sql|drop.*table|insert.*into.*values|xp_cmdshell/i,
+    description:'SQL injection attack pattern in web logs' },
+
+  { id:'webshell',     sev:'critical', name:'Web Shell Access',
+    mitre:'T1505.003', tactic:'Persistence',
+    pattern:/cmd=|shell\.php|c99\.php|r57\.php|webshell|eval.*base64|passthru.*_GET/i,
+    description:'Web shell access pattern detected — server compromised' },
+
+  { id:'path_traversal',sev:'high', name:'Path Traversal Attempt',
+    mitre:'T1190', tactic:'Initial Access',
+    pattern:/\.\.\/|%2e%2e|%252e%252e/i,
+    description:'Directory traversal attempt in web request' },
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+var engineRunning = false;
+var liveTimer     = null;
+var totalLines    = 0;
+var alerts        = [];
+var alertCounts   = { critical:0, high:0, medium:0, low:0 };
+var ruleHits      = {};
+var lastSecLines  = 0;
+var epsTimer      = null;
+
+RULES.forEach(function(r){ ruleHits[r.id] = 0; });
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+function init() {
+  renderRules();
+  updateStats();
+  document.getElementById('logPaste').addEventListener('keydown', function(e){
+    if (e.ctrlKey && e.key === 'Enter') analyzePaste();
+  });
+}
+
+// ── RULES PANEL ───────────────────────────────────────────────────────────────
+function renderRules() {
+  var active = RULES.filter(function(r){ return !r.disabled; }).length;
+  document.getElementById('activeRuleCount').textContent = active + ' active';
+  document.getElementById('bsRules').textContent = active;
+
+  document.getElementById('rulesList').innerHTML = RULES.map(function(r) {
+    var hits = ruleHits[r.id] || 0;
+    var sevCls = { critical:'sev-c', high:'sev-h', medium:'sev-m', low:'sev-l' }[r.sev] || 'sev-l';
+    return '<div class="rule-item">'
+      + '<div class="rule-toggle '+(r.disabled?'off':'on')+'" onclick="toggleRule(\''+r.id+'\')">'+(r.disabled?'✕':'✓')+'</div>'
+      + '<div style="flex:1;min-width:0">'
+        + '<div class="rule-name" style="color:'+(r.disabled?'var(--muted)':'var(--muted2)')+'">'+esc(r.name)+'</div>'
+        + '<div style="font-size:9px;font-family:var(--mono);color:var(--muted);margin-top:1px">'+esc(r.mitre)+'</div>'
+      + '</div>'
+      + '<span class="rule-sev '+sevCls+'">'+r.sev.substring(0,1).toUpperCase()+'</span>'
+      + '<span class="rule-count">'+(hits>0?'<span style="color:var(--orange)">'+hits+'</span>':'0')+'</span>'
+    + '</div>';
+  }).join('');
+}
+
+function toggleRule(id) {
+  var rule = RULES.find(function(r){ return r.id === id; });
+  if (rule) { rule.disabled = !rule.disabled; renderRules(); }
+}
+
+// ── INPUT TABS ────────────────────────────────────────────────────────────────
+function switchInputTab(tab) {
+  ['paste','live','file'].forEach(function(t) {
+    document.getElementById('ltab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('inputPane-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+}
+
+// ── ANALYZE PASTED LOGS ───────────────────────────────────────────────────────
+function analyzePaste() {
+  var text = document.getElementById('logPaste').value.trim();
+  if (!text) return;
+  setEngineState('analyzing');
+  var lines = text.split('\n').filter(function(l){ return l.trim(); });
+  document.getElementById('logStream').innerHTML = '';
+  lines.forEach(function(line) { processLine(line, new Date()); });
+  setEngineState('done');
+  document.getElementById('logPaste').value = '';
+}
+
+function loadLogFile(file) {
+  if (!file) return;
+  setEngineState('loading');
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var lines = e.target.result.split('\n').filter(function(l){ return l.trim(); });
+    document.getElementById('logStream').innerHTML = '';
+    lines.forEach(function(line) { processLine(line, new Date()); });
+    setEngineState('done');
+  };
+  reader.readAsText(file);
+}
+
+// ── LIVE MODE ─────────────────────────────────────────────────────────────────
+function startLive() {
+  if (engineRunning) return;
+  engineRunning = true;
+  setEngineState('sim');
+  showSimBanner(true);
+  document.getElementById('logStream').innerHTML = '';
+  liveTimer = setInterval(generateLiveLine, 800);
+  epsTimer  = setInterval(updateEPS, 1000);
+}
+function showSimBanner(on){
+  var b = document.getElementById('simBanner');
+  if(b) b.style.display = on ? 'flex' : 'none';
+}
+
+function stopLive() {
+  engineRunning = false;
+  if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+  if (epsTimer)  { clearInterval(epsTimer);  epsTimer  = null; }
+  showSimBanner(false);
+  setEngineState('idle');
+}
+
+function updateEPS() {
+  document.getElementById('bsEps').textContent = lastSecLines;
+  lastSecLines = 0;
+}
+
+// ── LIVE LOG GENERATOR — realistic benign + malicious mix ─────────────────────
+var LIVE_TEMPLATES = [
+  // Benign — majority
+  function(){ return syslogLine('sshd[' +pid()+']: Accepted publickey for admin from '+ip()+' port '+Math.floor(Math.random()*50000+1024)+' ssh2'); },
+  function(){ return syslogLine('nginx: '+ip()+' - - ['+httpDate()+'] "GET /api/health HTTP/1.1" 200 128'); },
+  function(){ return syslogLine('kernel: audit: type=1400 avc: allowed { read } pid='+pid()); },
+  function(){ return syslogLine('systemd[1]: Started Session '+pid()+' of user webserver.'); },
+  function(){ return syslogLine('cron['+pid()+']: (root) CMD (/usr/bin/rsync -a /var/log /backup/logs)'); },
+  function(){ return syslogLine('firewalld: ACCEPT UDP '+ip()+':53 -> '+ip()+':40'+Math.floor(Math.random()*900+100)); },
+  function(){ return syslogLine('su['+pid()+']: Successful su for user by root'); },
+  function(){ return syslogLine('nginx: '+ip()+' - - ['+httpDate()+'] "POST /api/v2/login HTTP/1.1" 200 512'); },
+  function(){ return syslogLine('sudo['+pid()+']: admin : TTY=pts/0 ; CMD=/usr/bin/systemctl status nginx'); },
+  function(){ return syslogLine('sshd['+pid()+']: Received disconnect from '+ip()+' port '+Math.floor(Math.random()*50000+1024)); },
+  // Malicious — injected occasionally
+  function(){ return syslogLine('sshd['+pid()+']: Failed password for invalid user root from '+ip()+' port 22 ssh2'); },
+  function(){ return syslogLine('sshd['+pid()+']: Failed password for admin from 185.220.101.'+Math.floor(Math.random()*254)+' port 22 ssh2'); },
+  function(){ return syslogLine('kernel: audit: cmd="powershell -EncodedCommand JABjAGwAaQBlAG4AdA"'); },
+  function(){ return syslogLine('WinEvtLog: Security: AUDIT_FAILURE: EventID 4625: Account logon failed: '+ip()); },
+  function(){ return syslogLine('WinEvtLog: System: INFORMATION: EventID 7045: New Service: DisplayName=WindowsUpdate2 BinaryPath=C:\\Users\\Public\\svch0st.exe'); },
+  function(){ return syslogLine('nginx: '+ip()+' - - ['+httpDate()+'] "GET /shell.php?cmd=whoami HTTP/1.1" 200 42'); },
+  function(){ return syslogLine('nginx: '+ip()+' - - ['+httpDate()+'] "GET /../../../etc/passwd HTTP/1.1" 400 0'); },
+  function(){ return syslogLine('kernel: audit: cmd="vssadmin delete shadows /all /quiet"'); },
+  function(){ return syslogLine('sysmon: ProcessCreate: mimikatz.exe "sekurlsa::logonpasswords"'); },
+  function(){ return syslogLine('firewall: BLOCK TCP '+ip()+':'+Math.floor(Math.random()*1000+1024)+' -> '+ip()+':4444'); },
+  function(){ return syslogLine('WinEvtLog: Security: AUDIT_SUCCESS: EventID 4698: Scheduled task created: Task: \\Microsoft\\Windows\\Updater\\svchost32'); },
+  function(){ return syslogLine('nginx: '+ip()+' - - ['+httpDate()+'] "GET /wp-admin/admin-ajax.php?action=upload&cmd=id HTTP/1.1" 200 18'); },
+  function(){ return syslogLine('sysmon: NetworkConnect: PID='+pid()+' Image=powershell.exe DestinationIP=185.220.'+Math.floor(Math.random()*254)+'.'+Math.floor(Math.random()*254)+' DestinationPort=443'); },
+  function(){ return syslogLine('kernel: audit: cmd="netsh advfirewall set allprofiles state off"'); },
+  function(){ return syslogLine('syslog: wscript.exe executed: C:\\Temp\\update.vbs'); },
+];
+
+function generateLiveLine() {
+  // 75% benign, 25% malicious
+  var idx = Math.random() < 0.75
+    ? Math.floor(Math.random() * 10)         // first 10 are benign
+    : Math.floor(Math.random() * 15) + 10;  // rest are malicious
+  idx = Math.min(idx, LIVE_TEMPLATES.length - 1);
+  var line = LIVE_TEMPLATES[idx]();
+  processLine(line, new Date());
+  lastSecLines++;
+}
+
+function syslogLine(msg) {
+  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var d = new Date();
+  return months[d.getMonth()]+' '+String(d.getDate()).padStart(2,' ')+' '+
+    String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0')+
+    ' hostname ' + msg;
+}
+function httpDate(){ var d=new Date(); return d.toLocaleDateString('en-GB')+':'+d.toTimeString().split(' ')[0]+' +0000'; }
+function pid(){ return Math.floor(Math.random()*60000+1000); }
+function ip(){ return Math.floor(Math.random()*254+1)+'.'+Math.floor(Math.random()*254+1)+'.'+Math.floor(Math.random()*254+1)+'.'+Math.floor(Math.random()*254+1); }
+
+// ── CORE DETECTION ENGINE ─────────────────────────────────────────────────────
+function processLine(rawLine, timestamp) {
+  if (!rawLine || !rawLine.trim()) return;
+  totalLines++;
+  lastSecLines++;
+
+  var matches = [];
+  RULES.forEach(function(rule) {
+    if (rule.disabled) return;
+    try {
+      var re = typeof rule.pattern === 'string' ? new RegExp(rule.pattern, 'i') : rule.pattern;
+      if (re.test(rawLine)) {
+        matches.push(rule);
+        ruleHits[rule.id] = (ruleHits[rule.id] || 0) + 1;
+      }
+    } catch(e) {}
+  });
+
+  var topSev = null;
+  if (matches.length) {
+    var sevOrder = ['critical','high','medium','low'];
+    matches.forEach(function(m) {
+      if (!topSev || sevOrder.indexOf(m.sev) < sevOrder.indexOf(topSev)) topSev = m.sev;
+    });
+    matches.forEach(function(rule) {
+      fireAlert(rule, rawLine, timestamp);
+    });
+  }
+
+  harvestAll(rawLine);
+  appendLogLine(rawLine, timestamp, matches, topSev);
+  updateStats();
+  if (matches.length) renderRules();
+  document.getElementById('bsLast').textContent = timestamp.toTimeString().split(' ')[0];
+}
+
+function appendLogLine(raw, ts, matches, sev) {
+  var stream = document.getElementById('logStream');
+
+  // Remove empty state
+  var empty = stream.querySelector('.stream-empty');
+  if (empty) empty.remove();
+
+  var div = document.createElement('div');
+  var sevClass = sev ? 'flagged-' + sev.charAt(0) : '';
+  div.className = 'log-line ' + sevClass;
+
+  var timeStr = ts.toTimeString().split(' ')[0];
+  var highlighted = esc(raw);
+
+  // Highlight key patterns
+  if (sev === 'critical') highlighted = highlighted.replace(/(&gt;|&lt;|[^a-z])(failed|error|attack|shell|mimikatz|ransom|vssadmin|4444|delete.*shadow|lsass|webshell|4625|7045|4698)/gi,
+    function(m){ return '<span class="hl-red">'+m+'</span>'; });
+  else if (sev === 'high') highlighted = highlighted.replace(/(failed|error|warning|blocked|denied|drop)/gi,
+    function(m){ return '<span class="hl-orange">'+m+'</span>'; });
+
+  var flagHtml = matches.length
+    ? matches.map(function(m){
+        var col = {critical:'var(--red)',high:'var(--orange)',medium:'var(--yellow)',low:'var(--blue)'}[m.sev];
+        return '<span class="log-flag" style="background:'+col+'18;color:'+col+';border:1px solid '+col+'44">'+esc(m.name)+'</span>';
+      }).join(' ')
+    : '';
+
+  div.innerHTML = '<span class="log-ts">'+timeStr+'</span>'
+    + '<span class="log-text">'+highlighted+'</span>'
+    + (flagHtml ? '<span style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">'+flagHtml+'</span>' : '');
+
+  stream.appendChild(div);
+
+  // Auto-scroll — keep last 500 lines
+  var lines = stream.querySelectorAll('.log-line');
+  if (lines.length > 500) lines[0].remove();
+  stream.scrollTop = stream.scrollHeight;
+}
+
+// ── IOC EXTRACTION (from flagged activity) ────────────────────────────────────
+var IOCS = {};      // flagged-line IOCs (tied to detections)
+var IOCS_ALL = {};  // every-line IOCs (wider net)
+var iocMode = 'flagged';  // 'flagged' | 'all' 
+var IOC_TYPES = [
+  {k:'ip',    label:'IP ADDRESSES', icon:'\u25C9'},
+  {k:'domain',label:'DOMAINS',      icon:'\u25C8'},
+  {k:'url',   label:'URLs',         icon:'\u2197'},
+  {k:'hash',  label:'FILE HASHES',  icon:'\u0023'},
+  {k:'user',  label:'ACCOUNTS',     icon:'\u25CB'},
+  {k:'proc',  label:'FILES / PROCESSES', icon:'\u25B8'}
+];
+var FILE_EXT = {exe:1,dll:1,ps1:1,bat:1,cmd:1,sh:1,scr:1,vbs:1,js:1,jar:1,py:1,hta:1,log:1,txt:1,csv:1,json:1,xml:1,dat:1,tmp:1,conf:1,cfg:1,ini:1,msi:1,zip:1,rar:1};
+function sevRank(s){ return {critical:4,high:3,medium:2,low:1,observed:0}[s]||0; }
+function isPrivateIP(ip){ return /^(10\.|127\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip); }
+function extractIOCs(line){
+  var o={ip:[],domain:[],url:[],hash:[],user:[],proc:[]};
+  (line.match(/\b\d{1,3}(?:\.\d{1,3}){3}\b/g)||[]).forEach(function(ip){ if(ip.split('.').every(function(x){return +x<=255;})) o.ip.push(ip); });
+  (line.match(/\b[a-fA-F0-9]{64}\b/g)||[]).forEach(function(h){o.hash.push(h.toLowerCase());});
+  (line.match(/\b[a-fA-F0-9]{40}\b/g)||[]).forEach(function(h){o.hash.push(h.toLowerCase());});
+  (line.match(/\b[a-fA-F0-9]{32}\b/g)||[]).forEach(function(h){o.hash.push(h.toLowerCase());});
+  (line.match(/\bhttps?:\/\/[^\s"'<>\)\]]+/gi)||[]).forEach(function(u){o.url.push(u);});
+  (line.match(/\b[\w.-]+\.(?:exe|dll|ps1|bat|cmd|sh|scr|vbs|js|jar|py|hta|msi)\b/gi)||[]).forEach(function(x){o.proc.push(x.toLowerCase());});
+  (line.match(/\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,24}\b/g)||[]).forEach(function(d){
+    if(/^\d+\.\d+\.\d+\.\d+$/.test(d)) return;
+    var tld=d.split('.').pop().toLowerCase(); if(FILE_EXT[tld]) return;   // it's a filename, not a domain
+    o.domain.push(d.toLowerCase());
+  });
+  [/for (?:invalid user )?([A-Za-z0-9_.\-\\$]{1,63}) from/i, /user[=:\s"']+([A-Za-z0-9_.\-\\$]{1,63})/i, /Account Name:\s*([A-Za-z0-9_.\-\\$]{1,63})/i]
+    .forEach(function(re){ var m=re.exec(line); if(m&&m[1]&&!/^\d+$/.test(m[1])) o.user.push(m[1]); });
+  return o;
+}
+function addIOCTo(store,type,value,sev,ruleName){
+  store[type]=store[type]||{};
+  var r=store[type][value]||(store[type][value]={count:0,sev:sev||'observed',rules:{}});
+  r.count++; if(sevRank(sev)>sevRank(r.sev)) r.sev=sev; if(ruleName) r.rules[ruleName]=1;
+}
+function harvestIOCs(rawLine, sev, ruleName){   // flagged lines
+  var e=extractIOCs(rawLine);
+  Object.keys(e).forEach(function(t){ e[t].forEach(function(v){ addIOCTo(IOCS,t,v,sev,ruleName); }); });
+  updateIOCButton();
+}
+function harvestAll(rawLine){                    // every line (wider net)
+  var e=extractIOCs(rawLine);
+  Object.keys(e).forEach(function(t){ e[t].forEach(function(v){ addIOCTo(IOCS_ALL,t,v,'observed',null); }); });
+}
+// merged view for 'all' mode: all-line counts, flagged severity/rules overlaid (no double count)
+function currentIOCs(){
+  if(iocMode==='flagged') return IOCS;
+  var merged={};
+  Object.keys(IOCS_ALL).forEach(function(t){ merged[t]={}; Object.keys(IOCS_ALL[t]).forEach(function(v){
+    var a=IOCS_ALL[t][v]; merged[t][v]={count:a.count, sev:a.sev, rules:{}};
+    var f=IOCS[t]&&IOCS[t][v];
+    if(f){ if(sevRank(f.sev)>sevRank(merged[t][v].sev)) merged[t][v].sev=f.sev; Object.keys(f.rules).forEach(function(r){merged[t][v].rules[r]=1;}); }
+  }); });
+  return merged;
+}
+function iocTotal(){ var src=currentIOCs(),n=0; Object.keys(src).forEach(function(t){ n+=Object.keys(src[t]).length; }); return n; }
+function updateIOCButton(){ var b=document.getElementById('iocBtn'); if(b) b.innerHTML='\uD83C\uDFAF IOCs ('+iocTotal()+')'; }
+function setIocMode(m){ iocMode=m; updateIOCButton(); showIOCs(); }
+
+function showIOCs(){
+  var SRC=currentIOCs();
+  var total=iocTotal();
+  var body=document.getElementById('iocBody');
+  var toggle='<div class="ioc-modebar">'
+    +'<button class="ioc-mode'+(iocMode==='flagged'?' on':'')+'" onclick="setIocMode(\'flagged\')">FROM DETECTIONS</button>'
+    +'<button class="ioc-mode'+(iocMode==='all'?' on':'')+'" onclick="setIocMode(\'all\')">ALL LOGS \u00b7 WIDER NET</button>'
+    +'<span class="ioc-modehint">'+(iocMode==='flagged'?'high-signal \u2014 only indicators from lines that fired a rule':'wider net \u2014 every indicator seen in the logs; grey = observed, not flagged')+'</span>'
+    +'</div>';
+  if(!total){ body.innerHTML=toggle+'<div style="padding:26px;text-align:center;color:var(--muted2)">No IOCs '+(iocMode==='all'?'seen in the logs yet.':'from detections yet.')+'<br><span style="font-size:10px;color:var(--muted)">Load logs and run analysis.</span></div>'; document.getElementById('iocModal').style.display='flex'; return; }
+  body.innerHTML = toggle + IOC_TYPES.map(function(t){
+      var m=SRC[t.k]||{}; var keys=Object.keys(m); if(!keys.length) return '';
+      keys.sort(function(a,b){ return sevRank(m[b].sev)-sevRank(m[a].sev) || m[b].count-m[a].count; });
+      var rows=keys.map(function(v){
+        var r=m[v]; var col={critical:'var(--red)',high:'var(--orange)',medium:'var(--yellow)',low:'var(--muted2)',observed:'var(--muted)'}[r.sev];
+        var rules=Object.keys(r.rules).slice(0,2).join(', ');
+        return '<div class="ioc-row">'
+          +'<span class="ioc-dot" style="background:'+col+'"></span>'
+          +'<span class="ioc-val">'+esc(v)+(t.k==='ip'&&!isPrivateIP(v)?' <span class="ioc-tag">external</span>':'')+(t.k==='ip'&&isPrivateIP(v)?' <span class="ioc-tag" style="opacity:.6">internal</span>':'')+'</span>'
+          +'<span class="ioc-cnt">\u00d7'+r.count+'</span>'
+          +'<span class="ioc-rule">'+esc(rules)+'</span>'
+        +'</div>';
+      }).join('');
+      return '<div class="ioc-group"><div class="ioc-gh">'+t.icon+' '+t.label+' <span class="ioc-gn">'+keys.length+'</span>'
+        +'<button class="ioc-copy" onclick="copyIOCType(\''+t.k+'\')">copy</button></div>'+rows+'</div>';
+    }).join('');
+  document.getElementById('iocModal').style.display='flex';
+}
+function closeIOCs(){ document.getElementById('iocModal').style.display='none'; }
+function copyIOCType(t){
+  var m=currentIOCs()[t]||{}; var txt=Object.keys(m).join('\n');
+  navigator.clipboard&&navigator.clipboard.writeText(txt);
+  var b=event.target; var o=b.textContent; b.textContent='copied'; setTimeout(function(){b.textContent=o;},1200);
+}
+function exportIOCs(){
+  if(!iocTotal()){ alert('No IOCs to export yet.'); return; }
+  var rows=[['type','indicator','severity','count','rules'].join(',')];
+  var SRC=currentIOCs();
+  IOC_TYPES.forEach(function(t){ var m=SRC[t.k]||{}; Object.keys(m).forEach(function(v){ var r=m[v];
+    rows.push(['"'+t.k+'"','"'+v.replace(/"/g,"'")+'"','"'+r.sev+'"',r.count,'"'+Object.keys(r.rules).join('; ')+'"'].join(',')); }); });
+  var blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='iocs-'+new Date().toISOString().split('T')[0]+'.csv'; a.click();
+}
+
+function fireAlert(rule, rawLine, timestamp) {
+  alertCounts[rule.sev] = (alertCounts[rule.sev] || 0) + 1;
+  harvestIOCs(rawLine, rule.sev, rule.name);
+
+  var alert = {
+    id:        Date.now() + Math.random(),
+    rule:      rule.name,
+    sev:       rule.sev,
+    mitre:     rule.mitre,
+    tactic:    rule.tactic,
+    detail:    rule.description,
+    rawLine:   rawLine.substring(0, 200),
+    timestamp: timestamp,
+  };
+  alerts.unshift(alert);
+  if (alerts.length > 200) alerts.pop();
+
+  prependAlertItem(alert);
+  flashTopbar(rule.sev);
+  updateAlertCounts();
+}
+
+function prependAlertItem(a) {
+  var feed = document.getElementById('alertFeed');
+  var empty = feed.querySelector('.alert-empty');
+  if (empty) empty.remove();
+
+  var sevColor = { critical:'var(--red)', high:'var(--orange)', medium:'var(--yellow)', low:'var(--blue)' }[a.sev];
+  var timeStr  = a.timestamp.toTimeString().split(' ')[0];
+
+  var div = document.createElement('div');
+  div.className = 'alert-item ' + a.sev;
+  div.innerHTML = '<div class="ai-header">'
+    + '<span class="rule-sev sev-'+a.sev.charAt(0)+'" style="flex-shrink:0">'+a.sev.toUpperCase()+'</span>'
+    + '<span class="ai-rule">'+esc(a.rule)+'</span>'
+    + '<span class="ai-time">'+timeStr+'</span>'
+    + '</div>'
+    + '<div class="ai-detail">'+esc(a.detail)+'</div>'
+    + '<div class="ai-detail" style="color:var(--muted);margin-top:3px;font-size:9px">'+esc(a.rawLine.substring(0,100))+'…</div>'
+    + '<div><span class="ai-mitre">'+esc(a.mitre)+'</span>'
+    + '<span style="font-size:9px;font-family:var(--mono);color:var(--muted);margin-left:6px">'+esc(a.tactic)+'</span></div>';
+
+  // Click to show full line
+  div.onclick = function() {
+    var detail = div.querySelector('.full-raw');
+    if (detail) { detail.remove(); return; }
+    var el = document.createElement('div');
+    el.className = 'full-raw';
+    el.style.cssText = 'font-family:var(--mono);font-size:10px;color:var(--muted2);margin-top:6px;padding:6px 8px;background:var(--bg);border-radius:4px;word-break:break-all;line-height:1.6';
+    el.textContent = a.rawLine;
+    div.appendChild(el);
+  };
+
+  // Insert at top
+  feed.insertBefore(div, feed.firstChild);
+
+  // Limit display to 100
+  var items = feed.querySelectorAll('.alert-item');
+  if (items.length > 100) items[items.length - 1].remove();
+}
+
+function flashTopbar(sev) {
+  var dot = document.getElementById('engineDot');
+  dot.className = 'status-dot dot-alert';
+  setTimeout(function(){
+    if (engineRunning) dot.className = 'status-dot dot-live';
+    else dot.className = 'status-dot dot-idle';
+  }, 600);
+}
+
+function updateAlertCounts() {
+  var total = alerts.length;
+  document.getElementById('alertCountTop').textContent = total;
+  document.getElementById('alertPanelCount').textContent = total + ' alert' + (total !== 1 ? 's' : '');
+  document.getElementById('cntC').textContent = alertCounts.critical || 0;
+  document.getElementById('cntH').textContent = alertCounts.high || 0;
+  document.getElementById('cntM').textContent = alertCounts.medium || 0;
+  document.getElementById('cntL').textContent = alertCounts.low || 0;
+}
+
+function updateStats() {
+  document.getElementById('lineCount').textContent = totalLines;
+  document.getElementById('bsLines').textContent   = totalLines;
+}
+
+function setEngineState(state) {
+  var dot = document.getElementById('engineDot');
+  var txt = document.getElementById('engineStatus');
+  var bs  = document.getElementById('bsEngine');
+  var states = {
+    live:      { cls:'dot-live',  color:'var(--green)',  label:'LIVE' },
+    sim:       { cls:'dot-live',  color:'var(--orange)', label:'SIMULATION' },
+    analyzing: { cls:'dot-live',  color:'var(--yellow)', label:'ANALYZING YOUR DATA' },
+    loading:   { cls:'dot-live',  color:'var(--blue)',   label:'LOADING' },
+    done:      { cls:'dot-idle',  color:'var(--cyan)',   label:'COMPLETE' },
+    idle:      { cls:'dot-idle',  color:'var(--muted2)', label:'IDLE' },
+  };
+  var s = states[state] || states.idle;
+  dot.className = 'status-dot ' + s.cls;
+  txt.textContent = s.label; txt.style.color = s.color;
+  bs.textContent  = s.label;
+}
+
+// ── CLEAR ─────────────────────────────────────────────────────────────────────
+function clearAll() {
+  stopLive();
+  totalLines = 0; alerts = []; alertCounts = {critical:0,high:0,medium:0,low:0}; IOCS = {}; IOCS_ALL = {}; updateIOCButton();
+  RULES.forEach(function(r){ ruleHits[r.id] = 0; });
+  document.getElementById('logStream').innerHTML = '<div class="stream-empty">Cleared — ready for new session</div>';
+  document.getElementById('alertFeed').innerHTML = '<div class="alert-empty">No alerts yet</div>';
+  updateStats(); updateAlertCounts(); renderRules();
+  setEngineState('idle');
+}
+
+// ── DEMO MODE ─────────────────────────────────────────────────────────────────
+function runDemo() {
+  clearAll();
+  setEngineState('analyzing');
+  var DEMO_LOGS = [
+    'Jan 13 08:12:01 webserver sshd[2341]: Accepted publickey for deploy from 10.0.1.5 port 52341 ssh2',
+    'Jan 13 08:12:15 webserver nginx: 203.0.113.45 - - [13/Jan/2026:08:12:15 +0000] "GET /api/status HTTP/1.1" 200 42',
+    'Jan 13 08:13:02 webserver sshd[2398]: Failed password for invalid user root from 185.220.101.45 port 22 ssh2',
+    'Jan 13 08:13:03 webserver sshd[2399]: Failed password for invalid user admin from 185.220.101.45 port 22 ssh2',
+    'Jan 13 08:13:04 webserver sshd[2400]: Failed password for root from 185.220.101.45 port 22 ssh2',
+    'Jan 13 08:13:22 webserver nginx: 185.220.101.45 - - [13/Jan/2026:08:13:22 +0000] "GET /shell.php?cmd=whoami HTTP/1.1" 200 12',
+    'Jan 13 08:13:45 webserver nginx: 185.220.101.45 - - [13/Jan/2026:08:13:45 +0000] "GET /wp-admin/../../etc/passwd HTTP/1.1" 400 0',
+    'Jan 13 08:14:10 DESKTOP-CORP WinEvtLog: Security: EventID 4625 Logon Failure Account: Administrator Source: 192.168.1.200',
+    'Jan 13 08:14:33 DESKTOP-CORP WinEvtLog: System: EventID 7045 New Service Name: WindowsUpdater BinaryPath: C:\\Users\\Public\\svch0st.exe',
+    'Jan 13 08:14:45 DESKTOP-CORP kernel: audit: cmd="powershell -EncodedCommand SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQA"',
+    'Jan 13 08:15:02 DESKTOP-CORP sysmon: ProcessCreate Image: C:\\Temp\\mimikatz.exe CommandLine: sekurlsa::logonpasswords',
+    'Jan 13 08:15:14 DESKTOP-CORP kernel: audit: cmd="vssadmin delete shadows /all /quiet"',
+    'Jan 13 08:15:20 DESKTOP-CORP firewall: BLOCK TCP 192.168.1.200:51234 -> 91.92.254.14:4444',
+    'Jan 13 08:15:33 DESKTOP-CORP WinEvtLog: Security: EventID 1102 Audit Log Cleared by DOMAIN\\attacker',
+    'Jan 13 08:15:44 DESKTOP-CORP kernel: audit: cmd="netsh advfirewall set allprofiles state off"',
+    'Jan 13 08:16:01 DESKTOP-CORP WinEvtLog: Security: EventID 4698 Scheduled Task Created: \\Microsoft\\Windows\\svchost32 Path: C:\\ProgramData\\malware.exe',
+    'Jan 13 08:16:15 DESKTOP-CORP sysmon: NetworkConnect PID=4892 Image=powershell.exe DestinationIP=185.220.101.45 DestinationPort=443',
+    'Jan 13 08:16:30 DESKTOP-CORP syslog: YOUR FILES ARE ENCRYPTED. ransom note created at C:\\Users\\Public\\HOW_TO_DECRYPT.txt',
+    'Jan 13 08:16:45 webserver nginx: 10.0.1.99 - - [13/Jan/2026:08:16:45 +0000] "GET /api/v1/export?format=csv HTTP/1.1" 200 15728640',
+    'Jan 13 08:17:00 webserver dns: query from 10.0.1.99 type TXT c2exfiltrationdatachunkabcdefghijklmnopqrstuvwxyz.evil.com',
+  ];
+
+  var delay = 0;
+  DEMO_LOGS.forEach(function(line) {
+    setTimeout(function() { processLine(line, new Date()); }, delay);
+    delay += 180;
+  });
+  setTimeout(function(){ setEngineState('done'); }, delay + 200);
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+function exportAlerts() {
+  if (!alerts.length) { alert('No alerts to export yet.'); return; }
+  var rows = [['Timestamp','Severity','Rule','MITRE Technique','Tactic','Description','Raw Log'].join(',')];
+  alerts.forEach(function(a) {
+    rows.push([
+      '"'+a.timestamp.toISOString()+'"',
+      '"'+a.sev+'"',
+      '"'+a.rule+'"',
+      '"'+a.mitre+'"',
+      '"'+a.tactic+'"',
+      '"'+a.detail+'"',
+      '"'+(a.rawLine||'').replace(/"/g,"'")+'"',
+    ].join(','));
+  });
+  var blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  var el = document.createElement('a'); el.href = URL.createObjectURL(blob);
+  el.download = 'intrusion-alerts-'+new Date().toISOString().split('T')[0]+'.csv';
+  el.click();
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── BOOT ─────────────────────────────────────────────────────────────────────
+init();
+</script>
+<div id="iocModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#0b1220;border:1px solid var(--cyan,#00d4ff);border-radius:10px;max-width:760px;width:100%;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.6)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border,rgba(255,255,255,.08))">
+      <div style="font-family:var(--mono,monospace);font-weight:700;color:var(--cyan,#00d4ff);letter-spacing:1px">🎯 EXTRACTED IOCs <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:0">from flagged activity</span></div>
+      <div>
+        <button class="ctrl-btn" style="background:var(--s2);color:var(--muted2);border-color:var(--border2)" onclick="exportIOCs()">📥 EXPORT CSV</button>
+        <button class="ctrl-btn" style="margin-left:6px" onclick="closeIOCs()">✕ CLOSE</button>
+      </div>
+    </div>
+    <div id="iocBody" style="overflow-y:auto;padding:12px 16px"></div>
+    <div style="padding:9px 16px;border-top:1px solid var(--border,rgba(255,255,255,.08));font-family:var(--mono,monospace);font-size:9.5px;color:var(--muted);line-height:1.5">
+      IOCs are extracted from log lines that triggered a detection — each is a real string from your data, tagged with the firing rule’s severity. Absence of an IOC means no rule flagged a line containing it, not that it is safe. Verify before blocking.
+    </div>
+  </div>
+</div>
+</body>
+</html>
