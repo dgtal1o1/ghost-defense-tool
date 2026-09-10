@@ -1,6 +1,6 @@
 ### Ghost Defense v3.0 — Grounded Handling Of Sourced Threat-intel
 
-Ghost Defense is a decentralized, browser-side security toolkit built to eliminate the gap between what defenders need and what they can afford. Engineered by lead architect Teodorico Trajano, the platform bundles **58 enterprise-grade utility tools** covering threat intelligence, incident response, vulnerability management, and critical infrastructure monitoring into a single web interface. 
+Ghost Defense is a decentralized, browser-side security toolkit built to eliminate the gap between what defenders need and what they can afford. Engineered by lead architect TJ Trajano, the platform bundles **58 enterprise-grade utility tools** covering threat intelligence, incident response, vulnerability management, and critical infrastructure monitoring into a single web interface. 
 
 Zero installation. Zero licensing fees. Zero telemetry tracking. 
 
